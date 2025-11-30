@@ -1,10 +1,13 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Inisialisasi SDK baru
+// Pastikan API Key tersedia di environment variable
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
 
-const MODEL_NAME = "gemini-2.5-flash";
+// Menggunakan model stabil 1.5 Flash
+const MODEL_NAME = "gemini-1.5-flash";
 
 export const generateNextQuestion = async (
   role: string,
@@ -13,7 +16,7 @@ export const generateNextQuestion = async (
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
   const turnCount = Math.floor(history.length / 2);
 
-  // DYNAMIC STAGING: Tentukan fase wawancara berdasarkan panjang percakapan
+  // DYNAMIC STAGING
   let stageInstruction = "";
   if (turnCount < 2) {
       stageInstruction = `
@@ -61,16 +64,17 @@ export const generateNextQuestion = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const model = genAI.getGenerativeModel({ 
       model: MODEL_NAME,
-      contents: context ? `Lanjutkan interogasi berdasarkan riwayat ini.` : `Mulai wawancara investigasi untuk posisi ${role}.`,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.9, // Sedikit lebih kreatif untuk variasi pertanyaan
-        topK: 40,
-      }
+      systemInstruction: systemInstruction // System instruction didukung di model terbaru
     });
-    return response.text || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
+
+    const result = await model.generateContent(
+      context ? `Lanjutkan interogasi berdasarkan riwayat ini.` : `Mulai wawancara investigasi untuk posisi ${role}.`
+    );
+
+    const response = await result.response;
+    return response.text() || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
   } catch (error) {
     console.error("Error generating question:", error);
     return "Bagaimana pandangan Anda tentang karyawan yang meminjam aset kantor tanpa izin untuk keperluan mendesak?";
@@ -82,7 +86,7 @@ export const analyzeFraudRisk = async (
   history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>,
   structuredAssessment: AssessmentItem[],
   sjtResults?: SJTItem[],
-  tier: 'Basic' | 'Premium' | 'Enterprise' = 'Basic' // Add Tier
+  tier: 'Basic' | 'Premium' | 'Enterprise' = 'Basic'
 ): Promise<FraudAnalysis> => {
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
   
@@ -90,12 +94,10 @@ export const analyzeFraudRisk = async (
     `[${item.category.toUpperCase()}] Q: "${item.question}" -> A: ${item.response?.toUpperCase()}`
   ).join('\n');
 
-  // Format SJT for AI
   const sjtSummary = sjtResults && sjtResults.length > 0 ? sjtResults.map(item => 
     `[SJT-CASE] Skenario: "${item.scenario.substring(0, 50)}..." -> Pilihan Kandidat: "${item.options[item.selectedOptionIndex!].label}" (Risk Weight: ${item.options[item.selectedOptionIndex!].riskWeight})`
   ).join('\n') : "Tidak ada tes SJT (Paket Basic).";
 
-  // Dynamic Instructions based on Tier
   let extraInstructions = "";
   if (tier === 'Enterprise') {
       extraInstructions = `
@@ -123,7 +125,7 @@ export const analyzeFraudRisk = async (
     INSTRUKSI:
     ${extraInstructions}
     
-    OUTPUT JSON WAJIB:
+    OUTPUT JSON WAJIB (Jangan gunakan markdown code block, kembalikan RAW JSON):
     - scores: (Pressure, Opportunity, Rationalization 0-100)
     - riskLevel: (Low/Medium/High/Critical)
     - summary: Ringkasan analisis
@@ -132,73 +134,73 @@ export const analyzeFraudRisk = async (
     ${tier === 'Enterprise' ? '- euphemismScore, euphemismDetected, consistencyScore, benchmarkComparison' : ''}
   `;
 
-  // Define Schema properties based on Tier to save tokens/complexity
+  // Schema Definition menggunakan SchemaType dari SDK baru
   const baseProperties = {
     scores: {
-      type: Type.OBJECT,
+      type: SchemaType.OBJECT,
       properties: {
-        pressure: { type: Type.INTEGER },
-        opportunity: { type: Type.INTEGER },
-        rationalization: { type: Type.INTEGER }
+        pressure: { type: SchemaType.INTEGER },
+        opportunity: { type: SchemaType.INTEGER },
+        rationalization: { type: SchemaType.INTEGER }
       },
       required: ["pressure", "opportunity", "rationalization"]
     },
-    riskLevel: { type: Type.STRING, enum: ["Low", "Medium", "High", "Critical"] },
-    summary: { type: Type.STRING },
-    redFlags: { type: Type.ARRAY, items: { type: Type.STRING } },
-    recommendation: { type: Type.STRING }
+    riskLevel: { type: SchemaType.STRING, enum: ["Low", "Medium", "High", "Critical"] },
+    summary: { type: SchemaType.STRING },
+    redFlags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    recommendation: { type: SchemaType.STRING }
   };
 
   const enterpriseProperties = {
     ...baseProperties,
-    consistencyScore: { type: Type.INTEGER },
-    euphemismScore: { type: Type.INTEGER },
-    euphemismDetected: { type: Type.ARRAY, items: { type: Type.STRING } },
+    consistencyScore: { type: SchemaType.INTEGER },
+    euphemismScore: { type: SchemaType.INTEGER },
+    euphemismDetected: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     sentimentBreakdown: {
-        type: Type.OBJECT,
+        type: SchemaType.OBJECT,
         properties: {
-            positive: { type: Type.INTEGER },
-            neutral: { type: Type.INTEGER },
-            negative: { type: Type.INTEGER }
+            positive: { type: SchemaType.INTEGER },
+            neutral: { type: SchemaType.INTEGER },
+            negative: { type: SchemaType.INTEGER }
         }
     },
     benchmarkComparison: {
-        type: Type.OBJECT,
+        type: SchemaType.OBJECT,
         properties: {
-            candidateAvg: { type: Type.INTEGER },
-            companyAvg: { type: Type.INTEGER },
-            industryAvg: { type: Type.INTEGER }
+            candidateAvg: { type: SchemaType.INTEGER },
+            companyAvg: { type: SchemaType.INTEGER },
+            industryAvg: { type: SchemaType.INTEGER }
         }
     }
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      contents: "Analisis Profil Risiko Fraud.",
-      config: {
-        systemInstruction: systemInstruction,
+      systemInstruction: systemInstruction,
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: tier === 'Enterprise' ? enterpriseProperties : baseProperties,
           required: ["scores", "riskLevel", "summary", "recommendation"]
         }
       }
     });
 
-    if (response.text) {
-      return JSON.parse(response.text) as FraudAnalysis;
-    }
-    throw new Error("No response text");
+    const result = await model.generateContent("Analisis Profil Risiko Fraud.");
+    const response = await result.response;
+    const text = response.text();
+    
+    return JSON.parse(text) as FraudAnalysis;
   } catch (error) {
     console.error("Analysis failed:", error);
     return {
       scores: { pressure: 50, opportunity: 50, rationalization: 50 },
       riskLevel: RiskLevel.MEDIUM,
-      summary: "Analisis gagal.",
-      redFlags: ["System Error"],
-      recommendation: "Manual Review"
+      summary: "Analisis gagal. Silakan coba lagi.",
+      redFlags: ["System Error: Gagal terhubung ke AI"],
+      recommendation: "Lakukan review manual."
     };
   }
 };
