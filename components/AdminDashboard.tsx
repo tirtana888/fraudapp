@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Search, MoreVertical, Mail, Users, Star, ArrowUpRight, Loader2, X, CheckCircle2, CloudLightning, Pencil, Trash2, Shield, Save } from 'lucide-react';
 import { CompanyProfile } from '../types';
@@ -53,14 +54,17 @@ const AdminDashboard: React.FC = () => {
       const result = await inviteCompanyCloud(payload);
       await fetchCompanies();
       
-      const successMessage = result?.message || "Perusahaan berhasil didaftarkan.";
+      // Fix: Cast result to any to avoid "Property 'message' does not exist on type 'unknown'"
+      const successMessage = (result as any)?.message || "Perusahaan berhasil didaftarkan.";
       alert(`✅ SUKSES!\n\n${successMessage}`);
 
       setNewCompany({ name: '', email: '', tier: 'Basic' });
       setIsModalOpen(false);
     } catch (error) {
       console.error("Gagal mengundang:", error);
-      alert("Terjadi kesalahan saat memproses undangan.");
+      // Fix: Cast error to any or Error to access message safely
+      const errorMessage = (error as any)?.message || "Terjadi kesalahan saat memproses undangan.";
+      alert(`Gagal: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +91,9 @@ const AdminDashboard: React.FC = () => {
         setIsEditModalOpen(false);
         setEditingCompany(null);
     } catch (error) {
-        alert("Gagal mengupdate perusahaan.");
+        // Fix: Safe error handling
+        const errorMessage = (error as any)?.message || "Gagal mengupdate perusahaan.";
+        alert(errorMessage);
     } finally {
         setIsSubmitting(false);
     }
@@ -96,8 +102,13 @@ const AdminDashboard: React.FC = () => {
   const handleDeleteClick = async (id: string) => {
     if (confirm("Apakah Anda yakin ingin menghapus perusahaan ini? Data tidak dapat dikembalikan.")) {
         setIsLoading(true);
-        await deleteCompany(id);
-        await fetchCompanies();
+        try {
+            await deleteCompany(id);
+            await fetchCompanies();
+        } catch (error) {
+            console.error(error);
+            alert("Gagal menghapus data.");
+        }
         setIsLoading(false);
     }
     setActiveMenuId(null);
