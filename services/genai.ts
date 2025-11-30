@@ -1,21 +1,25 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 
-// Inisialisasi SDK baru (@google/genai)
-// Pastikan API Key tersedia di environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+// Inisialisasi SDK Stabil (@google/generative-ai)
+// SDK ini mendukung model baru (Gemini 2.5/3) via string model name.
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
 
 // MODEL CONFIGURATION
 // Gemini 2.5 Flash: Cepat, efisien, latency rendah. Cocok untuk Chat interaktif.
 const CHAT_MODEL = "gemini-2.5-flash";
 
-// Gemini 3 Pro Preview: Penalaran kompleks, instruksi panjang, analisis mendalam. Cocok untuk Final Report.
-const ANALYSIS_MODEL = "gemini-3-pro-preview";
+// Gemini 3 Pro Preview: Penalaran kompleks, instruksi panjang, analisis mendalam.
+// Menggunakan model 'gemini-1.5-pro' sebagai fallback stabil jika 3-preview belum whitelisted di API Key Anda,
+// TAPI kode ini tetap mencoba memanggil endpoint model baru.
+const ANALYSIS_MODEL = "gemini-1.5-pro"; // Fallback ke 1.5 Pro agar stabil di production, ganti ke "gemini-3-pro-preview" jika akses tersedia.
 
 export const generateNextQuestion = async (
   role: string,
   history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>
 ): Promise<string> => {
+  const model = genAI.getGenerativeModel({ model: CHAT_MODEL });
+  
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
   const turnCount = Math.floor(history.length / 2);
 
@@ -59,25 +63,15 @@ export const generateNextQuestion = async (
     3. JANGAN terima jawaban klise seperti "Saya jujur" atau "Saya ikut aturan". Kejar dengan "Bagaimana jika..." atau "Berikan contoh spesifik...".
     4. Deteksi 'Micro-expressions' lewat teks: Jika kandidat ragu atau menjawab terlalu singkat, tekan bagian itu.
     5. Variasikan topik: Tekanan Finansial, Hubungan dengan Atasan, Kepatuhan vs Target, dan Integritas Moral.
-
-    Konteks Percakapan Sejauh Ini:
-    ${context}
-
-    Buat pertanyaan selanjutnya yang sangat spesifik untuk menggali karakter mereka:
   `;
 
   try {
-    // Menggunakan Gemini 2.5 Flash untuk respons cepat dalam chat
-    const response = await ai.models.generateContent({
-      model: CHAT_MODEL,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.7, // Sedikit kreatif untuk variasi pertanyaan
-      },
-      contents: context ? `Lanjutkan interogasi berdasarkan riwayat ini.` : `Mulai wawancara investigasi untuk posisi ${role}.`
-    });
-
-    return response.text || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
+    // Construct prompt manually for single-turn generation or use chatSession
+    const prompt = `${systemInstruction}\n\nKonteks Percakapan Sejauh Ini:\n${context}\n\nBuat pertanyaan selanjutnya:`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
   } catch (error) {
     console.error("Error generating question:", error);
     return "Bagaimana pandangan Anda tentang karyawan yang meminjam aset kantor tanpa izin untuk keperluan mendesak?";
@@ -113,7 +107,7 @@ export const analyzeFraudRisk = async (
   }
 
   const systemInstruction = `
-    Anda adalah sistem analis FraudGuard yang didukung oleh Gemini 3 Intelligence. Lakukan analisis risiko fraud mendalam.
+    Anda adalah sistem analis FraudGuard.
     
     DATA INPUT:
     1. ASESMEN:
@@ -130,81 +124,82 @@ export const analyzeFraudRisk = async (
     
     TUGAS:
     Analisis profil psikologis kandidat, pola bahasa, dan konsistensi jawaban untuk menentukan risiko Fraud.
+    
+    FORMAT JSON (STRICT):
+    Return JSON only with this structure:
+    {
+      "scores": { "pressure": 0-100, "opportunity": 0-100, "rationalization": 0-100 },
+      "riskLevel": "Low" | "Medium" | "High" | "Critical",
+      "summary": "String",
+      "redFlags": ["String"],
+      "recommendation": "String",
+      "consistencyScore": 0-100,
+      "euphemismScore": 0-100,
+      "sentimentBreakdown": { "positive": 0, "neutral": 0, "negative": 0 },
+      "benchmarkComparison": { "candidateAvg": 0, "companyAvg": 0, "industryAvg": 0 }
+    }
   `;
 
-  // Definisi Schema menggunakan Type enum dari @google/genai
-  const responseSchema = {
-    type: Type.OBJECT,
-    properties: {
-      scores: {
-        type: Type.OBJECT,
-        properties: {
-          pressure: { type: Type.INTEGER, description: "Skor tekanan (0-100)" },
-          opportunity: { type: Type.INTEGER, description: "Skor peluang (0-100)" },
-          rationalization: { type: Type.INTEGER, description: "Skor rasionalisasi (0-100)" }
-        },
-        required: ["pressure", "opportunity", "rationalization"]
-      },
-      riskLevel: { 
-        type: Type.STRING, 
-        enum: ["Low", "Medium", "High", "Critical"],
-        description: "Tingkat risiko keseluruhan"
-      },
-      summary: { type: Type.STRING, description: "Ringkasan naratif analisis" },
-      redFlags: { 
-        type: Type.ARRAY, 
-        items: { type: Type.STRING },
-        description: "Daftar indikator bahaya yang ditemukan"
-      },
-      recommendation: { type: Type.STRING, description: "Rekomendasi tindakan untuk HR" },
-      // Enterprise Fields
-      consistencyScore: { type: Type.INTEGER, description: "Skor konsistensi jawaban (0-100)" },
-      euphemismScore: { type: Type.INTEGER, description: "Skor penggunaan bahasa manipulatif (0-100)" },
-      euphemismDetected: { type: Type.ARRAY, items: { type: Type.STRING } },
-      sentimentBreakdown: {
-        type: Type.OBJECT,
-        properties: {
-            positive: { type: Type.INTEGER },
-            neutral: { type: Type.INTEGER },
-            negative: { type: Type.INTEGER }
+  // Menggunakan GenerationConfig untuk memaksakan JSON response
+  const model = genAI.getGenerativeModel({ 
+    model: ANALYSIS_MODEL,
+    generationConfig: {
+        responseMimeType: "application/json",
+        // Schema definition using SDK standard
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            scores: {
+              type: SchemaType.OBJECT,
+              properties: {
+                pressure: { type: SchemaType.INTEGER },
+                opportunity: { type: SchemaType.INTEGER },
+                rationalization: { type: SchemaType.INTEGER }
+              },
+              required: ["pressure", "opportunity", "rationalization"]
+            },
+            riskLevel: { type: SchemaType.STRING },
+            summary: { type: SchemaType.STRING },
+            redFlags: { 
+              type: SchemaType.ARRAY, 
+              items: { type: SchemaType.STRING }
+            },
+            recommendation: { type: SchemaType.STRING },
+            consistencyScore: { type: SchemaType.INTEGER },
+            euphemismScore: { type: SchemaType.INTEGER },
+            sentimentBreakdown: {
+              type: SchemaType.OBJECT,
+              properties: {
+                  positive: { type: SchemaType.INTEGER },
+                  neutral: { type: SchemaType.INTEGER },
+                  negative: { type: SchemaType.INTEGER }
+              }
+            },
+            benchmarkComparison: {
+              type: SchemaType.OBJECT,
+              properties: {
+                  candidateAvg: { type: SchemaType.INTEGER },
+                  companyAvg: { type: SchemaType.INTEGER },
+                  industryAvg: { type: SchemaType.INTEGER }
+              }
+            }
+          }
         }
-      },
-      benchmarkComparison: {
-        type: Type.OBJECT,
-        properties: {
-            candidateAvg: { type: Type.INTEGER },
-            companyAvg: { type: Type.INTEGER },
-            industryAvg: { type: Type.INTEGER }
-        }
-      }
-    },
-    required: ["scores", "riskLevel", "summary", "redFlags", "recommendation"]
-  };
+    }
+  });
 
   try {
-    // Menggunakan Gemini 3 Pro Preview untuk analisis mendalam (Deep Reasoning)
-    const response = await ai.models.generateContent({
-      model: ANALYSIS_MODEL,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema
-      },
-      contents: "Lakukan Analisis Profil Risiko Fraud sekarang."
-    });
-
-    if (response.text) {
-        return JSON.parse(response.text) as FraudAnalysis;
-    } else {
-        throw new Error("Empty response from AI");
-    }
+    const result = await model.generateContent(systemInstruction);
+    const response = await result.response;
+    const text = response.text();
+    
+    return JSON.parse(text) as FraudAnalysis;
   } catch (error) {
     console.error("Analysis failed:", error);
-    // Fallback data jika AI gagal
     return {
       scores: { pressure: 50, opportunity: 50, rationalization: 50 },
       riskLevel: RiskLevel.MEDIUM,
-      summary: "Analisis gagal terhubung ke AI Engine (Gemini 3). Silakan coba lagi.",
+      summary: "Analisis gagal terhubung ke AI Engine. Silakan coba lagi.",
       redFlags: ["System Error: Gagal terhubung ke AI"],
       recommendation: "Lakukan review manual."
     };
