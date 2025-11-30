@@ -7,10 +7,10 @@ import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
 
 // MODEL CONFIGURATION
-// Menggunakan Gemini 1.5 Flash untuk chat (Cepat & Low Latency)
-// Menggunakan Gemini 1.5 Pro untuk analisis (Reasoning Kuat)
-const CHAT_MODEL_ID = "gemini-1.5-flash";
-const ANALYSIS_MODEL_ID = "gemini-1.5-pro";
+// MENGGUNAKAN GEMINI 3 PRO PREVIEW (Advanced Reasoning & Nuance)
+// Sesuai instruksi: "Selalu gunakan 3"
+const CHAT_MODEL_ID = "gemini-3-pro-preview"; 
+const ANALYSIS_MODEL_ID = "gemini-3-pro-preview";
 
 export const generateNextQuestion = async (
   role: string,
