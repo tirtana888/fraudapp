@@ -8,15 +8,16 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "start": "vite preview --port 8080 --host"
+    "start": "serve -s dist -l 8080"
   },
   "dependencies": {
-    "@google/genai": "*",
+    "@google/genai": "^0.1.1",
     "firebase": "^10.13.0",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.12.0"
+    "recharts": "^2.12.0",
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
