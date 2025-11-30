@@ -1,23 +1,21 @@
-import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
-});
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    // Konfigurasi untuk development lokal
+    host: '0.0.0.0',
+    port: 8080,
+  },
+  preview: {
+    // Konfigurasi KRUSIAL untuk Cloud Run / Production Preview
+    // Mengizinkan akses dari luar container (0.0.0.0)
+    host: '0.0.0.0',
+    // Memaksa berjalan di port 8080 sesuai standar Cloud Run
+    port: 8080,
+    // Mengizinkan semua host (penting untuk domain dinamis Cloud Run)
+    allowedHosts: true,
+  },
+})
