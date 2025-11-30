@@ -1,13 +1,16 @@
-
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 
-// Inisialisasi SDK baru
+// Inisialisasi SDK baru (@google/genai)
 // Pastikan API Key tersedia di environment variable
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
-// Menggunakan model stabil 1.5 Flash
-const MODEL_NAME = "gemini-1.5-flash";
+// MODEL CONFIGURATION
+// Gemini 2.5 Flash: Cepat, efisien, latency rendah. Cocok untuk Chat interaktif.
+const CHAT_MODEL = "gemini-2.5-flash";
+
+// Gemini 3 Pro Preview: Penalaran kompleks, instruksi panjang, analisis mendalam. Cocok untuk Final Report.
+const ANALYSIS_MODEL = "gemini-3-pro-preview";
 
 export const generateNextQuestion = async (
   role: string,
@@ -64,17 +67,17 @@ export const generateNextQuestion = async (
   `;
 
   try {
-    const model = genAI.getGenerativeModel({ 
-      model: MODEL_NAME,
-      systemInstruction: systemInstruction // System instruction didukung di model terbaru
+    // Menggunakan Gemini 2.5 Flash untuk respons cepat dalam chat
+    const response = await ai.models.generateContent({
+      model: CHAT_MODEL,
+      config: {
+        systemInstruction: systemInstruction,
+        temperature: 0.7, // Sedikit kreatif untuk variasi pertanyaan
+      },
+      contents: context ? `Lanjutkan interogasi berdasarkan riwayat ini.` : `Mulai wawancara investigasi untuk posisi ${role}.`
     });
 
-    const result = await model.generateContent(
-      context ? `Lanjutkan interogasi berdasarkan riwayat ini.` : `Mulai wawancara investigasi untuk posisi ${role}.`
-    );
-
-    const response = await result.response;
-    return response.text() || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
+    return response.text || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
   } catch (error) {
     console.error("Error generating question:", error);
     return "Bagaimana pandangan Anda tentang karyawan yang meminjam aset kantor tanpa izin untuk keperluan mendesak?";
@@ -110,7 +113,7 @@ export const analyzeFraudRisk = async (
   }
 
   const systemInstruction = `
-    Anda adalah sistem analis FraudGuard. Lakukan analisis risiko fraud.
+    Anda adalah sistem analis FraudGuard yang didukung oleh Gemini 3 Intelligence. Lakukan analisis risiko fraud mendalam.
     
     DATA INPUT:
     1. ASESMEN:
@@ -125,80 +128,83 @@ export const analyzeFraudRisk = async (
     INSTRUKSI:
     ${extraInstructions}
     
-    OUTPUT JSON WAJIB (Jangan gunakan markdown code block, kembalikan RAW JSON):
-    - scores: (Pressure, Opportunity, Rationalization 0-100)
-    - riskLevel: (Low/Medium/High/Critical)
-    - summary: Ringkasan analisis
-    - redFlags: Daftar indikator bahaya
-    - recommendation: Rekomendasi tindakan
-    ${tier === 'Enterprise' ? '- euphemismScore, euphemismDetected, consistencyScore, benchmarkComparison' : ''}
+    TUGAS:
+    Analisis profil psikologis kandidat, pola bahasa, dan konsistensi jawaban untuk menentukan risiko Fraud.
   `;
 
-  // Schema Definition menggunakan SchemaType dari SDK baru
-  const baseProperties = {
-    scores: {
-      type: SchemaType.OBJECT,
-      properties: {
-        pressure: { type: SchemaType.INTEGER },
-        opportunity: { type: SchemaType.INTEGER },
-        rationalization: { type: SchemaType.INTEGER }
+  // Definisi Schema menggunakan Type enum dari @google/genai
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      scores: {
+        type: Type.OBJECT,
+        properties: {
+          pressure: { type: Type.INTEGER, description: "Skor tekanan (0-100)" },
+          opportunity: { type: Type.INTEGER, description: "Skor peluang (0-100)" },
+          rationalization: { type: Type.INTEGER, description: "Skor rasionalisasi (0-100)" }
+        },
+        required: ["pressure", "opportunity", "rationalization"]
       },
-      required: ["pressure", "opportunity", "rationalization"]
-    },
-    riskLevel: { type: SchemaType.STRING, enum: ["Low", "Medium", "High", "Critical"] },
-    summary: { type: SchemaType.STRING },
-    redFlags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-    recommendation: { type: SchemaType.STRING }
-  };
-
-  const enterpriseProperties = {
-    ...baseProperties,
-    consistencyScore: { type: SchemaType.INTEGER },
-    euphemismScore: { type: SchemaType.INTEGER },
-    euphemismDetected: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-    sentimentBreakdown: {
-        type: SchemaType.OBJECT,
+      riskLevel: { 
+        type: Type.STRING, 
+        enum: ["Low", "Medium", "High", "Critical"],
+        description: "Tingkat risiko keseluruhan"
+      },
+      summary: { type: Type.STRING, description: "Ringkasan naratif analisis" },
+      redFlags: { 
+        type: Type.ARRAY, 
+        items: { type: Type.STRING },
+        description: "Daftar indikator bahaya yang ditemukan"
+      },
+      recommendation: { type: Type.STRING, description: "Rekomendasi tindakan untuk HR" },
+      // Enterprise Fields
+      consistencyScore: { type: Type.INTEGER, description: "Skor konsistensi jawaban (0-100)" },
+      euphemismScore: { type: Type.INTEGER, description: "Skor penggunaan bahasa manipulatif (0-100)" },
+      euphemismDetected: { type: Type.ARRAY, items: { type: Type.STRING } },
+      sentimentBreakdown: {
+        type: Type.OBJECT,
         properties: {
-            positive: { type: SchemaType.INTEGER },
-            neutral: { type: SchemaType.INTEGER },
-            negative: { type: SchemaType.INTEGER }
+            positive: { type: Type.INTEGER },
+            neutral: { type: Type.INTEGER },
+            negative: { type: Type.INTEGER }
         }
-    },
-    benchmarkComparison: {
-        type: SchemaType.OBJECT,
+      },
+      benchmarkComparison: {
+        type: Type.OBJECT,
         properties: {
-            candidateAvg: { type: SchemaType.INTEGER },
-            companyAvg: { type: SchemaType.INTEGER },
-            industryAvg: { type: SchemaType.INTEGER }
+            candidateAvg: { type: Type.INTEGER },
+            companyAvg: { type: Type.INTEGER },
+            industryAvg: { type: Type.INTEGER }
         }
-    }
+      }
+    },
+    required: ["scores", "riskLevel", "summary", "redFlags", "recommendation"]
   };
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      systemInstruction: systemInstruction,
-      generationConfig: {
+    // Menggunakan Gemini 3 Pro Preview untuk analisis mendalam (Deep Reasoning)
+    const response = await ai.models.generateContent({
+      model: ANALYSIS_MODEL,
+      config: {
+        systemInstruction: systemInstruction,
         responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: tier === 'Enterprise' ? enterpriseProperties : baseProperties,
-          required: ["scores", "riskLevel", "summary", "recommendation"]
-        }
-      }
+        responseSchema: responseSchema
+      },
+      contents: "Lakukan Analisis Profil Risiko Fraud sekarang."
     });
 
-    const result = await model.generateContent("Analisis Profil Risiko Fraud.");
-    const response = await result.response;
-    const text = response.text();
-    
-    return JSON.parse(text) as FraudAnalysis;
+    if (response.text) {
+        return JSON.parse(response.text) as FraudAnalysis;
+    } else {
+        throw new Error("Empty response from AI");
+    }
   } catch (error) {
     console.error("Analysis failed:", error);
+    // Fallback data jika AI gagal
     return {
       scores: { pressure: 50, opportunity: 50, rationalization: 50 },
       riskLevel: RiskLevel.MEDIUM,
-      summary: "Analisis gagal. Silakan coba lagi.",
+      summary: "Analisis gagal terhubung ke AI Engine (Gemini 3). Silakan coba lagi.",
       redFlags: ["System Error: Gagal terhubung ke AI"],
       recommendation: "Lakukan review manual."
     };
