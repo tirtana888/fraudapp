@@ -1,20 +1,69 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-# Run and deploy your AI Studio app
+# FraudGuard SaaS 🛡️
 
-This contains everything you need to run your app locally.
+**FraudGuard** adalah platform SaaS (Software as a Service) berbasis AI yang dirancang untuk membantu perusahaan melakukan deteksi dini risiko fraud pada kandidat karyawan menggunakan kerangka kerja *Fraud Triangle* (Pressure, Opportunity, Rationalization).
 
-View your app in AI Studio: https://ai.studio/apps/drive/1MEwOOlgC6pmj9x34VjPnTk1wyFLBvVjb
+## 🚀 Fitur Utama
 
-## Run Locally
+- **Multi-Tenant SaaS**: Mendukung multiple perusahaan dengan isolasi data yang aman.
+- **AI Forensic Interview**: Wawancara otomatis menggunakan Google Gemini AI dengan teknik investigasi bertahap.
+- **Fraud Triangle Analysis**: Visualisasi risiko kandidat dalam grafik radar.
+- **Situational Judgment Test (SJT)**: Tes psikometri untuk mengukur integritas bawah sadar (Tier Premium/Enterprise).
+- **Enterprise Features**: Deteksi eufemisme, analisis sentimen, dan benchmarking industri.
+- **Real-time Database**: Terintegrasi penuh dengan Firebase Firestore.
 
-**Prerequisites:**  Node.js
+## 🛠️ Teknologi yang Digunakan
 
+- **Frontend**: React, TypeScript, Tailwind CSS, Vite.
+- **AI Engine**: Google Gemini API (via `@google/genai`).
+- **Database**: Firebase Firestore.
+- **Backend Logic**: Firebase Cloud Functions.
+- **Visualization**: Recharts.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 📦 Cara Menjalankan (Local Development)
+
+1.  **Clone Repositori**
+    ```bash
+    git clone https://github.com/username-anda/fraudguard-saas.git
+    cd fraudguard-saas
+    ```
+
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Setup Environment Variables**
+    Buat file `.env` di root folder dan tambahkan API Key Gemini Anda:
+    ```bash
+    API_KEY=YOUR_GEMINI_API_KEY
+    ```
+
+4.  **Jalankan Aplikasi**
+    ```bash
+    npm run dev
+    ```
+
+## 🚢 Deployment
+
+Aplikasi ini dikonfigurasi untuk siap deploy ke **Google Cloud Run** atau **Firebase Hosting**.
+
+**Build untuk Production:**
+```bash
+npm run build
+```
+
+**Preview Production Build (Port 8080):**
+```bash
+npm run start
+```
+
+## 📄 Struktur Folder
+
+- `/src/components`: Komponen UI React (Dashboard, Interview, Reports).
+- `/src/services`: Logika integrasi API (Firebase, Gemini AI).
+- `/functions`: Kode backend untuk Firebase Cloud Functions.
+
+---
+
+*Dikembangkan untuk demo Fraud Detection System.*
