@@ -8,6 +8,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+      (function(){
+         // =====================================================================
+         // KONFIGURASI EMAILJS (CLIENT SIDE EMAIL)
+         // =====================================================================
+         // 1. Daftar di https://www.emailjs.com/
+         // 2. Buka Menu Account -> Copy "Public Key"
+         // 3. Tempel Public Key Anda menggantikan teks di bawah ini:
+         
+         const YOUR_PUBLIC_KEY = "bclRHuJQwKQIOljiq"; 
+         
+         // Contoh jika sudah diisi: emailjs.init("user_A1b2C3d4E5f6G7");
+         
+         if (YOUR_PUBLIC_KEY === "GANTI_DENGAN_PUBLIC_KEY_EMAILJS_ANDA") {
+             console.warn("⚠️ FraudGuard: EmailJS Public Key belum diset di index.html");
+         }
+         emailjs.init(YOUR_PUBLIC_KEY); 
+      })();
+    </script>
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -57,13 +77,13 @@
     "firebase/functions": "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js",
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
     "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
   }
 }
 </script>
 </head>
   <body class="bg-brand-light dark:bg-brand-slate-900 text-slate-900 dark:text-slate-100">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

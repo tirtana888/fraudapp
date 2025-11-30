@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Search, MoreVertical, Mail, Users, Star, ArrowUpRight, Loader2, X, CheckCircle2, CloudLightning, Pencil, Trash2, Shield, Save } from 'lucide-react';
+import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { inviteCompanyCloud, getCompanies, updateCompany, deleteCompany } from '../services/firebase';
+import { inviteCompanyReal, getCompanies, updateCompany, deleteCompany, resendInviteEmail } from '../services/firebase';
 
 const AdminDashboard: React.FC = () => {
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -51,22 +51,36 @@ const AdminDashboard: React.FC = () => {
     };
 
     try {
-      const result = await inviteCompanyCloud(payload);
+      // MENGGUNAKAN LOGIKA CLIENT-SIDE REAL (EmailJS + Firestore)
+      // Ini bypass kebutuhan deploy Cloud Functions via terminal
+      const result = await inviteCompanyReal(payload);
+      
       await fetchCompanies();
       
-      // Fix: Cast result to any to avoid "Property 'message' does not exist on type 'unknown'"
-      const successMessage = (result as any)?.message || "Perusahaan berhasil didaftarkan.";
-      alert(`✅ SUKSES!\n\n${successMessage}`);
+      const message = (result as any)?.message || "Proses selesai.";
+      alert(`✅ STATUS UNDANGAN\n\n${message}`);
 
       setNewCompany({ name: '', email: '', tier: 'Basic' });
       setIsModalOpen(false);
     } catch (error) {
       console.error("Gagal mengundang:", error);
-      // Fix: Cast error to any or Error to access message safely
-      const errorMessage = (error as any)?.message || "Terjadi kesalahan saat memproses undangan.";
-      alert(`Gagal: ${errorMessage}`);
+      const errorMessage = (error as any)?.message || "Terjadi kesalahan.";
+      alert(`❌ ERROR\n\n${errorMessage}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendEmail = async (companyId: string) => {
+    setIsSubmitting(true);
+    try {
+        const result = await resendInviteEmail(companyId);
+        alert(`✅ SUKSES: ${result.message}`);
+    } catch (error) {
+        alert(`❌ GAGAL: ${(error as any).message}`);
+    } finally {
+        setIsSubmitting(false);
+        setActiveMenuId(null);
     }
   };
 
@@ -90,8 +104,8 @@ const AdminDashboard: React.FC = () => {
         await fetchCompanies();
         setIsEditModalOpen(false);
         setEditingCompany(null);
+        alert("✅ Data perusahaan berhasil diperbarui.");
     } catch (error) {
-        // Fix: Safe error handling
         const errorMessage = (error as any)?.message || "Gagal mengupdate perusahaan.";
         alert(errorMessage);
     } finally {
@@ -105,6 +119,7 @@ const AdminDashboard: React.FC = () => {
         try {
             await deleteCompany(id);
             await fetchCompanies();
+            alert("✅ Perusahaan berhasil dihapus.");
         } catch (error) {
             console.error(error);
             alert("Gagal menghapus data.");
@@ -124,7 +139,7 @@ const AdminDashboard: React.FC = () => {
             <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Total Tenant (SaaS)</p>
             <h3 className="text-4xl font-extrabold">{companies.length}</h3>
             <p className="text-green-400 text-sm font-medium mt-2 flex items-center gap-1">
-              <ArrowUpRight size={14} /> +2 bulan ini
+              <ArrowUpRight size={14} /> Live Data
             </p>
           </div>
           <Building2 className="absolute right-4 bottom-4 text-white opacity-10" size={64} />
@@ -144,9 +159,9 @@ const AdminDashboard: React.FC = () => {
              onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
              className="bg-white text-brand-orange w-full py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
            >
-             <CloudLightning size={20} /> Invite via Cloud Function
+             <CloudLightning size={20} /> Invite & Send Email
            </button>
-           <p className="text-white/80 text-xs mt-3 font-medium">Trigger email & DB otomatis</p>
+           <p className="text-white/80 text-xs mt-3 font-medium">Real Email via Frontend</p>
         </div>
       </div>
 
@@ -238,13 +253,20 @@ const AdminDashboard: React.FC = () => {
                     
                     {/* DROPDOWN MENU */}
                     {activeMenuId === company.id && (
-                        <div className="absolute right-8 top-8 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100">
+                        <div className="absolute right-8 top-8 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleEditClick(company); }}
                                 className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
                             >
                                 <Pencil size={14} /> Edit Data
                             </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleResendEmail(company.id); }}
+                                className="w-full text-left px-4 py-3 text-sm text-brand-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
+                            >
+                                <Send size={14} /> Kirim Ulang Akses
+                            </button>
+                            <div className="border-b border-gray-100 dark:border-slate-700 my-1"></div>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleDeleteClick(company.id); }}
                                 className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
@@ -268,7 +290,7 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
               <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                 <CloudLightning className="text-brand-orange" size={20} />
-                Trigger Cloud Function
+                Undang Perusahaan Baru
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">
                 <X size={20} />
@@ -306,7 +328,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-brand-dark dark:bg-white text-white dark:text-brand-dark py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70">
-                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Jalankan Cloud Function"}
+                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Kirim Undangan (EmailJS)"}
               </button>
             </form>
           </div>

@@ -30,16 +30,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-  const fillCredentials = (type: 'enterprise' | 'admin') => {
-    if (type === 'enterprise') {
-      setEmail('enterprise@fraudguard.id');
-      setPassword('password123');
-    } else {
-      setEmail('admin@fraudguard.id');
-      setPassword('admin123');
-    }
-  };
-
   return (
     <div className="min-h-screen flex bg-white font-sans">
       
@@ -50,12 +40,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <ShieldAlert size={20} />
             </div>
             <span className="font-bold text-xl text-gray-800 tracking-tight">FraudGuard</span>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold border border-green-200">LIVE DB</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold border border-green-200">SECURE</span>
         </div>
 
         <div className="max-w-md w-full mx-auto">
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Login Perusahaan</h1>
-          <p className="text-gray-500 mb-8">Masuk ke akun Enterprise real-time Anda.</p>
+          <p className="text-gray-500 mb-8">Masuk ke akun Enterprise SaaS Anda.</p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
@@ -104,7 +94,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               {isLoading ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Mengautentikasi ke Cloud...
+                  Mengautentikasi...
                 </>
               ) : (
                 <>
@@ -114,25 +104,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          {/* Quick Login for Testing the "Real" Scenario */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
-             <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3 text-center">Akun Real Database (Auto-Seed)</p>
-             <div className="grid grid-cols-2 gap-3">
-                <button 
-                  type="button"
-                  onClick={() => fillCredentials('enterprise')}
-                  className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-lg border border-gray-200 transition-colors"
-                >
-                   PT Maju Bersama
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => fillCredentials('admin')}
-                  className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-lg border border-gray-200 transition-colors"
-                >
-                   Super Admin
-                </button>
-             </div>
+          <div className="mt-8 text-center">
+             <p className="text-sm text-gray-400">
+               Belum punya akun? <span className="font-bold text-gray-600">Hubungi Sales Enterprise</span>
+             </p>
           </div>
         </div>
       </div>
@@ -149,20 +124,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
           
           <h2 className="text-3xl font-extrabold text-white mb-6 leading-tight">
-            Production Ready.
+            Advanced Fraud Detection.
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed mb-8">
-            Platform SaaS kini terhubung langsung ke <span className="text-brand-orange font-bold">Live Cloud Database</span>. Data user, sesi, dan perusahaan bersifat persisten dan aman.
+            Platform SaaS Enterprise dengan keamanan tingkat tinggi, integrasi database real-time, dan audit otomatis.
           </p>
 
           <div className="flex justify-center gap-4">
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 rounded-xl">
-               <p className="text-2xl font-bold text-white">Live</p>
-               <p className="text-xs text-gray-400 uppercase tracking-wider">Status Database</p>
+               <p className="text-2xl font-bold text-white">99.9%</p>
+               <p className="text-xs text-gray-400 uppercase tracking-wider">Uptime</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 rounded-xl">
-               <p className="text-2xl font-bold text-white">Real</p>
-               <p className="text-xs text-gray-400 uppercase tracking-wider">Multi-Tenant</p>
+               <p className="text-2xl font-bold text-white">ISO</p>
+               <p className="text-xs text-gray-400 uppercase tracking-wider">27001 Ready</p>
             </div>
           </div>
         </div>

@@ -1,24 +1,22 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 
-// Inisialisasi SDK Stabil (@google/generative-ai)
+// Inisialisasi SDK Stabil (@google/genai)
 // SDK ini mendukung model baru (Gemini 2.5/3) via string model name.
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // MODEL CONFIGURATION
 // Gemini 2.5 Flash: Cepat, efisien, latency rendah. Cocok untuk Chat interaktif.
 const CHAT_MODEL = "gemini-2.5-flash";
 
 // Gemini 3 Pro Preview: Penalaran kompleks, instruksi panjang, analisis mendalam.
-// Menggunakan model 'gemini-1.5-pro' sebagai fallback stabil jika 3-preview belum whitelisted di API Key Anda,
-// TAPI kode ini tetap mencoba memanggil endpoint model baru.
-const ANALYSIS_MODEL = "gemini-1.5-pro"; // Fallback ke 1.5 Pro agar stabil di production, ganti ke "gemini-3-pro-preview" jika akses tersedia.
+const ANALYSIS_MODEL = "gemini-1.5-pro"; // Fallback ke 1.5 Pro agar stabil di production.
 
 export const generateNextQuestion = async (
   role: string,
   history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>
 ): Promise<string> => {
-  const model = genAI.getGenerativeModel({ model: CHAT_MODEL });
   
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
   const turnCount = Math.floor(history.length / 2);
@@ -66,12 +64,13 @@ export const generateNextQuestion = async (
   `;
 
   try {
-    // Construct prompt manually for single-turn generation or use chatSession
     const prompt = `${systemInstruction}\n\nKonteks Percakapan Sejauh Ini:\n${context}\n\nBuat pertanyaan selanjutnya:`;
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text() || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
+    const response = await ai.models.generateContent({
+        model: CHAT_MODEL,
+        contents: prompt
+    });
+    return response.text || "Ceritakan pengalaman di mana integritas Anda benar-benar diuji oleh atasan.";
   } catch (error) {
     console.error("Error generating question:", error);
     return "Bagaimana pandangan Anda tentang karyawan yang meminjam aset kantor tanpa izin untuk keperluan mendesak?";
@@ -140,59 +139,56 @@ export const analyzeFraudRisk = async (
     }
   `;
 
-  // Menggunakan GenerationConfig untuk memaksakan JSON response
-  const model = genAI.getGenerativeModel({ 
-    model: ANALYSIS_MODEL,
-    generationConfig: {
-        responseMimeType: "application/json",
-        // Schema definition using SDK standard
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            scores: {
-              type: SchemaType.OBJECT,
-              properties: {
-                pressure: { type: SchemaType.INTEGER },
-                opportunity: { type: SchemaType.INTEGER },
-                rationalization: { type: SchemaType.INTEGER }
-              },
-              required: ["pressure", "opportunity", "rationalization"]
-            },
-            riskLevel: { type: SchemaType.STRING },
-            summary: { type: SchemaType.STRING },
-            redFlags: { 
-              type: SchemaType.ARRAY, 
-              items: { type: SchemaType.STRING }
-            },
-            recommendation: { type: SchemaType.STRING },
-            consistencyScore: { type: SchemaType.INTEGER },
-            euphemismScore: { type: SchemaType.INTEGER },
-            sentimentBreakdown: {
-              type: SchemaType.OBJECT,
-              properties: {
-                  positive: { type: SchemaType.INTEGER },
-                  neutral: { type: SchemaType.INTEGER },
-                  negative: { type: SchemaType.INTEGER }
-              }
-            },
-            benchmarkComparison: {
-              type: SchemaType.OBJECT,
-              properties: {
-                  candidateAvg: { type: SchemaType.INTEGER },
-                  companyAvg: { type: SchemaType.INTEGER },
-                  industryAvg: { type: SchemaType.INTEGER }
-              }
-            }
-          }
-        }
-    }
-  });
-
   try {
-    const result = await model.generateContent(systemInstruction);
-    const response = await result.response;
-    const text = response.text();
+    const response = await ai.models.generateContent({
+        model: ANALYSIS_MODEL,
+        contents: systemInstruction,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    scores: {
+                    type: Type.OBJECT,
+                    properties: {
+                        pressure: { type: Type.INTEGER },
+                        opportunity: { type: Type.INTEGER },
+                        rationalization: { type: Type.INTEGER }
+                    },
+                    required: ["pressure", "opportunity", "rationalization"]
+                    },
+                    riskLevel: { type: Type.STRING },
+                    summary: { type: Type.STRING },
+                    redFlags: { 
+                    type: Type.ARRAY, 
+                    items: { type: Type.STRING }
+                    },
+                    recommendation: { type: Type.STRING },
+                    consistencyScore: { type: Type.INTEGER },
+                    euphemismScore: { type: Type.INTEGER },
+                    sentimentBreakdown: {
+                    type: Type.OBJECT,
+                    properties: {
+                        positive: { type: Type.INTEGER },
+                        neutral: { type: Type.INTEGER },
+                        negative: { type: Type.INTEGER }
+                    }
+                    },
+                    benchmarkComparison: {
+                    type: Type.OBJECT,
+                    properties: {
+                        candidateAvg: { type: Type.INTEGER },
+                        companyAvg: { type: Type.INTEGER },
+                        industryAvg: { type: Type.INTEGER }
+                    }
+                    }
+                }
+            }
+        }
+    });
     
+    const text = response.text;
+    if (!text) throw new Error("No response text");
     return JSON.parse(text) as FraudAnalysis;
   } catch (error) {
     console.error("Analysis failed:", error);

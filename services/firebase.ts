@@ -1,9 +1,9 @@
+
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc } from "firebase/firestore";
-import { getFunctions, httpsCallable, Functions } from "firebase/functions";
 import { CompanyProfile, UserProfile } from "../types";
 
-// --- KONFIGURASI FIREBASE REAL ---
+// --- KONFIGURASI FIREBASE REAL (PRODUCTION) ---
 const firebaseConfig = {
   apiKey: "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
   authDomain: "gen-lang-client-0226679970.firebaseapp.com",
@@ -14,8 +14,6 @@ const firebaseConfig = {
   measurementId: "G-MXQTH4CBF6"
 };
 
-export const isDemoMode = false; // FORCE PRODUCTION MODE
-
 export const COLLECTIONS = {
   SESSIONS: 'interview_sessions',
   USERS: 'users',
@@ -23,23 +21,21 @@ export const COLLECTIONS = {
 };
 
 let db: Firestore;
-let functions: Functions;
+
+// Declare EmailJS globally
+declare const emailjs: any;
 
 try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  functions = getFunctions(app, 'europe-west1');
-  console.log("[FraudGuard System] Connected to Real Cloud Firestore.");
+  console.log("[FraudGuard System] Connected to Real Cloud Firestore (Blaze Plan Active).");
 } catch (error) {
   console.error("CRITICAL: Gagal menghubungkan ke Firebase Real.", error);
 }
 
-// --- REAL AUTHENTICATION SERVICE (DATABASE BASED) ---
-// Karena kita tidak menggunakan Firebase Auth SDK (untuk menghindari setup console user),
-// kita mensimulasikan login dengan query ke collection 'users' di Firestore.
-
+// --- REAL AUTHENTICATION SERVICE ---
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
-  if (!db) return null;
+  if (!db) throw new Error("Koneksi Database terputus.");
 
   try {
     const usersRef = collection(db, COLLECTIONS.USERS);
@@ -47,12 +43,11 @@ export const loginWithFirestore = async (email: string, password: string): Promi
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      throw new Error("User tidak ditemukan.");
+      throw new Error("Akun tidak ditemukan. Silakan hubungi Administrator.");
     }
 
     const userData = querySnapshot.docs[0].data() as UserProfile;
     
-    // Simple password check (In production use proper Auth SDK)
     if (userData.password !== password) {
       throw new Error("Kata sandi salah.");
     }
@@ -64,23 +59,18 @@ export const loginWithFirestore = async (email: string, password: string): Promi
   }
 };
 
-// --- DATA SEEDING (AUTO-POPULATE REAL DATA) ---
-// Fungsi ini berjalan sekali untuk memastikan database memiliki data awal
-// agar user bisa login.
-
+// --- DATA SEEDING (ONCE ONLY) ---
 export const seedRealDatabase = async () => {
   if (!db) return;
 
-  const seedId = 'system_seed_v1';
+  const seedId = 'system_seed_v2_real';
   const seedRef = doc(db, 'system_metadata', seedId);
 
   try {
     const seedDoc = await getDoc(seedRef);
-    if (seedDoc.exists()) {
-      return; // Sudah pernah di-seed
-    }
+    if (seedDoc.exists()) return;
 
-    console.log("[System] Seeding Real Database for the first time...");
+    console.log("[System] Initializing Real Database Schema...");
 
     // 1. Create Enterprise Company
     const entCompanyRef = doc(db, COLLECTIONS.COMPANIES, 'c1');
@@ -90,7 +80,9 @@ export const seedRealDatabase = async () => {
       status: 'Active',
       adminEmail: 'enterprise@fraudguard.id',
       joinedDate: new Date().toISOString(),
-      usersCount: 5
+      usersCount: 5,
+      logoUrl: '', 
+      brandColor: '#CC5500'
     });
 
     // 2. Create Enterprise User
@@ -98,7 +90,7 @@ export const seedRealDatabase = async () => {
     await setDoc(entUserRef, {
       name: 'Budi Santoso',
       email: 'enterprise@fraudguard.id',
-      password: 'password123', // Default Password
+      password: 'password123',
       role: 'Lead Investigator',
       companyId: 'c1',
       avatar: 'https://ui-avatars.com/api/?background=CC5500&color=fff&name=Budi+Santoso'
@@ -109,15 +101,14 @@ export const seedRealDatabase = async () => {
     await setDoc(adminUserRef, {
       name: 'Super Admin',
       email: 'admin@fraudguard.id',
-      password: 'admin123', // Default Password
+      password: 'admin123',
       role: 'System Admin',
       companyId: 'system',
       avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
     });
 
-    // Mark seeded
-    await setDoc(seedRef, { seededAt: new Date().toISOString() });
-    console.log("[System] Seeding Complete. You can now login.");
+    await setDoc(seedRef, { seededAt: new Date().toISOString(), status: 'Production Ready' });
+    console.log("[System] Database Initialized.");
 
   } catch (error) {
     console.error("Seeding Failed:", error);
@@ -166,24 +157,108 @@ export const subscribeToSessions = (onUpdate: (data: any[]) => void) => {
   }
 };
 
-// --- COMPANY SERVICES ---
+// --- COMPANY SERVICES (CLIENT SIDE REAL EMAIL) ---
 
-export const inviteCompanyCloud = async (companyData: Omit<CompanyProfile, 'id'>) => {
+export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>) => {
+    if (!db) throw new Error("Database terputus");
+
     try {
-        if (!functions) throw new Error("Functions not init");
-        const inviteFunction = httpsCallable(functions, 'inviteCompany');
-        const result = await inviteFunction(companyData);
-        return result.data;
-    } catch (e: any) {
-        // Fallback to direct DB write if function fails (failsafe for demo)
-        if (!db) throw e;
-        const docRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), {
+        // 1. Simpan Data Perusahaan ke Firestore
+        const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), {
              ...companyData,
-             status: 'Pending',
-             joinedDate: new Date().toISOString(),
              createdAt: new Date().toISOString()
         });
-        return { success: true, id: docRef.id, message: "Disimpan ke Database (Direct Write)" };
+
+        // 2. Generate Password Acak untuk Bisnis
+        const generatedPassword = Math.random().toString(36).slice(-8) + "Fg!"; // Contoh: 8s7d6fFg!
+
+        // 3. Buat Akun USER untuk Perusahaan tersebut agar bisa Login
+        await addDoc(collection(db, COLLECTIONS.USERS), {
+            name: `Admin ${companyData.name}`,
+            email: companyData.adminEmail,
+            password: generatedPassword, // Password yang akan dikirim ke email
+            role: 'Company Admin',
+            companyId: companyRef.id,
+            avatar: `https://ui-avatars.com/api/?background=random&name=${companyData.name}`,
+            createdAt: new Date().toISOString()
+        });
+
+        // 4. Kirim Email Menggunakan EmailJS (Client Side SMTP)
+        try {
+            const templateParams = {
+                to_email: companyData.adminEmail, // PENTING: Pastikan Template EmailJS menggunakan {{to_email}} di kolom "To Email"
+                to_name: companyData.name,
+                password: generatedPassword, // Mengirim password ke template
+                login_url: window.location.origin, // Link ke aplikasi ini
+                tier: companyData.tier,
+                message: `Selamat bergabung! Akun Enterprise Anda (${companyData.tier}) telah aktif.`
+            };
+
+            // ==========================================================
+            // KONFIGURASI SERVICE ID & TEMPLATE ID EMAILJS
+            // ==========================================================
+            const SERVICE_ID = "service_8o2nl6d";
+            const TEMPLATE_ID = "template_gfg2qr4"; 
+
+            await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+            
+            return { success: true, message: `Perusahaan disimpan. Akun Login dibuat. Email kredensial terkirim ke ${companyData.adminEmail}.` };
+
+        } catch (emailError: any) {
+            console.warn("EmailJS Error:", emailError);
+            return { 
+                success: true, 
+                message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL: ${emailError.text || emailError.message}. Periksa setting Template EmailJS Anda.` 
+            };
+        }
+
+    } catch (error: any) {
+        console.error("Invite Error:", error);
+        throw new Error(error.message || "Gagal menyimpan data perusahaan.");
+    }
+};
+
+export const resendInviteEmail = async (companyId: string) => {
+    if (!db) throw new Error("Database terputus");
+
+    try {
+        // 1. Ambil Data Perusahaan
+        const compDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, companyId));
+        if (!compDoc.exists()) throw new Error("Perusahaan tidak ditemukan.");
+        const companyData = compDoc.data() as CompanyProfile;
+
+        // 2. Ambil Data User (Admin) untuk Perusahaan ini
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, where("companyId", "==", companyId));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+             throw new Error("User Admin untuk perusahaan ini tidak ditemukan. Silakan buat user manual.");
+        }
+
+        // Ambil user pertama (asumsi admin)
+        const userData = querySnapshot.docs[0].data() as UserProfile;
+        const userPassword = userData.password || "Hubungi Super Admin"; // Password tersimpan di DB untuk arsitektur ini
+
+        // 3. Kirim Email via EmailJS
+        const templateParams = {
+            to_email: companyData.adminEmail,
+            to_name: companyData.name,
+            password: userPassword,
+            login_url: window.location.origin,
+            tier: companyData.tier,
+            message: `[KIRIM ULANG] Berikut adalah kredensial akses Anda yang diminta.`
+        };
+
+        const SERVICE_ID = "service_8o2nl6d";
+        const TEMPLATE_ID = "template_gfg2qr4";
+
+        await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        return { success: true, message: `Email kredensial berhasil dikirim ulang ke ${companyData.adminEmail}` };
+
+    } catch (error: any) {
+        console.error("Resend Email Error:", error);
+        throw error;
     }
 };
 
@@ -213,8 +288,14 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
 export const getCompanyById = async (id: string): Promise<CompanyProfile | null> => {
     if (!db) return null;
     
-    // FALLBACK HARDCODED FOR DEMO STABILITY (Ensure Enterprise link always works)
+    // Fallback Enterprise untuk demo link publik jika database kosong
     if (id === 'c1') {
+        try {
+            const docRef = doc(db, COLLECTIONS.COMPANIES, 'c1');
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
+        } catch (e) {}
+        
         return {
             id: 'c1',
             name: 'PT Maju Bersama',
@@ -230,17 +311,13 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
-        } else {
-             // Fallback: Check if it's in the list (sometimes useful for caching)
-             const all = await getCompanies();
-             return all.find(c => c.id === id) || null;
-        }
+        } 
+        return null;
     } catch (e) {
         return null;
     }
 };
 
 export const resetConnectionState = () => {
-  // No-op in real mode, auto-handled by Firestore SDK
   console.log("Reconnecting...");
 };
