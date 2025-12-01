@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ActiveInterview from './components/ActiveInterview';
@@ -9,12 +10,24 @@ import AdminDashboard from './components/AdminDashboard';
 import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
+import CandidateBlast from './components/CandidateBlast';
 import { InterviewSession, UserProfile, CompanyProfile } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById } from './services/firebase';
 
 const App: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Public Link State (Lazy Initialization to prevent Login Flash)
+  const [isPublicMode, setIsPublicMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'assess' && !!params.get('cid');
+  });
+  
+  const [publicCompanyId, setPublicCompanyId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('cid');
+  });
 
   // App State
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -24,6 +37,9 @@ const App: React.FC = () => {
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [reviewingSession, setReviewingSession] = useState<InterviewSession | null>(null);
   
+  // Settings View State
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'subscription'>('profile');
+
   // Connection State
   const [apiError, setApiError] = useState<string | null>(null);
   
@@ -31,23 +47,8 @@ const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Public Link State
-  const [isPublicMode, setIsPublicMode] = useState(false);
-  const [publicCompanyId, setPublicCompanyId] = useState<string | null>(null);
-
   useEffect(() => {
     seedRealDatabase();
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    const cid = params.get('cid');
-
-    if (mode === 'assess' && cid) {
-      setIsPublicMode(true);
-      setPublicCompanyId(cid);
-    }
   }, []);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ const App: React.FC = () => {
     };
     initCompany();
 
-    const unsubscribe = subscribeToSessions((fetchedSessions) => {
+    const unsubscribe = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
       setSessions(fetchedSessions as InterviewSession[]);
       setIsLoadingData(false);
     });
@@ -120,8 +121,19 @@ const App: React.FC = () => {
     setActiveTab('dashboard');
   };
 
+  // Navigasi Utama: Reset semua state view saat pindah tab
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setViewingSessionId(null); 
+    setReviewingSession(null); 
+    setIsMobileMenuOpen(false);
+    // Reset settings tab to profile when entering settings
+    if (tabId === 'settings') setSettingsTab('profile');
+  };
+
   const handleReviewSession = (session: InterviewSession) => {
       setReviewingSession(session);
+      setViewingSessionId(null); // Close report view if open
       setActiveTab('new-interview'); 
   };
 
@@ -135,12 +147,12 @@ const App: React.FC = () => {
   const getPageTitle = (tab: string) => {
       switch(tab) {
           case 'dashboard': return 'Ringkasan Eksekutif';
+          case 'candidate-blast': return 'Undang Kandidat';
           case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Wawancara Baru';
           case 'history': return 'Riwayat Audit';
           case 'settings': return 'Pengaturan';
           case 'admin-panel': return 'Admin Panel (Super Admin)';
           case 'link-assessment': return 'Pengaturan Link Asesmen';
-          case 'pricing': return 'Langganan & Paket';
           default: return '';
       }
   }
@@ -150,6 +162,7 @@ const App: React.FC = () => {
       return s.companyId === currentCompany?.id;
   });
 
+  // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode && publicCompanyId) {
     return <PublicAssessment companyId={publicCompanyId} />;
   }
@@ -168,10 +181,18 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    // 1. Cek apakah sedang melihat Laporan Detail
     if (viewingSessionId) {
       const session = sessions.find(s => s.id === viewingSessionId);
       if (session) {
-        return <ReportView session={session} onBack={() => setViewingSessionId(null)} isDarkMode={isDarkMode} />;
+        return (
+            <ReportView 
+                session={session} 
+                onBack={() => setViewingSessionId(null)} 
+                isDarkMode={isDarkMode}
+                onReReview={() => handleReviewSession(session)} 
+            />
+        );
       }
     }
 
@@ -184,6 +205,7 @@ const App: React.FC = () => {
       )
     }
 
+    // 2. Jika tidak melihat laporan, render Tab yang aktif
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard 
@@ -192,6 +214,8 @@ const App: React.FC = () => {
                   onViewSession={setViewingSessionId}
                   onReviewSession={handleReviewSession} 
                />;
+      case 'candidate-blast':
+        return <CandidateBlast currentCompany={currentCompany!} />;
       case 'new-interview':
         return <ActiveInterview 
                   onComplete={handleInterviewComplete} 
@@ -215,7 +239,7 @@ const App: React.FC = () => {
                       <th className="p-5 font-bold">Kandidat</th>
                       <th className="p-5 font-bold">Tanggal</th>
                       <th className="p-5 font-bold">Tingkat Risiko</th>
-                      <th className="p-5 font-bold">Aksi</th>
+                      <th className="p-5 font-bold text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -237,13 +261,24 @@ const App: React.FC = () => {
                             {s.status === 'pending_review' ? 'Perlu Review' : s.analysis?.riskLevel}
                           </span>
                         </td>
-                        <td className="p-5">
-                          <button 
-                            onClick={() => s.status === 'pending_review' ? handleReviewSession(s) : setViewingSessionId(s.id)}
-                            className="text-brand-dark dark:text-gray-200 bg-gray-100 dark:bg-slate-700 hover:bg-brand-orange hover:text-white dark:hover:bg-brand-orange dark:hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
-                          >
-                            {s.status === 'pending_review' ? 'Mulai Review' : 'Lihat Laporan'}
-                          </button>
+                        <td className="p-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => s.status === 'pending_review' ? handleReviewSession(s) : setViewingSessionId(s.id)}
+                                className="text-brand-dark dark:text-gray-200 bg-gray-100 dark:bg-slate-700 hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue dark:hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+                              >
+                                {s.status === 'pending_review' ? 'Mulai Review' : 'Lihat Laporan'}
+                              </button>
+                              {s.status === 'completed' && (
+                                  <button
+                                    onClick={() => handleReviewSession(s)}
+                                    className="p-2 text-gray-500 hover:text-brand-orange hover:bg-orange-50 rounded-lg transition-all"
+                                    title="Ulas Ulang / Edit"
+                                  >
+                                    <RefreshCw size={16} />
+                                  </button>
+                              )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -262,25 +297,55 @@ const App: React.FC = () => {
         );
       case 'admin-panel':
         return <AdminDashboard />;
-      case 'pricing':
-        return <PricingView currentTier={currentCompany?.tier || 'Basic'} />;
       case 'settings':
         return (
-          <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 animate-in fade-in">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Pengaturan Akun</h2>
-            
-            <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
-                  {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
-                  <div>
-                    <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
+          <div className="animate-in fade-in space-y-6">
+             {/* Sub Navigation Tabs */}
+             <div className="flex space-x-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto self-start inline-flex">
+                <button 
+                  onClick={() => setSettingsTab('profile')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                     settingsTab === 'profile' 
+                     ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm' 
+                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                   <User size={16} /> Profil Akun
+                </button>
+                <button 
+                  onClick={() => setSettingsTab('subscription')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                     settingsTab === 'subscription' 
+                     ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm' 
+                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                   <CreditCard size={16} /> Paket Langganan
+                </button>
+             </div>
+
+             {/* Tab Content */}
+             {settingsTab === 'profile' ? (
+                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
+                  
+                  <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
+                        {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
+                        <div>
+                          <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
+                        </div>
                   </div>
-            </div>
-            {/* Additional settings placeholder */}
-            <div className="mt-6">
-                <p className="text-gray-500 dark:text-gray-400 text-sm italic">Pengaturan lebih lanjut tersedia di versi berikutnya.</p>
-            </div>
+                  <div className="mt-6">
+                      <p className="text-gray-500 dark:text-gray-400 text-sm italic">Pengaturan profil lebih lanjut akan tersedia di pembaruan berikutnya.</p>
+                  </div>
+                </div>
+             ) : (
+                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <PricingView currentTier={currentCompany?.tier || 'Basic'} />
+                </div>
+             )}
           </div>
         );
       default:
@@ -305,7 +370,7 @@ const App: React.FC = () => {
 
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }} 
+        setActiveTab={handleTabChange} 
         companyName={currentCompany?.name || 'FraudGuard'}
         userRole={currentUser.role}
         isDarkMode={isDarkMode}

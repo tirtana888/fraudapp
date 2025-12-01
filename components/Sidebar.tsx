@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, CreditCard } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -18,10 +18,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   
   const menuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
+    { id: 'candidate-blast', label: 'Undang Kandidat', icon: Mail },
     { id: 'new-interview', label: 'Wawancara Baru', icon: PlusCircle },
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
     { id: 'history', label: 'Riwayat Audit', icon: History },
-    { id: 'pricing', label: 'Langganan & Paket', icon: CreditCard }, // New Menu
     { id: 'settings', label: 'Pengaturan', icon: Settings },
   ];
 

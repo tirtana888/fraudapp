@@ -3,32 +3,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, Copy, Check, Lock, Smartphone, RefreshCw, Loader2, Image as ImageIcon, Palette, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { CompanyProfile } from '../types';
 import { updateCompany } from '../services/firebase';
+import { PLAN_LIMITS } from '../constants/plans';
 
 interface AssessmentSettingsProps {
   currentCompany: CompanyProfile;
-  onUpdate: () => void; // Trigger refresh in App
+  onUpdate: () => void; 
 }
 
 // FULL QUESTION LIST (READ ONLY IN ADMIN)
+// Updated to reflect the new "Wrapped/Covert" questions
 const FIXED_QUESTIONS = [
-  // Pressure
-  "1. Apakah Anda memiliki kewajiban cicilan/hutang yang melebihi 30% dari pendapatan bulanan?",
-  "2. Apakah Anda menjadi tulang punggung utama bagi keluarga besar?",
-  "3. Pernahkah Anda merasa penghasilan saat ini tidak cukup untuk menutupi gaya hidup?",
-  "4. Apakah Anda pernah mengalami situasi darurat finansial mendadak dalam 6 bulan terakhir?",
-  "5. Seberapa sering Anda merasa cemas memikirkan kondisi keuangan pribadi?",
-  // Opportunity
-  "6. Apakah Anda lebih nyaman bekerja sendiri tanpa pengawasan atasan langsung?",
-  "7. Apakah Anda memahami konsep pemisahan tugas (segregation of duties)?",
-  "8. Jika Anda menemukan celah sistem yang menguntungkan, apakah Anda akan langsung melaporkannya?",
-  "9. Pernahkah Anda memegang akses penuh (username/password) milik atasan atau rekan kerja?",
-  "10. Apakah Anda setuju bahwa birokrasi yang ketat seringkali menghambat produktivitas?",
-  // Rationalization
-  "11. Menurut Anda, apakah wajar meminjam aset kantor untuk keperluan pribadi mendesak?",
-  "12. Jika target tim terancam, apakah sedikit manipulasi data diperbolehkan?",
-  "13. Apakah Anda merasa aturan perusahaan terkadang tidak adil bagi karyawan berprestasi?",
-  "14. Bagaimana reaksi Anda jika melihat rekan kerja melanggar aturan kecil?",
-  "15. Apakah loyalitas kepada atasan lebih penting daripada kepatuhan pada peraturan?"
+  // Pressure (Wrapped)
+  "1. Dalam perencanaan karir, seberapa besar desakan kebutuhan finansial mempengaruhi keputusan pindah kerja?",
+  "2. Bagaimana menyeimbangkan tanggung jawab finansial keluarga besar dengan pendapatan pribadi?",
+  "3. Apakah kompensasi pasar saat ini sebanding dengan gaya hidup dan branding diri Anda?",
+  "4. (Sales) Apakah penampilan mewah adalah investasi penting untuk meyakinkan klien?",
+  "5. (Finance) Apakah Anda aktif mengelola investasi high-risk sebagai strategi finansial?",
+  
+  // Opportunity (Wrapped)
+  "6. Apakah Anda lebih nyaman bekerja dengan otonomi penuh tanpa supervisi harian?",
+  "7. Apakah sistem persetujuan ganda (dual control) terkadang memperlambat efisiensi kerja?",
+  "8. (Procurement) Apakah wajar memberikan kesempatan tender ke kerabat yang memiliki bisnis relevan?",
+  "9. (IT) Seberapa sering Anda harus menggunakan akses 'Super Admin' untuk speed troubleshooting?",
+  "10. (Gudang) Apakah stok opname lebih efektif dilakukan mandiri agar cepat?",
+  
+  // Rationalization (Wrapped)
+  "11. Dalam situasi mendesak, bagaimana pandangan Anda tentang fleksibilitas penggunaan aset kantor?",
+  "12. Jika loyalitas tim diuji, apakah reputasi tim lebih penting dari laporan kesalahan kecil?",
+  "13. Apakah aturan perusahaan yang kaku (SOP) terkadang perlu 'ditekuk' demi hasil?",
+  "14. (Procurement) Apakah tim layak dapat insentif dari penghematan biaya vendor?",
+  "15. (IT) Apakah tim IT berhak punya akses privilese khusus karena tanggung jawab besarnya?"
 ];
 
 const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany, onUpdate }) => {
@@ -45,6 +49,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const assessmentLink = `${window.location.origin}?mode=assess&cid=${currentCompany.id}`;
+  const features = PLAN_LIMITS[currentCompany.tier];
 
   useEffect(() => {
     setFormData({
@@ -61,7 +66,6 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Helper to compress/resize image to ensure it fits in Firestore (Max 1MB doc limit)
   const compressAndResizeImage = (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -71,11 +75,9 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
               img.src = event.target?.result as string;
               img.onload = () => {
                   const canvas = document.createElement('canvas');
-                  // Resize to max width 500px (Sufficient for logos)
                   const MAX_WIDTH = 500;
                   const scaleSize = MAX_WIDTH / img.width;
                   
-                  // Only resize if bigger than max width
                   if (scaleSize < 1) {
                       canvas.width = MAX_WIDTH;
                       canvas.height = img.height * scaleSize;
@@ -90,8 +92,6 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                       return;
                   }
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  
-                  // Export as PNG to keep transparency, but resized
                   const dataUrl = canvas.toDataURL('image/png');
                   resolve(dataUrl);
               };
@@ -105,7 +105,6 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validation: Max 5MB
     if (file.size > 5 * 1024 * 1024) {
         alert("Ukuran file terlalu besar! Maksimal 5MB.");
         return;
@@ -114,14 +113,10 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     setIsProcessingImg(true);
 
     try {
-        // Compress image client-side before setting to state
-        // This is crucial because Firestore has a 1MB limit per document.
         const optimizedLogo = await compressAndResizeImage(file);
-        
-        // Check size of base64 string (approximate)
         const sizeInBytes = 4 * Math.ceil((optimizedLogo.length / 3)) * 0.5624896334383812;
         if (sizeInBytes > 900 * 1024) {
-            alert("Gambar terlalu kompleks meskipun sudah dikompresi. Mohon gunakan logo yang lebih sederhana.");
+            alert("Gambar terlalu kompleks. Mohon gunakan logo yang lebih sederhana.");
             setIsProcessingImg(false);
             return;
         }
@@ -144,12 +139,12 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     setIsSaving(true);
     try {
       await updateCompany(currentCompany.id, formData);
-      onUpdate(); // Refresh parent state
+      onUpdate(); 
       alert("✅ Pengaturan Link Asesmen berhasil disimpan!");
     } catch (error: any) {
       console.error("Gagal menyimpan:", error);
       if (error.message && error.message.includes("larger than 1 MB")) {
-          alert("Gagal menyimpan: Ukuran Logo masih terlalu besar untuk Database. Mohon gunakan file yang lebih kecil.");
+          alert("Gagal menyimpan: Ukuran Logo terlalu besar.");
       } else {
           alert("Terjadi kesalahan saat menyimpan pengaturan.");
       }
@@ -180,10 +175,11 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
           </div>
 
           <div className="space-y-6">
-             {/* Logo Upload Section */}
-             <div>
+             {/* Logo Upload Section - GATED */}
+             <div className={!features.white_label ? 'opacity-50 pointer-events-none relative' : ''}>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <ImageIcon size={16} /> Logo Perusahaan
+                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Enterprise Only</span>}
                 </label>
                 
                 <div className="flex items-start gap-4">
@@ -228,12 +224,14 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                         </p>
                     </div>
                 </div>
+                {!features.white_label && <div className="absolute inset-0 z-10 cursor-not-allowed"></div>}
              </div>
 
-             {/* Branding Color */}
-             <div>
+             {/* Branding Color - GATED */}
+             <div className={!features.white_label ? 'opacity-50 pointer-events-none relative' : ''}>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <Palette size={16} /> Warna Brand Utama
+                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Enterprise Only</span>}
                 </label>
                 <div className="flex gap-3 items-center">
                     <div className="relative">
@@ -255,6 +253,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                         className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-800 dark:text-white font-mono text-sm uppercase focus:ring-2 focus:ring-brand-blue outline-none"
                     />
                 </div>
+                {!features.white_label && <div className="absolute inset-0 z-10 cursor-not-allowed"></div>}
              </div>
 
              {/* Header Title */}
@@ -283,25 +282,33 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
           </div>
         </div>
 
-        {/* COPY LINK SECTION */}
-        <div className="bg-brand-blue/10 dark:bg-brand-blue/5 border border-brand-blue/20 p-6 rounded-2xl">
-            <h3 className="text-sm font-bold text-brand-dark dark:text-brand-blue uppercase tracking-wide mb-3">Link Asesmen Aktif</h3>
-            <div className="flex gap-2">
-                <input 
-                    readOnly 
-                    value={assessmentLink} 
-                    className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-gray-600 dark:text-gray-300 focus:outline-none font-medium"
-                />
-                <button 
-                    onClick={handleCopyLink}
-                    className="bg-brand-blue hover:bg-brand-blue/90 text-white px-5 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-colors shadow-sm whitespace-nowrap"
-                >
-                    {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                    {isCopied ? 'Disalin' : 'Salin'}
-                </button>
+        {/* COPY LINK SECTION - GATED */}
+        {features.allow_permanent_link ? (
+            <div className="bg-brand-blue/10 dark:bg-brand-blue/5 border border-brand-blue/20 p-6 rounded-2xl">
+                <h3 className="text-sm font-bold text-brand-dark dark:text-brand-blue uppercase tracking-wide mb-3">Link Asesmen Aktif</h3>
+                <div className="flex gap-2">
+                    <input 
+                        readOnly 
+                        value={assessmentLink} 
+                        className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-gray-600 dark:text-gray-300 focus:outline-none font-medium"
+                    />
+                    <button 
+                        onClick={handleCopyLink}
+                        className="bg-brand-blue hover:bg-brand-blue/90 text-white px-5 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-colors shadow-sm whitespace-nowrap"
+                    >
+                        {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                        {isCopied ? 'Disalin' : 'Salin'}
+                    </button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Link ini unik untuk perusahaan Anda dan akan menggunakan branding yang disimpan.</p>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Link ini unik untuk perusahaan Anda dan akan menggunakan branding yang disimpan.</p>
-        </div>
+        ) : (
+            <div className="bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
+                 <Lock className="text-gray-400 mb-3" size={32} />
+                 <h3 className="font-bold text-gray-600 dark:text-gray-300">Link Publik Dikunci</h3>
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Anda menggunakan paket Basic. Upgrade ke Premium untuk membagikan link rekrutmen.</p>
+            </div>
+        )}
       </div>
 
       {/* RIGHT COLUMN: PREVIEW & LOCKED QUESTIONS */}
@@ -314,9 +321,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
             </h3>
             
             <div className="border-[10px] border-gray-800 rounded-[3rem] overflow-hidden max-w-[320px] mx-auto shadow-2xl bg-gray-50 relative aspect-[9/19]">
-                {/* Simulated Screen */}
                 <div className="absolute top-0 w-full h-full overflow-y-auto bg-gray-50 pb-10 scrollbar-hide">
-                    {/* Header */}
                     <div className="bg-white px-5 py-4 border-b flex items-center justify-center sticky top-0 z-10 shadow-sm min-h-[60px]">
                         {formData.logoUrl ? (
                             <img src={formData.logoUrl} alt="Logo" className="h-8 object-contain" />
@@ -324,7 +329,6 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                             <span className="font-bold text-sm truncate" style={{ color: formData.brandColor }}>{formData.headerTitle}</span>
                         )}
                     </div>
-                    {/* Content */}
                     <div className="p-5 space-y-5">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
                             <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-md" style={{ backgroundColor: formData.brandColor }}>
@@ -343,7 +347,6 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                             </button>
                         </div>
                         
-                        {/* Mock Questions */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 opacity-70">
                              <div className="h-3 bg-gray-200 rounded w-3/4 mb-3"></div>
                              <div className="grid grid-cols-3 gap-2">
@@ -361,7 +364,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
          <div className="bg-gray-50 dark:bg-slate-800 p-6 rounded-2xl border border-gray-200 dark:border-slate-700">
              <div className="flex items-center justify-between mb-4">
                  <h3 className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                    <Lock size={16} className="text-brand-orange" /> Pertanyaan Asesmen (Standardized)
+                    <Lock size={16} className="text-brand-orange" /> Pertanyaan Profesi (Tersamar)
                  </h3>
                  <span className="text-[10px] bg-gray-200 dark:bg-slate-700 text-gray-500 px-2 py-1 rounded font-bold">READ ONLY</span>
              </div>
@@ -373,7 +376,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                  ))}
              </div>
              <p className="text-[10px] text-gray-400 mt-4 italic text-center">
-                 Pertanyaan dikunci untuk menjaga integritas standar Fraud Triangle di seluruh tenant SaaS.
+                 Daftar pertanyaan ini didesain menggunakan teknik 'Masking' untuk mendeteksi fraud tanpa terkesan menuduh.
              </p>
          </div>
 

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend
 } from 'recharts';
-import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint } from 'lucide-react';
+import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile } from '../types';
 import { getCompanyById } from '../services/firebase';
 
@@ -11,9 +12,10 @@ interface ReportViewProps {
   session: InterviewSession;
   onBack: () => void;
   isDarkMode?: boolean;
+  onReReview?: () => void;
 }
 
-const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode }) => {
+const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, onReReview }) => {
   const { analysis, candidate, companyId } = session;
   const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
 
@@ -25,7 +27,42 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode }) 
     fetchTier();
   }, [companyId]);
 
-  if (!analysis) return <div>Tidak ada analisis tersedia.</div>;
+  // --- RECOVERY MODE IF ANALYSIS IS MISSING ---
+  if (!analysis) {
+      return (
+          <div className="max-w-4xl mx-auto py-10 text-center animate-in fade-in">
+              <button onClick={onBack} className="mb-8 text-gray-500 hover:text-gray-800 flex items-center gap-2 mx-auto font-bold text-sm">
+                  <ArrowLeft size={16} /> Kembali ke Dasbor
+              </button>
+              
+              <div className="bg-white dark:bg-brand-slate-850 p-10 rounded-3xl shadow-sm border border-gray-200 dark:border-slate-700 max-w-lg mx-auto">
+                  <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <FileWarning size={40} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Laporan Belum Tersedia</h2>
+                  <p className="text-gray-500 mb-8 leading-relaxed">
+                      Kandidat <strong>{candidate.name}</strong> telah menyelesaikan wawancara, namun analisis AI tertunda karena gangguan koneksi atau proses di latar belakang.
+                  </p>
+                  
+                  <div className="bg-gray-50 p-4 rounded-xl mb-8 text-left text-sm text-gray-600 border border-gray-200">
+                      <p className="font-bold mb-1">Detail Sesi:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                          <li>Posisi: {candidate.role}</li>
+                          <li>Tanggal: {new Date(session.date).toLocaleDateString()}</li>
+                          <li>Status: Menunggu Analisis</li>
+                      </ul>
+                  </div>
+
+                  <button 
+                      onClick={onReReview}
+                      className="w-full bg-brand-orange text-white py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                  >
+                      <RefreshCw size={20} /> Generate Analisis Sekarang
+                  </button>
+              </div>
+          </div>
+      );
+  }
 
   // Chart Data
   const radarData = [
@@ -51,9 +88,32 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode }) 
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-10">
-      <button onClick={onBack} className="text-gray-500 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white text-sm font-bold flex items-center gap-2 mb-2 md:mb-4 transition-colors">
-        <ArrowLeft size={16} /> Kembali ke Dasbor
-      </button>
+      <div className="flex justify-between items-center mb-2 md:mb-4">
+          <button onClick={onBack} className="text-gray-500 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white text-sm font-bold flex items-center gap-2 transition-colors">
+            <ArrowLeft size={16} /> Kembali ke Dasbor
+          </button>
+          
+          <div className="flex gap-2">
+              {/* BUTTON TO VIEW TRANSCRIPT (Uses Re-Review Prop) */}
+              {onReReview && (
+                  <button 
+                    onClick={onReReview}
+                    className="text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                  >
+                     <FileText size={14} /> Lihat Transkrip & Jawaban
+                  </button>
+              )}
+              {/* EDIT REPORT */}
+              {onReReview && (
+                  <button 
+                    onClick={onReReview}
+                    className="text-brand-blue bg-blue-50 hover:bg-brand-blue hover:text-white dark:bg-blue-900/20 dark:text-blue-200 dark:hover:bg-brand-blue dark:hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                  >
+                     <PenSquare size={14} /> Edit Laporan
+                  </button>
+              )}
+          </div>
+      </div>
 
       {/* Header Card */}
       <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center transition-colors gap-4 relative overflow-hidden">

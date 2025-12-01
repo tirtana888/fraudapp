@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send } from 'lucide-react';
+import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { inviteCompanyReal, getCompanies, updateCompany, deleteCompany, resendInviteEmail } from '../services/firebase';
+import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
+import { PLAN_LIMITS } from '../constants/plans';
 
 const AdminDashboard: React.FC = () => {
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -12,12 +13,21 @@ const AdminDashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Edit Modal & Dropdown State
+  // Subscription Management Modal State
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<CompanyProfile | null>(null);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [managingCompany, setManagingCompany] = useState<CompanyProfile | null>(null);
 
-  // Form State
+  // Subscription Form State
+  const [subFormData, setSubFormData] = useState({
+      tier: 'Basic' as 'Basic' | 'Premium' | 'Enterprise',
+      status: 'Active' as 'Active' | 'Suspended' | 'Past Due',
+      subscription_ends_at: '',
+      custom_candidate_limit: 0, // 0 means default
+      verification_credits: 0
+  });
+
+  // Invite Form State
   const [newCompany, setNewCompany] = useState({
     name: '',
     email: '',
@@ -51,15 +61,10 @@ const AdminDashboard: React.FC = () => {
     };
 
     try {
-      // MENGGUNAKAN LOGIKA CLIENT-SIDE REAL (EmailJS + Firestore)
-      // Ini bypass kebutuhan deploy Cloud Functions via terminal
       const result = await inviteCompanyReal(payload);
-      
       await fetchCompanies();
-      
       const message = (result as any)?.message || "Proses selesai.";
       alert(`✅ STATUS UNDANGAN\n\n${message}`);
-
       setNewCompany({ name: '', email: '', tier: 'Basic' });
       setIsModalOpen(false);
     } catch (error) {
@@ -84,29 +89,48 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleEditClick = (company: CompanyProfile) => {
-    setEditingCompany(company);
-    setIsEditModalOpen(true);
+  const handleManageClick = (company: CompanyProfile) => {
+    setManagingCompany(company);
+    
+    // Set expiry default to today + 30 days if not set
+    const defaultExpiry = new Date();
+    defaultExpiry.setDate(defaultExpiry.getDate() + 30);
+    
+    setSubFormData({
+        tier: company.tier,
+        status: company.status as any,
+        subscription_ends_at: company.subscription_ends_at ? company.subscription_ends_at.split('T')[0] : defaultExpiry.toISOString().split('T')[0],
+        custom_candidate_limit: company.custom_candidate_limit || 0,
+        verification_credits: company.verification_credits || 0
+    });
+    
+    setIsManageModalOpen(true);
     setActiveMenuId(null);
   };
 
-  const handleUpdateCompany = async (e: React.FormEvent) => {
+  const handleUpdateSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCompany) return;
+    if (!managingCompany) return;
 
     setIsSubmitting(true);
     try {
-        await updateCompany(editingCompany.id, {
-            name: editingCompany.name,
-            tier: editingCompany.tier,
-            status: editingCompany.status
-        });
+        // Convert empty/0 custom limit to undefined (or handle in logic)
+        const updatePayload = {
+            tier: subFormData.tier,
+            status: subFormData.status,
+            subscription_ends_at: new Date(subFormData.subscription_ends_at).toISOString(),
+            custom_candidate_limit: Number(subFormData.custom_candidate_limit),
+            verification_credits: Number(subFormData.verification_credits)
+        };
+
+        await updateCompanySubscription(managingCompany.id, updatePayload);
+        
         await fetchCompanies();
-        setIsEditModalOpen(false);
-        setEditingCompany(null);
-        alert("✅ Data perusahaan berhasil diperbarui.");
+        setIsManageModalOpen(false);
+        setManagingCompany(null);
+        alert("✅ Data langganan berhasil diperbarui.");
     } catch (error) {
-        const errorMessage = (error as any)?.message || "Gagal mengupdate perusahaan.";
+        const errorMessage = (error as any)?.message || "Gagal mengupdate langganan.";
         alert(errorMessage);
     } finally {
         setIsSubmitting(false);
@@ -189,8 +213,8 @@ const AdminDashboard: React.FC = () => {
                 <th className="p-5 font-bold">Nama Perusahaan</th>
                 <th className="p-5 font-bold">Paket (Tier)</th>
                 <th className="p-5 font-bold">Status</th>
-                <th className="p-5 font-bold">Admin Email</th>
-                <th className="p-5 font-bold">User</th>
+                <th className="p-5 font-bold">Kuota Kandidat</th>
+                <th className="p-5 font-bold">Expiry Date</th>
                 <th className="p-5 font-bold text-right">Opsi</th>
               </tr>
             </thead>
@@ -207,7 +231,17 @@ const AdminDashboard: React.FC = () => {
                     Belum ada data perusahaan. Klik tombol Invite untuk menambahkan.
                   </td>
                 </tr>
-              ) : companies.map((company) => (
+              ) : companies.map((company) => {
+                // Calculate limits based on plan or override
+                const planLimit = PLAN_LIMITS[company.tier]?.max_candidates;
+                const finalLimit = company.custom_candidate_limit || planLimit;
+                const isUnlimited = finalLimit === 'unlimited';
+                
+                // Expiry Check
+                const expiryDate = company.subscription_ends_at ? new Date(company.subscription_ends_at) : null;
+                const isExpired = expiryDate ? expiryDate < new Date() : false;
+
+                return (
                 <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group">
                   <td className="p-5">
                     <div className="flex items-center gap-3">
@@ -216,7 +250,7 @@ const AdminDashboard: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-bold text-gray-800 dark:text-gray-200 text-sm">{company.name}</p>
-                        <p className="text-xs text-gray-400">ID: {company.id}</p>
+                        <p className="text-xs text-gray-400">{company.adminEmail}</p>
                       </div>
                     </div>
                   </td>
@@ -224,21 +258,28 @@ const AdminDashboard: React.FC = () => {
                     <span className={`px-2 py-1 rounded-md text-xs font-bold border 
                       ${company.tier === 'Enterprise' 
                         ? 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/30' 
-                        : 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30'}`}>
+                        : company.tier === 'Premium'
+                        ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30'
+                        : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}>
                       {company.tier}
                     </span>
                   </td>
                   <td className="p-5">
                     <div className="flex items-center gap-2">
                        <span className={`w-2 h-2 rounded-full ${company.status === 'Active' ? 'bg-green-500' : company.status === 'Pending' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{company.status}</span>
+                       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                         {isExpired ? 'Expired' : company.status}
+                       </span>
                     </div>
                   </td>
                   <td className="p-5 text-sm text-gray-500 dark:text-gray-400">
-                    {company.adminEmail}
+                    <div className="flex flex-col">
+                        <span className="font-bold">{isUnlimited ? '∞ Unlimited' : finalLimit}</span>
+                        {company.custom_candidate_limit && <span className="text-[10px] text-brand-orange">(Custom Override)</span>}
+                    </div>
                   </td>
                   <td className="p-5 text-sm text-gray-500 dark:text-gray-400">
-                    {company.usersCount || 0}
+                    {expiryDate ? expiryDate.toLocaleDateString('id-ID') : '-'}
                   </td>
                   <td className="p-5 text-right relative">
                     <button 
@@ -253,12 +294,12 @@ const AdminDashboard: React.FC = () => {
                     
                     {/* DROPDOWN MENU */}
                     {activeMenuId === company.id && (
-                        <div className="absolute right-8 top-8 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100">
+                        <div className="absolute right-8 top-8 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100 text-left">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); handleEditClick(company); }}
+                                onClick={(e) => { e.stopPropagation(); handleManageClick(company); }}
                                 className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
                             >
-                                <Pencil size={14} /> Edit Data
+                                <Settings size={14} /> Kelola Langganan
                             </button>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleResendEmail(company.id); }}
@@ -277,13 +318,125 @@ const AdminDashboard: React.FC = () => {
                     )}
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Invite Modal */}
+      {/* MANAGE SUBSCRIPTION MODAL */}
+      {isManageModalOpen && managingCompany && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-brand-slate-850 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <ShieldCheck className="text-brand-orange" size={20} />
+                    Kelola Langganan
+                </h3>
+                <p className="text-xs text-gray-500">{managingCompany.name}</p>
+              </div>
+              <button onClick={() => setIsManageModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateSubscription} className="p-6 space-y-6">
+              
+              {/* PLAN TIER & STATUS */}
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">Paket (Tier)</label>
+                    <select
+                        value={subFormData.tier}
+                        onChange={(e) => setSubFormData({...subFormData, tier: e.target.value as any})}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
+                    >
+                        <option value="Basic">Basic</option>
+                        <option value="Premium">Premium</option>
+                        <option value="Enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">Status</label>
+                    <select
+                        value={subFormData.status}
+                        onChange={(e) => setSubFormData({...subFormData, status: e.target.value as any})}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Suspended">Suspended</option>
+                        <option value="Past Due">Past Due</option>
+                    </select>
+                  </div>
+              </div>
+
+              {/* EXPIRY DATE */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase flex items-center gap-2">
+                    <Calendar size={14} /> Tanggal Berakhir
+                </label>
+                <input 
+                    type="date" 
+                    value={subFormData.subscription_ends_at}
+                    onChange={(e) => setSubFormData({...subFormData, subscription_ends_at: e.target.value})}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">*Sistem akan otomatis mengubah status ke 'Past Due' setelah tanggal ini.</p>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-white mb-4">Override Kuota & Kredit</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Kuota Kandidat (Custom)</label>
+                        <input 
+                            type="number"
+                            value={subFormData.custom_candidate_limit}
+                            onChange={(e) => setSubFormData({...subFormData, custom_candidate_limit: Number(e.target.value)})}
+                            placeholder="0 = Default"
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Isi 0 untuk mengikuti default plan.</p>
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                             <CreditCard size={12} /> Kredit Verifikasi
+                        </label>
+                        <input 
+                            type="number"
+                            value={subFormData.verification_credits}
+                            onChange={(e) => setSubFormData({...subFormData, verification_credits: Number(e.target.value)})}
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Saldo untuk cek SLIK/OJK (Next Feature).</p>
+                     </div>
+                  </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                 <button 
+                    type="button"
+                    onClick={() => setIsManageModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl font-bold border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-300 transition-all"
+                 >
+                    Batal
+                 </button>
+                 <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="flex-1 bg-brand-dark dark:bg-brand-blue text-white py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                 >
+                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18}/> Update Paket</>}
+                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Modal (Existing) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
           <div className="bg-white dark:bg-brand-slate-850 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -317,78 +470,33 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Paket</label>
-                <div className="flex gap-3">
-                  <label className={`flex-1 p-3 rounded-xl border cursor-pointer flex items-center justify-center gap-2 ${newCompany.tier === 'Basic' ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20 text-brand-orange font-bold' : 'border-gray-200 dark:border-slate-600'}`}>
-                    <input type="radio" name="tier" value="Basic" className="hidden" checked={newCompany.tier === 'Basic'} onChange={() => setNewCompany({...newCompany, tier: 'Basic'})} /> Basic
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Paket Langganan</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Basic Tier */}
+                  <label className={`p-3 rounded-xl border cursor-pointer flex flex-col items-center justify-center gap-1 text-xs text-center transition-all ${newCompany.tier === 'Basic' ? 'border-gray-400 bg-gray-100 text-gray-800 font-bold shadow-sm ring-1 ring-gray-300' : 'border-gray-200 dark:border-slate-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+                    <input type="radio" name="tier" value="Basic" className="hidden" checked={newCompany.tier === 'Basic'} onChange={() => setNewCompany({...newCompany, tier: 'Basic'})} />
+                    <span className="font-bold">Basic</span>
+                    <span className="text-[10px] opacity-70">Starter</span>
                   </label>
-                  <label className={`flex-1 p-3 rounded-xl border cursor-pointer flex items-center justify-center gap-2 ${newCompany.tier === 'Enterprise' ? 'border-brand-blue bg-blue-50 dark:bg-blue-900/20 text-brand-blue font-bold' : 'border-gray-200 dark:border-slate-600'}`}>
-                    <input type="radio" name="tier" value="Enterprise" className="hidden" checked={newCompany.tier === 'Enterprise'} onChange={() => setNewCompany({...newCompany, tier: 'Enterprise'})} /> Enterprise
+
+                  {/* Premium Tier */}
+                  <label className={`p-3 rounded-xl border cursor-pointer flex flex-col items-center justify-center gap-1 text-xs text-center transition-all ${newCompany.tier === 'Premium' ? 'border-brand-blue bg-blue-50 text-brand-blue font-bold shadow-sm ring-1 ring-brand-blue' : 'border-gray-200 dark:border-slate-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+                    <input type="radio" name="tier" value="Premium" className="hidden" checked={newCompany.tier === 'Premium'} onChange={() => setNewCompany({...newCompany, tier: 'Premium'})} />
+                    <span className="font-bold">Premium</span>
+                    <span className="text-[10px] opacity-70">Pro Guard</span>
+                  </label>
+
+                  {/* Enterprise Tier */}
+                  <label className={`p-3 rounded-xl border cursor-pointer flex flex-col items-center justify-center gap-1 text-xs text-center transition-all ${newCompany.tier === 'Enterprise' ? 'border-brand-orange bg-orange-50 text-brand-orange font-bold shadow-sm ring-1 ring-brand-orange' : 'border-gray-200 dark:border-slate-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+                    <input type="radio" name="tier" value="Enterprise" className="hidden" checked={newCompany.tier === 'Enterprise'} onChange={() => setNewCompany({...newCompany, tier: 'Enterprise'})} />
+                    <span className="font-bold">Enterprise</span>
+                    <span className="text-[10px] opacity-70">Forensic</span>
                   </label>
                 </div>
               </div>
               <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-brand-dark dark:bg-white text-white dark:text-brand-dark py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70">
                 {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Kirim Undangan (EmailJS)"}
               </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MODAL */}
-      {isEditModalOpen && editingCompany && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
-          <div className="bg-white dark:bg-brand-slate-850 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <Pencil className="text-brand-blue" size={20} />
-                Edit Perusahaan
-              </h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdateCompany} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Nama Perusahaan</label>
-                <input 
-                    type="text" required value={editingCompany.name}
-                    onChange={(e) => setEditingCompany({...editingCompany, name: e.target.value})}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Status Akun</label>
-                <select
-                    value={editingCompany.status}
-                    onChange={(e) => setEditingCompany({...editingCompany, status: e.target.value as any})}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
-                >
-                    <option value="Active">Active (Aktif)</option>
-                    <option value="Pending">Pending (Menunggu)</option>
-                    <option value="Suspended">Suspended (Ditangguhkan)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Paket Langganan</label>
-                <div className="flex gap-3">
-                  <label className={`flex-1 p-3 rounded-xl border cursor-pointer flex items-center justify-center gap-2 ${editingCompany.tier === 'Basic' ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20 text-brand-orange font-bold' : 'border-gray-200 dark:border-slate-600 text-gray-500'}`}>
-                    <input type="radio" name="edit_tier" value="Basic" className="hidden" checked={editingCompany.tier === 'Basic'} onChange={() => setEditingCompany({...editingCompany, tier: 'Basic'})} /> Basic
-                  </label>
-                  <label className={`flex-1 p-3 rounded-xl border cursor-pointer flex items-center justify-center gap-2 ${editingCompany.tier === 'Enterprise' ? 'border-brand-blue bg-blue-50 dark:bg-blue-900/20 text-brand-blue font-bold' : 'border-gray-200 dark:border-slate-600 text-gray-500'}`}>
-                    <input type="radio" name="edit_tier" value="Enterprise" className="hidden" checked={editingCompany.tier === 'Enterprise'} onChange={() => setEditingCompany({...editingCompany, tier: 'Enterprise'})} /> Enterprise
-                  </label>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                 <button type="submit" disabled={isSubmitting} className="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70">
-                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18}/> Simpan Perubahan</>}
-                 </button>
-              </div>
             </form>
           </div>
         </div>

@@ -1,123 +1,211 @@
 
 import React from 'react';
-import { Check, X, Shield, Zap, Crown } from 'lucide-react';
+import { Check, X, Shield, Zap, Crown, HelpCircle } from 'lucide-react';
 
 interface PricingViewProps {
   currentTier: string;
 }
 
 const PricingView: React.FC<PricingViewProps> = ({ currentTier }) => {
-  const tiers = [
-    {
-      name: 'Basic',
-      price: 'Rp 499rb',
-      period: '/bulan',
-      description: 'Untuk UMKM memulai deteksi dini.',
-      features: [
-        'Fraud Triangle Assessment (12 Qs)',
-        'Basic Interview Mode',
-        'PDF Report Standard',
-        '1 User Account',
-        'Email Support'
-      ],
-      notIncluded: ['SJT Psychometric Test', 'Euphemism Detection AI', 'Benchmarking'],
-      color: 'bg-gray-100 text-gray-800',
-      btnColor: 'bg-gray-800',
-      icon: Shield
-    },
-    {
-      name: 'Premium',
-      price: 'Rp 1.499rb',
-      period: '/bulan',
-      description: 'Untuk perusahaan berkembang dengan rekrutmen aktif.',
-      features: [
-        'Semua fitur Basic',
-        'SJT (Situational Judgment Test)',
-        'Financial Strain Scale',
-        'Unlimited Candidate Links',
-        '5 User Accounts',
-        'Priority Support'
-      ],
-      notIncluded: ['Custom Branding (White-label)', 'API Access', 'Dedicate Success Manager'],
-      color: 'bg-brand-blue text-white',
-      btnColor: 'bg-white text-brand-blue',
-      popular: true,
-      icon: Zap
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      period: '',
-      description: 'Solusi end-to-end untuk korporasi besar.',
-      features: [
-        'Semua fitur Premium',
-        'AI Euphemism Detection',
-        'Industry Benchmarking',
-        'White-label (Custom Logo/Domain)',
-        'API Integration',
-        'Unlimited Users',
-        'Audit Logs Lengkap'
-      ],
-      notIncluded: [],
-      color: 'bg-brand-orange text-white',
-      btnColor: 'bg-white text-brand-orange',
-      icon: Crown
+  
+  const renderCheck = (active: boolean, text?: string) => {
+    if (active) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-1">
+          <div className="bg-green-100 text-green-600 p-1 rounded-full">
+             <Check size={16} strokeWidth={3} />
+          </div>
+          {text && <span className="text-[10px] font-bold text-gray-600 text-center">{text}</span>}
+        </div>
+      );
     }
-  ];
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 opacity-40">
+        <X size={18} className="text-gray-400" />
+        {text && <span className="text-[10px] text-gray-400 text-center">{text}</span>}
+      </div>
+    );
+  };
 
   return (
-    <div className="max-w-6xl mx-auto py-10 animate-in fade-in pb-20">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-4">Pilih Paket Perlindungan Anda</h2>
-        <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-          Investasi kecil untuk mencegah kerugian besar akibat fraud internal. Upgrade kapan saja sesuai pertumbuhan tim Anda.
-        </p>
+    <div className="max-w-7xl mx-auto py-8 animate-in fade-in pb-20">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3">Tabel Perbandingan Fitur</h2>
+        <p className="text-gray-500 dark:text-gray-400">Pilih tingkat perlindungan yang sesuai dengan risiko bisnis Anda.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {tiers.map((tier) => (
-          <div key={tier.name} className={`relative rounded-3xl p-8 shadow-xl border flex flex-col ${tier.popular ? 'border-brand-blue ring-4 ring-brand-blue/20 transform md:-translate-y-4' : 'bg-white dark:bg-brand-slate-850 border-gray-200 dark:border-slate-700'}`}>
-            {tier.popular && (
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-blue text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-md">
-                Paling Populer
-              </div>
-            )}
-            
-            <div className="mb-6">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${tier.name === 'Enterprise' ? 'bg-orange-100 text-brand-orange' : tier.name === 'Premium' ? 'bg-blue-100 text-brand-blue' : 'bg-gray-100 text-gray-600'}`}>
-                    <tier.icon size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{tier.name}</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">{tier.description}</p>
-            </div>
+      <div className="overflow-x-auto bg-white dark:bg-brand-slate-850 rounded-3xl shadow-xl border border-gray-200 dark:border-slate-700">
+        <table className="w-full min-w-[800px]">
+          <thead>
+            <tr>
+              <th className="p-6 text-left w-1/4 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
+                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Kategori Fitur</span>
+              </th>
+              <th className={`p-6 text-center w-1/4 border-b border-gray-100 dark:border-slate-700 ${currentTier === 'Basic' ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
+                 <div className="flex flex-col items-center">
+                    <Shield className="text-gray-600 mb-2" size={24} />
+                    <h3 className="text-lg font-extrabold text-gray-800 dark:text-white">STARTER (Basic)</h3>
+                 </div>
+              </th>
+              <th className={`p-6 text-center w-1/4 border-b border-brand-blue/20 bg-brand-blue/5 dark:bg-brand-blue/10 relative ${currentTier === 'Premium' ? 'ring-2 ring-inset ring-brand-blue' : ''}`}>
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-brand-blue text-white text-[10px] font-bold px-3 py-1 rounded-b-lg shadow-sm">
+                    MOST POPULAR 🏆
+                 </div>
+                 <div className="flex flex-col items-center mt-2">
+                    <Zap className="text-brand-blue mb-2" size={24} />
+                    <h3 className="text-lg font-extrabold text-brand-blue">PRO GUARD (Premium)</h3>
+                 </div>
+              </th>
+              <th className={`p-6 text-center w-1/4 border-b border-gray-100 dark:border-slate-700 ${currentTier === 'Enterprise' ? 'bg-orange-50/50 dark:bg-orange-900/10' : ''}`}>
+                 <div className="flex flex-col items-center">
+                    <Crown className="text-brand-orange mb-2" size={24} />
+                    <h3 className="text-lg font-extrabold text-brand-orange">ENTERPRISE (Forensic)</h3>
+                 </div>
+              </th>
+            </tr>
+            {/* PRICE ROW */}
+            <tr>
+               <td className="p-4 px-6 font-bold text-gray-500 text-sm">Harga</td>
+               <td className="p-4 text-center">
+                  <p className="text-2xl font-black text-gray-800 dark:text-white">Rp 499.000</p>
+                  <p className="text-xs text-gray-500">/bulan</p>
+               </td>
+               <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">
+                  <p className="text-2xl font-black text-brand-blue">Rp 1.499.000</p>
+                  <p className="text-xs text-gray-500">/bulan</p>
+               </td>
+               <td className="p-4 text-center">
+                  <p className="text-2xl font-black text-brand-orange">Custom</p>
+                  <p className="text-xs text-gray-500">Pricing</p>
+               </td>
+            </tr>
+            {/* TARGET USER */}
+            <tr className="border-b border-gray-100 dark:border-slate-700">
+               <td className="p-4 px-6 font-bold text-gray-500 text-sm">Target User</td>
+               <td className="p-4 text-center text-sm text-gray-600 dark:text-gray-300">UMKM / Hiring Cepat</td>
+               <td className="p-4 text-center text-sm font-bold text-gray-800 dark:text-white bg-brand-blue/5 dark:bg-brand-blue/10">Manager / Hiring Rutin</td>
+               <td className="p-4 text-center text-sm text-gray-600 dark:text-gray-300">Korporat & Compliance</td>
+            </tr>
+          </thead>
 
-            <div className="mb-8">
-                <span className="text-4xl font-extrabold text-gray-900 dark:text-white">{tier.price}</span>
-                <span className="text-gray-500 font-medium">{tier.period}</span>
-            </div>
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+             
+             {/* GROUP: TEKNOLOGI DETEKSI */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Teknologi Deteksi</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Engine AI</td>
+                <td className="p-4 text-center text-sm">Standard AI <br/><span className="text-[10px] text-gray-400 italic">(Interview Sopan)</span></td>
+                <td className="p-4 text-center text-sm font-bold bg-brand-blue/5 dark:bg-brand-blue/10 text-brand-blue">Deep Forensic AI 🧠 <br/><span className="text-[10px] text-brand-blue/70 italic font-normal">(Interview Menekan & Analitis)</span></td>
+                <td className="p-4 text-center text-sm font-bold text-brand-orange">Full Suite + External Data <br/><span className="text-[10px] text-brand-orange/70 italic font-normal">(AI + Cek Database Negara)</span></td>
+             </tr>
 
-            <div className="flex-1 space-y-4 mb-8">
-                {tier.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <Check className="text-green-500 shrink-0" size={18} />
-                        <span>{feat}</span>
-                    </div>
-                ))}
-                {tier.notIncluded.map((feat, idx) => (
-                    <div key={idx} className="flex items-start gap-3 text-sm text-gray-400 dark:text-gray-600 line-through">
-                        <X className="shrink-0" size={18} />
-                        <span>{feat}</span>
-                    </div>
-                ))}
-            </div>
+             {/* GROUP: FITUR KILLER AI */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Fitur "Killer" AI</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Euphemism Detection <br/><span className="text-[10px] text-gray-400">(Deteksi Bahasa Halus)</span></td>
+                <td className="p-4 text-center">{renderCheck(false, "Tidak Ada")}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Consistency Score <br/><span className="text-[10px] text-gray-400">(Cek Konsistensi Jawaban)</span></td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Custom Scenarios</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
 
-            <button 
-                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg hover:opacity-90 ${tier.name === currentTier ? 'bg-green-100 text-green-700 cursor-default' : tier.name === 'Premium' ? 'bg-brand-blue text-white' : tier.name === 'Enterprise' ? 'bg-brand-orange text-white' : 'bg-gray-800 text-white'}`}
-            >
-                {tier.name === currentTier ? 'Paket Saat Ini' : 'Pilih Paket'}
-            </button>
-          </div>
-        ))}
+             {/* GROUP: MEKANISME INTERVIEW */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Mekanisme Interview</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Metode Input</td>
+                <td className="p-4 text-center text-sm">Self-Assessment Only <br/><span className="text-[10px] text-gray-400">(Link Random)</span></td>
+                <td className="p-4 text-center text-sm font-bold bg-brand-blue/5 dark:bg-brand-blue/10">Self-Assess + Manual Copilot <br/><span className="text-[10px] text-gray-500 font-normal">(Screening + Panduan Tatap Muka)</span></td>
+                <td className="p-4 text-center text-sm font-bold">Full Spectrum <br/><span className="text-[10px] text-gray-500 font-normal">(Self + Manual + Bulk)</span></td>
+             </tr>
+
+             {/* GROUP: PSIKOLOGI */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Psikologi (Soft)</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Fraud Triangle (12 Qs)</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">SJT (Dilema Etika)</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Financial Strain Scale</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+
+             {/* GROUP: FORENSIK & 3RD PARTY */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Forensik Dokumen & Pihak Ke-3</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">AI Document Forgery</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(true, "Basic Check")}</td>
+                <td className="p-4 text-center">{renderCheck(true, "Advanced Metadata")}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">SLIK OJK / BI Checking</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(false)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Cek Ijazah (Dikti) / NIK</td>
+                <td className="p-4 text-center">{renderCheck(false)}</td>
+                <td className="p-4 text-center bg-brand-blue/5 dark:bg-brand-blue/10">{renderCheck(false)}</td>
+                <td className="p-4 text-center">{renderCheck(true)}</td>
+             </tr>
+
+             {/* GROUP: INFRASTRUKTUR */}
+             <tr className="bg-gray-50 dark:bg-slate-800/50">
+                <td colSpan={4} className="py-2 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Infrastruktur</td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Tipe Link</td>
+                <td className="p-4 text-center text-sm text-gray-500">Random Link</td>
+                <td className="p-4 text-center text-sm font-bold bg-brand-blue/5 dark:bg-brand-blue/10 text-brand-dark">Permanent Link 🔒</td>
+                <td className="p-4 text-center text-sm font-bold">White-Label <br/><span className="text-[10px] text-gray-400 font-normal">(Domain Sendiri)</span></td>
+             </tr>
+             <tr>
+                <td className="p-4 px-6 text-sm font-medium text-gray-700 dark:text-gray-300">Penyimpanan Data</td>
+                <td className="p-4 text-center text-sm text-gray-500">30 Hari</td>
+                <td className="p-4 text-center text-sm font-bold bg-brand-blue/5 dark:bg-brand-blue/10">Lifetime Vault</td>
+                <td className="p-4 text-center text-sm font-bold">Audit Logs</td>
+             </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-8 text-center">
+         <p className="text-gray-500 text-sm mb-4">Butuh bantuan memilih paket?</p>
+         <button className="bg-brand-dark text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2 mx-auto">
+             <HelpCircle size={20} /> Konsultasi dengan Sales
+         </button>
       </div>
     </div>
   );
