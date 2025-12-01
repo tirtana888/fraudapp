@@ -9,14 +9,26 @@ interface AssessmentSettingsProps {
   onUpdate: () => void; // Trigger refresh in App
 }
 
-// Hardcoded questions to display in read-only mode
+// FULL QUESTION LIST (READ ONLY IN ADMIN)
 const FIXED_QUESTIONS = [
-  "Apakah Anda memiliki tanggungan finansial mendesak saat ini?",
-  "Apakah Anda pernah mengalami tekanan target kerja yang sangat tinggi?",
-  "Apakah Anda nyaman bekerja tanpa pengawasan langsung?",
-  "Apakah Anda memahami konsep pemisahan tugas (segregation of duties)?",
-  "Menurut Anda, apakah wajar menggunakan aset kantor untuk keperluan mendesak?",
-  "Apakah peraturan perusahaan harus selalu diikuti tanpa pengecualian?"
+  // Pressure
+  "1. Apakah Anda memiliki kewajiban cicilan/hutang yang melebihi 30% dari pendapatan bulanan?",
+  "2. Apakah Anda menjadi tulang punggung utama bagi keluarga besar?",
+  "3. Pernahkah Anda merasa penghasilan saat ini tidak cukup untuk menutupi gaya hidup?",
+  "4. Apakah Anda pernah mengalami situasi darurat finansial mendadak dalam 6 bulan terakhir?",
+  "5. Seberapa sering Anda merasa cemas memikirkan kondisi keuangan pribadi?",
+  // Opportunity
+  "6. Apakah Anda lebih nyaman bekerja sendiri tanpa pengawasan atasan langsung?",
+  "7. Apakah Anda memahami konsep pemisahan tugas (segregation of duties)?",
+  "8. Jika Anda menemukan celah sistem yang menguntungkan, apakah Anda akan langsung melaporkannya?",
+  "9. Pernahkah Anda memegang akses penuh (username/password) milik atasan atau rekan kerja?",
+  "10. Apakah Anda setuju bahwa birokrasi yang ketat seringkali menghambat produktivitas?",
+  // Rationalization
+  "11. Menurut Anda, apakah wajar meminjam aset kantor untuk keperluan pribadi mendesak?",
+  "12. Jika target tim terancam, apakah sedikit manipulasi data diperbolehkan?",
+  "13. Apakah Anda merasa aturan perusahaan terkadang tidak adil bagi karyawan berprestasi?",
+  "14. Bagaimana reaksi Anda jika melihat rekan kerja melanggar aturan kecil?",
+  "15. Apakah loyalitas kepada atasan lebih penting daripada kepatuhan pada peraturan?"
 ];
 
 const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany, onUpdate }) => {
@@ -353,11 +365,10 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                  </h3>
                  <span className="text-[10px] bg-gray-200 dark:bg-slate-700 text-gray-500 px-2 py-1 rounded font-bold">READ ONLY</span>
              </div>
-             <div className="space-y-3">
+             <div className="space-y-3 h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                  {FIXED_QUESTIONS.map((q, idx) => (
-                     <div key={idx} className="flex gap-3 text-xs text-gray-500 dark:text-gray-400 p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-700">
-                         <span className="font-bold text-gray-300">{idx + 1}.</span>
-                         <span>{q}</span>
+                     <div key={idx} className="text-xs text-gray-500 dark:text-gray-400 p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-700">
+                         {q}
                      </div>
                  ))}
              </div>

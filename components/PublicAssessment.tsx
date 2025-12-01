@@ -8,14 +8,28 @@ interface PublicAssessmentProps {
   companyId: string;
 }
 
-// Reuse questions for self-assessment (slightly modified for first-person context)
+// EXPANDED QUESTION BANK (15 Questions)
 const SELF_ASSESSMENT_ITEMS: AssessmentItem[] = [
-  { id: 'p1', category: 'pressure', question: 'Apakah Anda memiliki tanggungan finansial mendesak saat ini?', response: null },
-  { id: 'p2', category: 'pressure', question: 'Apakah Anda pernah mengalami tekanan target kerja yang sangat tinggi?', response: null },
-  { id: 'o1', category: 'opportunity', question: 'Apakah Anda nyaman bekerja tanpa pengawasan langsung?', response: null },
-  { id: 'o2', category: 'opportunity', question: 'Apakah Anda memahami konsep pemisahan tugas (segregation of duties)?', response: null },
-  { id: 'r1', category: 'rationalization', question: 'Menurut Anda, apakah wajar menggunakan aset kantor untuk keperluan mendesak?', response: null },
-  { id: 'r2', category: 'rationalization', question: 'Apakah peraturan perusahaan harus selalu diikuti tanpa pengecualian?', response: null },
+  // --- PRESSURE (Tekanan Finansial & Emosional) ---
+  { id: 'p1', category: 'pressure', question: 'Apakah Anda memiliki kewajiban cicilan/hutang yang melebihi 30% dari pendapatan bulanan?', response: null },
+  { id: 'p2', category: 'pressure', question: 'Apakah Anda menjadi tulang punggung utama bagi keluarga besar (orang tua/saudara)?', response: null },
+  { id: 'p3', category: 'pressure', question: 'Pernahkah Anda merasa penghasilan saat ini tidak cukup untuk menutupi gaya hidup Anda?', response: null },
+  { id: 'p4', category: 'pressure', question: 'Apakah Anda pernah mengalami situasi darurat finansial mendadak dalam 6 bulan terakhir?', response: null },
+  { id: 'p5', category: 'pressure', question: 'Seberapa sering Anda merasa cemas memikirkan kondisi keuangan pribadi saat bekerja?', response: null },
+
+  // --- OPPORTUNITY (Peluang & Kontrol) ---
+  { id: 'o1', category: 'opportunity', question: 'Apakah Anda lebih nyaman bekerja sendiri tanpa pengawasan atasan langsung?', response: null },
+  { id: 'o2', category: 'opportunity', question: 'Apakah Anda memahami konsep pemisahan tugas (segregation of duties) dalam pekerjaan?', response: null },
+  { id: 'o3', category: 'opportunity', question: 'Jika Anda menemukan celah sistem yang menguntungkan, apakah Anda akan langsung melaporkannya?', response: null },
+  { id: 'o4', category: 'opportunity', question: 'Pernahkah Anda memegang akses penuh (username/password) milik atasan atau rekan kerja?', response: null },
+  { id: 'o5', category: 'opportunity', question: 'Apakah Anda setuju bahwa birokrasi/prosedur yang ketat seringkali menghambat produktivitas?', response: null },
+
+  // --- RATIONALIZATION (Integritas & Pembenaran) ---
+  { id: 'r1', category: 'rationalization', question: 'Menurut Anda, apakah wajar meminjam aset kantor (laptop/kendaraan) untuk keperluan pribadi mendesak?', response: null },
+  { id: 'r2', category: 'rationalization', question: 'Jika target tim terancam, apakah sedikit manipulasi data diperbolehkan demi menyelamatkan bonus tim?', response: null },
+  { id: 'r3', category: 'rationalization', question: 'Apakah Anda merasa aturan perusahaan terkadang tidak adil bagi karyawan berprestasi?', response: null },
+  { id: 'r4', category: 'rationalization', question: 'Bagaimana reaksi Anda jika melihat rekan kerja melanggar aturan kecil (misal: titip absen)?', response: null },
+  { id: 'r5', category: 'rationalization', question: 'Apakah loyalitas kepada atasan lebih penting daripada kepatuhan pada peraturan tertulis?', response: null },
 ];
 
 const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId }) => {
@@ -180,7 +194,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId }) => {
                  <div className="grid grid-cols-3 gap-3">
                    {['low', 'medium', 'high'].map((val) => {
                        const isSelected = item.response === val;
-                       const labels: Record<string, string> = { low: 'Tidak', medium: 'Netral', high: 'Ya' };
+                       const labels: Record<string, string> = { low: 'Tidak / Jarang', medium: 'Netral', high: 'Ya / Sering' };
                        return (
                            <button 
                                 key={val}

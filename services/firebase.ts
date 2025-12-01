@@ -286,7 +286,7 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
 };
 
 export const getCompanyById = async (id: string): Promise<CompanyProfile | null> => {
-    if (!db) return null;
+    if (!db || !id) return null;
     
     // Fallback Enterprise untuk demo link publik jika database kosong
     if (id === 'c1') {
@@ -309,11 +309,15 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
     try {
         const docRef = doc(db, COLLECTIONS.COMPANIES, id);
         const docSnap = await getDoc(docRef);
+        
         if (docSnap.exists()) {
             return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
-        } 
-        return null;
+        } else {
+            console.warn(`Company ID ${id} not found in Firestore.`);
+            return null;
+        }
     } catch (e) {
+        console.error("Error fetching company:", e);
         return null;
     }
 };

@@ -22,24 +22,25 @@ export const generateNextQuestion = async (
 
   // DYNAMIC STAGING
   let stageInstruction = "";
-  if (turnCount < 2) {
+  if (turnCount < 3) {
       stageInstruction = `
-      FASE 1: BASELINING & RAPPORT
+      FASE 1: BASELINING & RAPPORT (Deep Dive)
       - Tanyakan latar belakang profesional yang relevan dengan risiko posisi "${role}".
-      - Tujuannya melihat gaya komunikasi normal kandidat.
+      - Tanyakan alasan spesifik meninggalkan pekerjaan sebelumnya (cari red flag: konflik/dipecat).
       `;
-  } else if (turnCount < 5) {
+  } else if (turnCount < 7) {
       stageInstruction = `
       FASE 2: BEHAVIORAL INVESTIGATION (Fraud Triangle Focus)
-      - Gali area PRESSURE atau OPPORTUNITY.
-      - Gunakan teknik 'Devil's Advocate'.
-      - Paksa kandidat menggunakan metode STAR.
+      - Gali area PRESSURE: Tanyakan tentang pengelolaan gaya hidup vs pendapatan secara halus.
+      - Gali area OPPORTUNITY: Tanyakan pengalaman bekerja tanpa pengawasan (Work From Home/Dinas Luar).
+      - WAJIB: Tanyakan tentang "Conflict of Interest" (misal: memiliki bisnis sampingan yang sejenis).
       `;
   } else {
       stageInstruction = `
       FASE 3: PROBING & PROJECTION (Rationalization Focus)
-      - Gunakan 'Projective Questions'.
-      - Tantang inkonsistensi dari jawaban sebelumnya.
+      - Gunakan 'Projective Questions' (Contoh: "Menurut Anda, kenapa orang jujur bisa mencuri?").
+      - Tanyakan sikap terhadap "Whistleblowing" (Apakah berani melapor jika atasan salah?).
+      - Tes reaksi terhadap otoritas: "Bagaimana jika atasan meminta Anda melanggar SOP demi target?".
       `;
   }
   
@@ -54,7 +55,8 @@ export const generateNextQuestion = async (
     ATURAN PERTANYAAN (STRICT):
     1. HANYA SATU pertanyaan per giliran. Pendek, tajam.
     2. Gunakan Bahasa Indonesia profesional namun investigatif.
-    3. Kejar jawaban klise.
+    3. Kejar jawaban klise atau jawaban yang terlalu umum ("Saya jujur", "Saya disiplin"). Minta contoh nyata.
+    4. Jangan ragu untuk sedikit menekan (stress test) untuk melihat konsistensi emosi.
   `;
 
   try {

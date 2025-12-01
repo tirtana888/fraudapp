@@ -16,23 +16,31 @@ const AVAILABLE_POSITIONS = [
   "Manajer Keuangan", "Staff Pengadaan", "Kepala Gudang", "Sales Manager", "Kasir Senior", "Internal Auditor"
 ];
 
-// --- MODULE 1: BASIC ASSESSMENT ---
+// --- MODULE 1: BASIC ASSESSMENT (EXPANDED TO 10 ITEMS) ---
 const BASIC_ASSESSMENT_ITEMS: AssessmentItem[] = [
-  // Pressure
+  // Pressure (Tekanan)
   { id: 'p1', category: 'pressure', question: 'Apakah kandidat memiliki hutang atau kewajiban finansial yang mendesak?', response: null },
-  { id: 'p2', category: 'pressure', question: 'Apakah gaya hidup kandidat terlihat melebihi standar penghasilan?', response: null },
-  // Opportunity
+  { id: 'p2', category: 'pressure', question: 'Apakah gaya hidup kandidat terlihat melebihi standar penghasilan (Hedonisme)?', response: null },
+  { id: 'p3', category: 'pressure', question: 'Apakah ada tanda-tanda kecanduan (judi/investasi berisiko/gaya hidup)?', response: null },
+  
+  // Opportunity (Peluang)
   { id: 'o1', category: 'opportunity', question: 'Pemahaman tentang pemisahan tugas (segregation of duties)?', response: null },
-  { id: 'o2', category: 'opportunity', question: 'Riwayat bekerja tanpa pengawasan ketat?', response: null },
-  // Rationalization
-  { id: 'r1', category: 'rationalization', question: 'Sikap terhadap "peminjaman" aset kantor?', response: null },
-  { id: 'r2', category: 'rationalization', question: 'Sikap terhadap pelanggaran aturan kecil?', response: null },
+  { id: 'o2', category: 'opportunity', question: 'Apakah posisi ini memiliki akses tak terbatas ke aset/kas?', response: null },
+  { id: 'o3', category: 'opportunity', question: 'Riwayat bekerja tanpa pengawasan ketat?', response: null },
+  { id: 'o4', category: 'opportunity', question: 'Apakah kandidat sering bekerja di luar jam kantor tanpa alasan jelas?', response: null },
+  
+  // Rationalization (Rasionalisasi)
+  { id: 'r1', category: 'rationalization', question: 'Sikap terhadap "peminjaman" aset kantor untuk pribadi?', response: null },
+  { id: 'r2', category: 'rationalization', question: 'Sikap terhadap pelanggaran aturan kecil (misal: SOP administrasi)?', response: null },
+  { id: 'r3', category: 'rationalization', question: 'Apakah kandidat merasa "berhak" (entitlement) atas kompensasi lebih?', response: null },
 ];
 
 // --- MODULE 1 EXTENSION: FINANCIAL STRAIN (PREMIUM+) ---
 const FINANCIAL_STRAIN_ITEMS: AssessmentItem[] = [
-  { id: 'fs1', category: 'financial_strain', question: 'Indikasi ketidakpuasan terhadap gaji saat ini dibandingkan gaya hidup?', response: null },
+  { id: 'fs1', category: 'financial_strain', question: 'Indikasi ketidakpuasan terhadap gaji saat ini dibandingkan beban kerja?', response: null },
   { id: 'fs2', category: 'financial_strain', question: 'Apakah kandidat sering mengeluh tentang biaya hidup atau kebutuhan mendadak?', response: null },
+  { id: 'fs3', category: 'financial_strain', question: 'Apakah kandidat memiliki sumber penghasilan lain yang mencurigakan?', response: null },
+  { id: 'fs4', category: 'financial_strain', question: 'Apakah kandidat sering meminta kasbon atau pinjaman ke rekan kerja?', response: null },
 ];
 
 // --- MODULE 2: SITUATIONAL JUDGMENT TEST (PREMIUM+) ---
@@ -95,7 +103,9 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, initialCa
         if (existingSession) {
             setCandidateName(existingSession.candidate.name);
             setCandidateRole(existingSession.candidate.role);
-            if (existingSession.structuredAssessment) {
+            if (existingSession.structuredAssessment && existingSession.structuredAssessment.length > 5) {
+                // If reviewing, use what's in DB (which might be the self-assessment items)
+                // We merge logic here: display what user answered
                 setAssessmentItems(existingSession.structuredAssessment);
             } else {
                 setAssessmentItems(items);
