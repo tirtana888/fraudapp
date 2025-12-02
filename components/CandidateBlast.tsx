@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites } from '../services/supabase';
+import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 
@@ -62,22 +62,22 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
         if (!currentCompany || !currentCompany.id) {
             throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
         }
-
+        
         const planFeatures = PLAN_LIMITS[currentCompany.tier];
         if (!planFeatures.allow_permanent_link) {
             throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
         }
-
+        
         const validCandidates = candidates.filter(c => c.name.trim() && c.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
-
+        
         if (validCandidates.length === 0) {
             throw new Error("Mohon isi minimal Nama dan Email yang valid untuk satu kandidat.");
         }
-
+        
         setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
 
         const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
-
+        
         if (result.success > 0) {
             setBlastStatus('success');
             setStatusMessage(`${result.success} undangan berhasil dikirim. ${result.failed > 0 ? `${result.failed} gagal.` : ''}`);
@@ -239,22 +239,12 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                                   {new Date(inv.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute:'2-digit'})}
                               </td>
                               <td className="p-4">
-                                  <span className={`px-2 py-1 rounded text-xs font-bold border whitespace-nowrap ${
-                                      inv.status === 'COMPLETED'
-                                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
-                                      : inv.status === 'IN_PROGRESS'
-                                      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
-                                      : inv.status === 'ACCESSING'
-                                      ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
-                                      : inv.status === 'EXPIRED'
-                                      ? 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400'
+                                  <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                                      inv.status === 'USED' 
+                                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400' 
                                       : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400'
                                   }`}>
-                                      {inv.status === 'COMPLETED' ? '✓ Selesai'
-                                       : inv.status === 'IN_PROGRESS' ? '⏳ Sedang Interview'
-                                       : inv.status === 'ACCESSING' ? '👀 Sedang Mengakses'
-                                       : inv.status === 'EXPIRED' ? '❌ Kadaluarsa'
-                                       : '⏱️ Menunggu Kandidat'}
+                                      {inv.status === 'USED' ? 'Sudah Tes' : 'Pending'}
                                   </span>
                               </td>
                           </tr>

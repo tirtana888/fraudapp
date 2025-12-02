@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { inviteCompanyReal, getCompanies, updateCompany, deleteCompany } from '../services/supabase';
+import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
 
 const AdminDashboard: React.FC = () => {
@@ -77,8 +77,16 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleResendEmail = async (companyId: string) => {
-    alert('Fitur email akan diimplementasikan dengan email service provider.');
-    setActiveMenuId(null);
+    setIsSubmitting(true);
+    try {
+        const result = await resendInviteEmail(companyId);
+        alert(`✅ SUKSES: ${result.message}`);
+    } catch (error) {
+        alert(`❌ GAGAL: ${(error as any).message}`);
+    } finally {
+        setIsSubmitting(false);
+        setActiveMenuId(null);
+    }
   };
 
   const handleManageClick = (company: CompanyProfile) => {
@@ -115,7 +123,7 @@ const AdminDashboard: React.FC = () => {
             verification_credits: Number(subFormData.verification_credits)
         };
 
-        await updateCompany(managingCompany.id, updatePayload);
+        await updateCompanySubscription(managingCompany.id, updatePayload);
         
         await fetchCompanies();
         setIsManageModalOpen(false);

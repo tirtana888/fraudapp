@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/supabase';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/firebase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -86,21 +86,18 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       try {
           const invite = await verifyAccessCode(accessCode);
           if (invite) {
-              // MARK CODE AS ACCESSING IMMEDIATELY AFTER VERIFICATION
-              await markAccessCodeUsed(accessCode, 'ACCESSING');
-
               setInviteData(invite);
               setCandidateName(invite.name);
               setCandidateEmail(invite.email);
               if (invite.role) setCandidateRole(invite.role);
-
+              
               const companyLoaded = await fetchCompany(invite.companyId);
 
               if(companyLoaded) {
                   // SUCCESS: Move to next step
                   setStep('welcome');
               }
-
+              
           } else {
               setErrorMsg("Kode akses tidak valid atau sudah terpakai.");
           }
@@ -139,34 +136,26 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
   const handleStartChat = async () => {
       setStep('loading');
-
+      
       const initialHistory: Array<{ speaker: 'ai' | 'candidate'; text: string }> = [
           { speaker: 'ai', text: `Halo ${candidateName}. Profil Anda sedang kami proses. Saya ingin mengklarifikasi beberapa poin dari survei Anda. Kita punya waktu 10 menit. Bisa kita mulai?` }
       ];
 
       const sessionData = {
-          company_id: companyId || 'unknown',
-          candidate_id: Date.now().toString(),
-          candidate_name: candidateName,
-          candidate_email: candidateEmail,
-          candidate_role: candidateRole,
+          candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
           date: new Date().toISOString(),
-          status: 'active' as const,
-          structured_assessment: ftAnswers,
-          financial_strain_results: finAnswers,
-          sjt_results: sjtAnswers,
+          status: 'active',
+          structuredAssessment: ftAnswers,
+          financialStrainResults: finAnswers,
+          sjtResults: sjtAnswers,
           transcript: initialHistory,
+          companyId: companyId || 'unknown',
           source: 'public_link'
       };
 
       const realSessionId = await saveSessionToDB(sessionData);
       setSessionId(realSessionId);
-
-      // Update invite status to IN_PROGRESS
-      if (inviteData?.access_code) {
-          await markAccessCodeUsed(inviteData.access_code, 'IN_PROGRESS', realSessionId);
-      }
-
+      
       setChatHistory(initialHistory);
       setTimeLeft(CHAT_TIME_LIMIT_SECONDS);
       setStep('chat');
@@ -225,18 +214,16 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
-      await updateSessionInDB(sessionId, {
-        status: 'completed',
-        analysis: finalAnalysis,
-        transcript: chatHistory,
-        source: 'public_link'
+      await updateSessionInDB(sessionId, { 
+        status: 'completed', 
+        analysis: finalAnalysis, 
+        transcript: chatHistory, 
+        source: 'public_link' 
       });
-
-      // Update invite status to COMPLETED
-      if (inviteData?.access_code) {
-          await markAccessCodeUsed(inviteData.access_code, 'COMPLETED', sessionId);
+      
+      if (inviteData && inviteData.access_code) {
+        await markAccessCodeUsed(inviteData.access_code);
       }
-
       setStep('done');
     } catch (dbError) {
       console.error("Failed to save final session to DB:", dbError);

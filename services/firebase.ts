@@ -31,11 +31,8 @@ let db: Firestore;
 // Declare EmailJS globally
 declare const emailjs: any;
 
-// Export app for Cloud Functions usage
-export let app: any;
-
 try {
-  app = initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   console.log("[FraudGuard System] Connected to Real Cloud Firestore (Blaze Plan Active).");
 } catch (error) {
@@ -559,34 +556,22 @@ export const verifyAccessCode = async (code: string): Promise<AssessmentInvite |
   }
 };
 
-export const markAccessCodeUsed = async (code: string, status: 'ACCESSING' | 'IN_PROGRESS' | 'COMPLETED' = 'ACCESSING', sessionId?: string) => {
+export const markAccessCodeUsed = async (code: string) => {
   if (!db) return;
-
+  
   try {
     const q = query(
-      collection(db, COLLECTIONS.INVITES),
+      collection(db, COLLECTIONS.INVITES), 
       where("access_code", "==", code.toUpperCase().trim())
     );
     const snapshot = await getDocs(q);
-
+    
     if (!snapshot.empty) {
       const docRef = snapshot.docs[0].ref;
-      const updateData: any = { status };
-
-      if (status === 'ACCESSING') {
-        updateData.accessedAt = new Date().toISOString();
-      } else if (status === 'IN_PROGRESS') {
-        updateData.startedAt = new Date().toISOString();
-        if (sessionId) updateData.sessionId = sessionId;
-      } else if (status === 'COMPLETED') {
-        updateData.completedAt = new Date().toISOString();
-        if (sessionId) updateData.sessionId = sessionId;
-      }
-
-      await updateDoc(docRef, updateData);
+      await updateDoc(docRef, { status: 'USED', usedAt: new Date().toISOString() });
     }
   } catch (e) {
-    console.error("Failed to update access code status:", e);
+    console.error("Failed to mark code used:", e);
   }
 };
 

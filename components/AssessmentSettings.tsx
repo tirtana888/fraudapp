@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Copy, Check, Lock, Smartphone, RefreshCw, Loader2, Image as ImageIcon, Palette, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { updateCompany } from '../services/supabase';
+import { updateCompany } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
 
 interface AssessmentSettingsProps {
