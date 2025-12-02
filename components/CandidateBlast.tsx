@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
+import { subscribeToInvites } from '../services/firebase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '../services/firebase';
 
 interface CandidateBlastProps {
   currentCompany: CompanyProfile;
@@ -62,28 +64,38 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
         if (!currentCompany || !currentCompany.id) {
             throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
         }
-        
+
         const planFeatures = PLAN_LIMITS[currentCompany.tier];
         if (!planFeatures.allow_permanent_link) {
             throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
         }
-        
+
         const validCandidates = candidates.filter(c => c.name.trim() && c.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
-        
+
         if (validCandidates.length === 0) {
             throw new Error("Mohon isi minimal Nama dan Email yang valid untuk satu kandidat.");
         }
-        
+
         setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
 
-        const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
-        
-        if (result.success > 0) {
+        // Call backend Cloud Function
+        const functions = getFunctions(app, 'europe-west1');
+        const sendInvites = httpsCallable(functions, 'sendCandidateInvites');
+
+        const result = await sendInvites({
+            candidates: validCandidates,
+            companyId: currentCompany.id,
+            companyName: currentCompany.name
+        });
+
+        const data = result.data as { success: number; failed: number; errors: any[] };
+
+        if (data.success > 0) {
             setBlastStatus('success');
-            setStatusMessage(`${result.success} undangan berhasil dikirim. ${result.failed > 0 ? `${result.failed} gagal.` : ''}`);
+            setStatusMessage(`${data.success} undangan berhasil dikirim. ${data.failed > 0 ? `${data.failed} gagal.` : ''}`);
             setCandidates([{ name: '', email: '', role: '' }]);
         } else {
-            throw new Error(`Gagal mengirim semua undangan. Kemungkinan ada masalah dengan layanan email. (${result.failed} gagal)`);
+            throw new Error(`Gagal mengirim semua undangan. (${data.failed} gagal)`);
         }
     } catch (error: any) {
         console.error("Blast sending failed:", error);

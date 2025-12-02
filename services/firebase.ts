@@ -31,8 +31,11 @@ let db: Firestore;
 // Declare EmailJS globally
 declare const emailjs: any;
 
+// Export app for Cloud Functions usage
+export let app: any;
+
 try {
-  const app = initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   console.log("[FraudGuard System] Connected to Real Cloud Firestore (Blaze Plan Active).");
 } catch (error) {

@@ -7,18 +7,27 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getFirestore } = require("firebase-admin/firestore");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
 const db = getFirestore();
 
 // ==========================================
-// KONFIGURASI SMTP (WAJIB DIGANTI SEBELUM DEPLOY)
+// KONFIGURASI (WAJIB DIGANTI SEBELUM DEPLOY)
 // ==========================================
 const SMTP_CONFIG = {
   user: "email.anda@gmail.com",      // GANTI DENGAN EMAIL GMAIL ASLI ANDA
   pass: "xxxx xxxx xxxx xxxx"        // GANTI DENGAN APP PASSWORD (16 digit)
 };
+
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // GANTI dengan API Key Gemini yang aman
 // ==========================================
+
+// Initialize Gemini AI
+let genAI = null;
+if (GEMINI_API_KEY && !GEMINI_API_KEY.includes("YOUR_")) {
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+}
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -126,3 +135,295 @@ exports.inviteCompany = onCall({ region: "europe-west1" }, async (request) => {
     throw new HttpsError('internal', `Gagal memproses undangan: ${error.message}`);
   }
 });
+
+// ==========================================
+// GEMINI AI ENDPOINTS
+// ==========================================
+
+/**
+ * Fungsi: generateNextQuestion
+ * Deskripsi: Generate pertanyaan interview berikutnya menggunakan Gemini AI
+ */
+exports.generateNextQuestion = onCall({ region: "europe-west1", maxInstances: 10 }, async (request) => {
+  if (!genAI) {
+    throw new HttpsError('failed-precondition', 'Gemini API belum dikonfigurasi di server');
+  }
+
+  const { candidateRole, chatHistory, tier, assessmentData } = request.data;
+
+  if (!candidateRole || !chatHistory) {
+    throw new HttpsError('invalid-argument', 'candidateRole dan chatHistory wajib diisi');
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const questionCount = chatHistory.filter(m => m.speaker === 'ai').length;
+    const MAX_QUESTIONS = tier === 'Enterprise' ? 8 : tier === 'Premium' ? 5 : 3;
+
+    if (questionCount >= MAX_QUESTIONS) {
+      return {
+        question: "Terima kasih atas partisipasi Anda. Sesi wawancara telah selesai. Kami akan menghubungi Anda segera.",
+        isEnd: true
+      };
+    }
+
+    const conversationContext = chatHistory.map(msg =>
+      `${msg.speaker === 'ai' ? 'Interviewer' : 'Kandidat'}: ${msg.text}`
+    ).join('\n');
+
+    const prompt = `Anda adalah AI Interviewer profesional untuk posisi "${candidateRole}".
+
+Konteks percakapan sejauh ini:
+${conversationContext}
+
+Data survei kandidat:
+- Fraud Triangle: ${JSON.stringify(assessmentData?.structuredAssessment?.slice(0, 3) || [])}
+- SJT: ${JSON.stringify(assessmentData?.sjtResults?.slice(0, 2) || [])}
+
+Tugas Anda: Buat 1 pertanyaan follow-up yang:
+1. Menggali lebih dalam red flag dari jawaban kandidat
+2. Natural dan tidak menghakimi
+3. Maksimal 2 kalimat
+4. Spesifik ke konteks posisi dan jawaban sebelumnya
+
+PENTING: Jawab HANYA dengan pertanyaan, tanpa penjelasan tambahan.`;
+
+    const result = await model.generateContent(prompt);
+    const nextQuestion = result.response.text().trim();
+
+    return { question: nextQuestion, isEnd: false };
+
+  } catch (error) {
+    console.error("[ERROR] Generate Question Failed:", error);
+    throw new HttpsError('internal', `Gagal generate pertanyaan: ${error.message}`);
+  }
+});
+
+/**
+ * Fungsi: analyzeFraudRisk
+ * Deskripsi: Analisis risiko fraud kandidat menggunakan Gemini AI
+ */
+exports.analyzeFraudRisk = onCall({ region: "europe-west1", maxInstances: 5 }, async (request) => {
+  if (!genAI) {
+    throw new HttpsError('failed-precondition', 'Gemini API belum dikonfigurasi di server');
+  }
+
+  const { candidateRole, chatHistory, ftAnswers, sjtAnswers, tier } = request.data;
+
+  if (!candidateRole || !chatHistory) {
+    throw new HttpsError('invalid-argument', 'Data tidak lengkap');
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+
+    const conversationText = chatHistory.map(msg =>
+      `${msg.speaker === 'ai' ? 'Interviewer' : 'Kandidat'}: ${msg.text}`
+    ).join('\n');
+
+    const prompt = `Anda adalah Fraud Risk Analyst profesional. Analisis kandidat untuk posisi "${candidateRole}".
+
+DATA KANDIDAT:
+1. Transkrip Wawancara:
+${conversationText}
+
+2. Fraud Triangle Survey (skala 1-5):
+${JSON.stringify(ftAnswers || [])}
+
+3. Situational Judgment Test:
+${JSON.stringify(sjtAnswers || [])}
+
+TUGAS: Buat analisis JSON dengan format PERSIS seperti ini:
+{
+  "scores": {
+    "pressure": <angka 0-100>,
+    "opportunity": <angka 0-100>,
+    "rationalization": <angka 0-100>
+  },
+  "riskLevel": "<LOW|MEDIUM|HIGH|CRITICAL>",
+  "summary": "<ringkasan 2-3 kalimat>",
+  "redFlags": ["<red flag 1>", "<red flag 2>", ...],
+  "recommendation": "<rekomendasi aksi>"
+}
+
+PENTING:
+- Jawab HANYA JSON, tanpa markdown atau penjelasan
+- redFlags maksimal 5 item
+- Basis analisis pada inkonsistensi, eufemisme, defensive behavior`;
+
+    const result = await model.generateContent(prompt);
+    let responseText = result.response.text().trim();
+
+    // Clean markdown if present
+    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const analysis = JSON.parse(responseText);
+
+    // Validate structure
+    if (!analysis.scores || !analysis.riskLevel || !analysis.summary) {
+      throw new Error('Invalid analysis structure');
+    }
+
+    return analysis;
+
+  } catch (error) {
+    console.error("[ERROR] Analyze Risk Failed:", error);
+
+    // Fallback: manual scoring
+    const manualScores = calculateManualScores(ftAnswers, sjtAnswers);
+    return {
+      scores: manualScores,
+      riskLevel: determineRiskLevel(manualScores),
+      summary: "Analisis manual berdasarkan skor survei (AI gagal).",
+      redFlags: ["ANALISIS AI GAGAL"],
+      recommendation: "Review manual diperlukan.",
+      isManualFallback: true
+    };
+  }
+});
+
+// Helper functions
+function calculateManualScores(ftAnswers, sjtAnswers) {
+  const ftScores = { pressure: 0, opportunity: 0, rationalization: 0 };
+
+  if (ftAnswers && ftAnswers.length > 0) {
+    ftAnswers.forEach(item => {
+      if (item.response && item.category) {
+        const score = (item.response / 5) * 100;
+        if (ftScores[item.category] !== undefined) {
+          ftScores[item.category] = score;
+        }
+      }
+    });
+  }
+
+  return ftScores;
+}
+
+function determineRiskLevel(scores) {
+  const avg = (scores.pressure + scores.opportunity + scores.rationalization) / 3;
+  if (avg > 75) return 'CRITICAL';
+  if (avg > 50) return 'HIGH';
+  if (avg > 30) return 'MEDIUM';
+  return 'LOW';
+}
+
+// ==========================================
+// EMAIL BLAST ENDPOINT
+// ==========================================
+
+/**
+ * Fungsi: sendCandidateInvites
+ * Deskripsi: Kirim email undangan massal ke kandidat dengan access code
+ */
+exports.sendCandidateInvites = onCall({ region: "europe-west1", maxInstances: 5 }, async (request) => {
+  // Validate SMTP config
+  if (SMTP_CONFIG.pass.includes("xxxx")) {
+    throw new HttpsError('failed-precondition', 'Server belum dikonfigurasi dengan App Password Gmail');
+  }
+
+  const { candidates, companyId, companyName } = request.data;
+
+  if (!candidates || !Array.isArray(candidates) || candidates.length === 0) {
+    throw new HttpsError('invalid-argument', 'Data kandidat tidak valid');
+  }
+
+  if (!companyId || !companyName) {
+    throw new HttpsError('invalid-argument', 'companyId dan companyName wajib diisi');
+  }
+
+  const results = { success: 0, failed: 0, errors: [] };
+
+  for (const candidate of candidates) {
+    try {
+      // Generate unique access code
+      const accessCode = generateAccessCode();
+
+      // Save invite to Firestore
+      const inviteRef = db.collection('assessment_invites').doc();
+      await inviteRef.set({
+        access_code: accessCode,
+        email: candidate.email,
+        name: candidate.name,
+        role: candidate.role || '',
+        companyId: companyId,
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      });
+
+      // Send email
+      const assessmentUrl = `https://your-domain.web.app/assess?code=${accessCode}`;
+
+      const mailOptions = {
+        from: `"${companyName}" <${SMTP_CONFIG.user}>`,
+        to: candidate.email,
+        subject: `Undangan Asesmen Integritas - ${companyName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <div style="background-color: #CC5500; padding: 20px; text-align: center;">
+              <h2 style="color: white; margin: 0;">Asesmen Integritas Kandidat</h2>
+            </div>
+            <div style="padding: 30px;">
+              <p style="color: #333; font-size: 16px;">Halo <strong>${candidate.name}</strong>,</p>
+
+              <p style="color: #555; line-height: 1.6;">
+                Anda telah diundang oleh <strong>${companyName}</strong> untuk mengikuti Asesmen Integritas sebagai bagian dari proses seleksi.
+              </p>
+
+              <div style="background-color: #f9f9f9; border-left: 4px solid #CC5500; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #333;"><strong>Kode Akses Anda:</strong></p>
+                <p style="font-size: 24px; font-weight: bold; color: #CC5500; margin: 10px 0; letter-spacing: 3px; font-family: monospace;">${accessCode}</p>
+              </div>
+
+              <p style="color: #555; line-height: 1.6;">
+                Kode akses ini <strong>hanya dapat digunakan 1 kali</strong> dan bersifat pribadi.
+                Asesmen akan memakan waktu sekitar <strong>15-20 menit</strong>.
+              </p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${assessmentUrl}" style="background-color: #CC5500; color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block;">
+                  Mulai Asesmen
+                </a>
+              </div>
+
+              <p style="font-size: 12px; color: #999; line-height: 1.5;">
+                Jika tombol tidak berfungsi, salin link berikut ke browser Anda:<br>
+                <a href="${assessmentUrl}" style="color: #CC5500;">${assessmentUrl}</a>
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+              <p style="font-size: 11px; color: #999; text-align: center;">
+                Email ini dikirim otomatis oleh sistem FraudGuard SaaS.<br>
+                Mohon jangan membalas email ini.
+              </p>
+            </div>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      results.success++;
+
+      console.log(`[EMAIL] Sent to ${candidate.email} with code ${accessCode}`);
+
+    } catch (error) {
+      console.error(`[ERROR] Failed to send to ${candidate.email}:`, error);
+      results.failed++;
+      results.errors.push({ email: candidate.email, error: error.message });
+    }
+  }
+
+  return results;
+});
+
+// Helper: Generate random 6-character access code
+function generateAccessCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars (I, O, 0, 1)
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}

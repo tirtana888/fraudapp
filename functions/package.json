@@ -16,7 +16,8 @@
     "firebase-admin": "^11.8.0",
     "firebase-functions": "^4.3.1",
     "nodemailer": "^6.9.9",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "@google/generative-ai": "^0.21.0"
   },
   "private": true
 }
