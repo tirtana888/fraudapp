@@ -206,13 +206,15 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
  */
 exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) => {
   const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+  const functions = require("firebase-functions");
 
-  // IMPORTANT: Set your Gemini API key as environment variable
-  // firebase functions:config:set genai.key="YOUR_GEMINI_API_KEY"
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+  // Get API keys from Firebase config
+  // Set with: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"
+  const GEMINI_API_KEY = functions.config().gemini?.key;
+  const OPENAI_API_KEY = functions.config().openai?.key;
 
-  if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-    throw new HttpsError('failed-precondition', 'Gemini API key belum dikonfigurasi di Firebase Functions');
+  if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
+    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
   }
 
   const { role, history, lastUserMessage } = request.data;
@@ -221,26 +223,9 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
     throw new HttpsError('invalid-argument', 'Parameter role, history, dan lastUserMessage wajib diisi.');
   }
 
-  try {
-    console.log(`[AI] Generating response for role: ${role}`);
+  const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-
-    const safetySettings = [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ];
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
-      safetySettings
-    });
-
-    const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\\n');
-
-    const prompt = `Anda adalah AI Interviewer profesional yang sedang melakukan wawancara untuk posisi ${role}.
+  const prompt = `Anda adalah AI Interviewer profesional yang sedang melakukan wawancara untuk posisi ${role}.
 Context percakapan sebelumnya:
 ${context}
 
@@ -250,29 +235,89 @@ Tugas Anda: Berikan follow-up question yang probing, spesifik, dan natural dalam
 Fokus pada menggali lebih dalam tentang integritas, etika kerja, dan pengalaman kandidat.
 PENTING: Response Anda hanya berisi pertanyaan follow-up, tidak ada embel-embel lain.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let aiResponse = response.text();
+  // Try Gemini first
+  if (GEMINI_API_KEY) {
+    try {
+      console.log(`[AI] Trying Gemini for role: ${role}`);
 
-    // Clean up response
-    aiResponse = aiResponse.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-    console.log(`[AI] Response generated successfully`);
+      const safetySettings = [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      ];
 
-    return {
-      success: true,
-      response: aiResponse
-    };
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash-latest",
+        safetySettings
+      });
 
-  } catch (error) {
-    console.error("[ERROR] AI generation failed:", error);
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let aiResponse = response.text();
 
-    // Fallback response
-    return {
-      success: true,
-      response: "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?"
-    };
+      // Clean up response
+      aiResponse = aiResponse.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+
+      console.log(`[AI] Gemini response generated successfully`);
+
+      return {
+        success: true,
+        response: aiResponse
+      };
+
+    } catch (geminiError) {
+      console.warn("[WARN] Gemini failed, trying OpenAI fallback:", geminiError.message);
+    }
   }
+
+  // Fallback to OpenAI
+  if (OPENAI_API_KEY) {
+    try {
+      console.log(`[AI] Trying OpenAI fallback`);
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Anda adalah HR Interviewer profesional yang melakukan wawancara dalam Bahasa Indonesia." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        const aiResponse = data.choices[0].message.content.trim();
+        console.log(`[AI] OpenAI response generated successfully`);
+
+        return {
+          success: true,
+          response: aiResponse
+        };
+      }
+
+    } catch (openaiError) {
+      console.error("[ERROR] OpenAI also failed:", openaiError);
+    }
+  }
+
+  // Final fallback - static response
+  console.log("[AI] All AI providers failed, using static fallback");
+  return {
+    success: true,
+    response: "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?"
+  };
 });
 
 /**
@@ -283,11 +328,14 @@ PENTING: Response Anda hanya berisi pertanyaan follow-up, tidak ada embel-embel 
  */
 exports.analyzeFraudRisk = onCall({ region: "europe-west1" }, async (request) => {
   const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+  const functions = require("firebase-functions");
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+  // Get API keys from Firebase config
+  const GEMINI_API_KEY = functions.config().gemini?.key;
+  const OPENAI_API_KEY = functions.config().openai?.key;
 
-  if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-    throw new HttpsError('failed-precondition', 'Gemini API key belum dikonfigurasi');
+  if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
+    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
   }
 
   const { role, history, structuredAssessment, sjtResults } = request.data;
@@ -296,28 +344,16 @@ exports.analyzeFraudRisk = onCall({ region: "europe-west1" }, async (request) =>
     throw new HttpsError('invalid-argument', 'Parameter role, history, dan structuredAssessment wajib diisi.');
   }
 
-  try {
-    console.log(`[ANALYSIS] Starting fraud risk analysis for role: ${role}`);
+  const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+  const assessmentSummary = structuredAssessment.map(item =>
+    `[${item.category.toUpperCase()}] "${item.question}" -> Skor: ${item.response}`
+  ).join('\n');
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const sjtSummary = (sjtResults || []).map(item =>
+    `[SJT] Scen: "${item.scenario.substring(0,30)}..." -> Pilih: "${(item.options[item.selectedOptionIndex || 0] || {}).label}"`
+  ).join('\n');
 
-    const safetySettings = [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ];
-
-    const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\\n');
-    const assessmentSummary = structuredAssessment.map(item =>
-      `[${item.category.toUpperCase()}] "${item.question}" -> Skor: ${item.response}`
-    ).join('\\n');
-
-    const sjtSummary = (sjtResults || []).map(item =>
-      `[SJT] Scen: "${item.scenario.substring(0,30)}..." -> Pilih: "${(item.options[item.selectedOptionIndex || 0] || {}).label}"`
-    ).join('\\n');
-
-    const prompt = `SYSTEM: You are a Senior Fraud Analyst. Your response must be a valid JSON object only, without any markdown wrappers.
+  const prompt = `SYSTEM: You are a Senior Fraud Analyst. Your response must be a valid JSON object only, without any markdown wrappers.
 USER: Analyze the following data for candidate: ${role}.
 SURVEY DATA:
 ${assessmentSummary}
@@ -337,41 +373,99 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
 - "sentimentBreakdown" (object with positive, neutral, negative percentages summing to 100)
 - "benchmarkComparison" (object with candidateAvg, companyAvg 45-55, industryAvg 40-50 as baseline scores)`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
+  // Try Gemini first
+  if (GEMINI_API_KEY) {
+    try {
+      console.log(`[ANALYSIS] Trying Gemini for fraud analysis`);
 
-    // Clean and parse JSON
-    text = text.replace(/^```json\\s*/, "").replace(/\\s*```$/, "").trim();
-    const analysis = JSON.parse(text);
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-    console.log(`[ANALYSIS] Fraud risk analysis completed successfully`);
+      const safetySettings = [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      ];
 
-    return {
-      success: true,
-      analysis: analysis
-    };
+      const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
 
-  } catch (error) {
-    console.error("[ERROR] Analysis failed:", error);
+      // Clean and parse JSON
+      text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+      const analysis = JSON.parse(text);
 
-    // Fallback manual analysis
-    const scores = { pressure: 50, opportunity: 50, rationalization: 50 };
+      console.log(`[ANALYSIS] Gemini analysis completed successfully`);
 
-    return {
-      success: true,
-      analysis: {
-        scores: scores,
-        riskLevel: "Medium",
-        summary: "Analisis AI mengalami gangguan. Skor dihitung dari kuesioner. Mohon review manual transkrip.",
-        redFlags: ["Analisis AI tidak tersedia - perlu review manual"],
-        recommendation: "Lakukan review manual lengkap terhadap transkrip dan jawaban kandidat.",
-        consistencyScore: 0,
-        euphemismScore: 0,
-        sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
-        benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
-      }
-    };
+      return {
+        success: true,
+        analysis: analysis
+      };
+
+    } catch (geminiError) {
+      console.warn("[WARN] Gemini analysis failed, trying OpenAI fallback:", geminiError.message);
+    }
   }
+
+  // Fallback to OpenAI
+  if (OPENAI_API_KEY) {
+    try {
+      console.log(`[ANALYSIS] Trying OpenAI fallback for analysis`);
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are a Senior Fraud Analyst. Respond with valid JSON only." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 1000,
+          temperature: 0.5
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        let text = data.choices[0].message.content.trim();
+        text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+        const analysis = JSON.parse(text);
+
+        console.log(`[ANALYSIS] OpenAI analysis completed successfully`);
+
+        return {
+          success: true,
+          analysis: analysis
+        };
+      }
+
+    } catch (openaiError) {
+      console.error("[ERROR] OpenAI analysis also failed:", openaiError);
+    }
+  }
+
+  // Final fallback - manual calculation
+  console.log("[ANALYSIS] All AI providers failed, using manual calculation");
+  const scores = { pressure: 50, opportunity: 50, rationalization: 50 };
+
+  return {
+    success: true,
+    analysis: {
+      scores: scores,
+      riskLevel: "Medium",
+      summary: "Analisis AI mengalami gangguan. Skor dihitung dari kuesioner. Mohon review manual transkrip.",
+      redFlags: ["Analisis AI tidak tersedia - perlu review manual"],
+      recommendation: "Lakukan review manual lengkap terhadap transkrip dan jawaban kandidat.",
+      consistencyScore: 0,
+      euphemismScore: 0,
+      sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
+      benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
+    }
+  };
 });
