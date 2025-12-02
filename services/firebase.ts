@@ -34,9 +34,11 @@ const sendEmailViaCloudFunction = async (
 ): Promise<boolean> => {
   try {
     if (!functions) {
-      console.warn("Firebase Functions belum diinisialisasi - Email akan di-skip");
-      return true; // Return true agar flow tetap jalan (dev mode)
+      console.error("Firebase Functions not initialized");
+      throw new Error("Layanan email tidak tersedia. Pastikan Firebase Functions sudah di-deploy.");
     }
+
+    console.log(`Sending ${type} email to ${to_email}...`);
 
     // Panggil Firebase Cloud Function
     const sendEmail = httpsCallable(functions, "sendEmailViaEmailJS");
@@ -53,11 +55,20 @@ const sendEmailViaCloudFunction = async (
       throw new Error(response.message || "Gagal mengirim email");
     }
 
+    console.log(`Email sent successfully to ${to_email}`);
     return true;
   } catch (error: any) {
     console.error("Error sending email via Firebase Function:", error);
-    console.warn("Email gagal dikirim, namun data tetap tersimpan di database");
-    return true; // Return true agar data tetap tersimpan meskipun email gagal
+
+    // Log detailed error for debugging
+    if (error.code) {
+      console.error("Firebase Error Code:", error.code);
+    }
+    if (error.message) {
+      console.error("Error Message:", error.message);
+    }
+
+    throw new Error(`Email gagal dikirim: ${error.message || 'Unknown error'}`);
   }
 };
 

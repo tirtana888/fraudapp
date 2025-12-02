@@ -127,10 +127,10 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
 
         if (result.success > 0) {
             setBlastStatus('success');
-            setStatusMessage(`✅ ${result.success} kandidat berhasil ditambahkan! ${result.failed > 0 ? `⚠️ ${result.failed} gagal. ` : ''}Kode akses tersimpan di database.`);
+            setStatusMessage(`✅ ${result.success} email undangan berhasil dikirim! ${result.failed > 0 ? `❌ ${result.failed} gagal dikirim.` : ''}`);
             setCandidates([{ name: '', email: '', role: '' }]);
         } else {
-            throw new Error(`Gagal menambahkan kandidat. ${result.failed} gagal. Periksa koneksi internet Anda.`);
+            throw new Error(`Gagal mengirim undangan. ${result.failed} kandidat gagal. Periksa konfigurasi Firebase Functions.`);
         }
     } catch (error: any) {
         console.error("Blast sending failed:", error);

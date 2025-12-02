@@ -44,9 +44,44 @@
     npm run dev
     ```
 
-## 🚢 Deployment
+## 🚢 Production Deployment
 
-Aplikasi ini dikonfigurasi untuk siap deploy ke **Google Cloud Run** atau **Firebase Hosting**.
+### Quick Deploy (5 Minutes)
+```bash
+./deploy.sh all
+```
+
+### Manual Deploy
+```bash
+# Deploy Functions
+cd functions && npm install && cd ..
+firebase deploy --only functions
+
+# Deploy Hosting
+npm run build
+firebase deploy --only hosting
+```
+
+### Requirements
+- Firebase Blaze Plan (for Cloud Functions)
+- EmailJS Account (for email service)
+- Node.js 18+
+
+**📖 Full deployment guide**: See `QUICK_START.md` and `PRODUCTION_DEPLOYMENT.md`
+
+### Pre-Deployment Checklist
+- [ ] Firebase Blaze Plan activated
+- [ ] EmailJS account configured
+- [ ] Functions dependencies installed (`cd functions && npm install`)
+- [ ] Test locally first (`npm run dev`)
+- [ ] Build successful (`npm run build`)
+
+### Post-Deployment Verification
+- [ ] Functions deployed: `firebase functions:list`
+- [ ] Test email sending with real email
+- [ ] Check function logs: `firebase functions:log`
+- [ ] Monitor EmailJS quota
+- [ ] Test candidate login flow
 
 **Build untuk Production:**
 ```bash
