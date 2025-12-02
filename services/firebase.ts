@@ -22,7 +22,7 @@ export const COLLECTIONS = {
   INVITES: 'assessment_invites'
 };
 
-let db: Firestore;
+export let db: Firestore;
 let functions: any;
 
 // Helper function untuk kirim email via Firebase Cloud Function

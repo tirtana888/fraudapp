@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings } from 'lucide-react';
+import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings, Upload } from 'lucide-react';
 import { CompanyProfile } from '../types';
 import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
+import BulkUploadCandidates from './BulkUploadCandidates';
 
 const AdminDashboard: React.FC = () => {
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -12,6 +13,10 @@ const AdminDashboard: React.FC = () => {
   // Invite Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Bulk Upload Modal State
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [selectedCompanyForBulk, setSelectedCompanyForBulk] = useState<string>('');
   
   // Subscription Management Modal State
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -295,20 +300,32 @@ const AdminDashboard: React.FC = () => {
                     {/* DROPDOWN MENU */}
                     {activeMenuId === company.id && (
                         <div className="absolute right-8 top-8 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100 text-left">
-                            <button 
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCompanyForBulk(company.id);
+                                    setIsBulkUploadOpen(true);
+                                    setActiveMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-2 font-medium"
+                            >
+                                <Upload size={14} /> Upload Bulk Kandidat
+                            </button>
+                            <div className="border-b border-gray-100 dark:border-slate-700 my-1"></div>
+                            <button
                                 onClick={(e) => { e.stopPropagation(); handleManageClick(company); }}
                                 className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
                             >
                                 <Settings size={14} /> Kelola Langganan
                             </button>
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); handleResendEmail(company.id); }}
                                 className="w-full text-left px-4 py-3 text-sm text-brand-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
                             >
                                 <Send size={14} /> Kirim Ulang Akses
                             </button>
                             <div className="border-b border-gray-100 dark:border-slate-700 my-1"></div>
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteClick(company.id); }}
                                 className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                             >
@@ -434,6 +451,20 @@ const AdminDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {isBulkUploadOpen && selectedCompanyForBulk && (
+        <BulkUploadCandidates
+          companyId={selectedCompanyForBulk}
+          onClose={() => {
+            setIsBulkUploadOpen(false);
+            setSelectedCompanyForBulk('');
+          }}
+          onSuccess={() => {
+            fetchCompanies();
+          }}
+        />
       )}
 
       {/* Invite Modal (Existing) */}
