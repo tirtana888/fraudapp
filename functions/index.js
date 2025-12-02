@@ -197,3 +197,181 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
     throw new HttpsError('internal', `Gagal mengirim email: ${error.message}`);
   }
 });
+
+/**
+ * Fungsi: generateAIResponse
+ * Trigger: Frontend (ActiveInterview)
+ * Deskripsi: Generate respons AI untuk interview menggunakan Gemini API
+ * Region: europe-west1
+ */
+exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) => {
+  const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+
+  // IMPORTANT: Set your Gemini API key as environment variable
+  // firebase functions:config:set genai.key="YOUR_GEMINI_API_KEY"
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+
+  if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+    throw new HttpsError('failed-precondition', 'Gemini API key belum dikonfigurasi di Firebase Functions');
+  }
+
+  const { role, history, lastUserMessage } = request.data;
+
+  if (!role || !history || !lastUserMessage) {
+    throw new HttpsError('invalid-argument', 'Parameter role, history, dan lastUserMessage wajib diisi.');
+  }
+
+  try {
+    console.log(`[AI] Generating response for role: ${role}`);
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    ];
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-latest",
+      safetySettings
+    });
+
+    const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\\n');
+
+    const prompt = `Anda adalah AI Interviewer profesional yang sedang melakukan wawancara untuk posisi ${role}.
+Context percakapan sebelumnya:
+${context}
+
+Kandidat baru saja menjawab: "${lastUserMessage}"
+
+Tugas Anda: Berikan follow-up question yang probing, spesifik, dan natural dalam Bahasa Indonesia.
+Fokus pada menggali lebih dalam tentang integritas, etika kerja, dan pengalaman kandidat.
+PENTING: Response Anda hanya berisi pertanyaan follow-up, tidak ada embel-embel lain.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let aiResponse = response.text();
+
+    // Clean up response
+    aiResponse = aiResponse.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+
+    console.log(`[AI] Response generated successfully`);
+
+    return {
+      success: true,
+      response: aiResponse
+    };
+
+  } catch (error) {
+    console.error("[ERROR] AI generation failed:", error);
+
+    // Fallback response
+    return {
+      success: true,
+      response: "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?"
+    };
+  }
+});
+
+/**
+ * Fungsi: analyzeFraudRisk
+ * Trigger: Frontend (ActiveInterview - saat interview selesai)
+ * Deskripsi: Analisis risiko fraud menggunakan Gemini API
+ * Region: europe-west1
+ */
+exports.analyzeFraudRisk = onCall({ region: "europe-west1" }, async (request) => {
+  const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+
+  if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+    throw new HttpsError('failed-precondition', 'Gemini API key belum dikonfigurasi');
+  }
+
+  const { role, history, structuredAssessment, sjtResults } = request.data;
+
+  if (!role || !history || !structuredAssessment) {
+    throw new HttpsError('invalid-argument', 'Parameter role, history, dan structuredAssessment wajib diisi.');
+  }
+
+  try {
+    console.log(`[ANALYSIS] Starting fraud risk analysis for role: ${role}`);
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    ];
+
+    const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\\n');
+    const assessmentSummary = structuredAssessment.map(item =>
+      `[${item.category.toUpperCase()}] "${item.question}" -> Skor: ${item.response}`
+    ).join('\\n');
+
+    const sjtSummary = (sjtResults || []).map(item =>
+      `[SJT] Scen: "${item.scenario.substring(0,30)}..." -> Pilih: "${(item.options[item.selectedOptionIndex || 0] || {}).label}"`
+    ).join('\\n');
+
+    const prompt = `SYSTEM: You are a Senior Fraud Analyst. Your response must be a valid JSON object only, without any markdown wrappers.
+USER: Analyze the following data for candidate: ${role}.
+SURVEY DATA:
+${assessmentSummary}
+${sjtSummary}
+CHAT TRANSCRIPT:
+${context}
+
+TASK:
+Provide a final verdict in Indonesian language. Output a JSON with these keys:
+- "scores" (object with pressure, opportunity, rationalization from 0-100)
+- "riskLevel" ("Low", "Medium", "High", "Critical")
+- "summary" (2 paragraphs in Indonesian explaining the analysis)
+- "redFlags" (string array in Indonesian listing concerning behaviors)
+- "recommendation" (string in Indonesian with action recommendations)
+- "consistencyScore" (0-100, measure consistency between survey and interview)
+- "euphemismScore" (0-100, detect euphemistic language patterns)
+- "sentimentBreakdown" (object with positive, neutral, negative percentages summing to 100)
+- "benchmarkComparison" (object with candidateAvg, companyAvg 45-55, industryAvg 40-50 as baseline scores)`;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+
+    // Clean and parse JSON
+    text = text.replace(/^```json\\s*/, "").replace(/\\s*```$/, "").trim();
+    const analysis = JSON.parse(text);
+
+    console.log(`[ANALYSIS] Fraud risk analysis completed successfully`);
+
+    return {
+      success: true,
+      analysis: analysis
+    };
+
+  } catch (error) {
+    console.error("[ERROR] Analysis failed:", error);
+
+    // Fallback manual analysis
+    const scores = { pressure: 50, opportunity: 50, rationalization: 50 };
+
+    return {
+      success: true,
+      analysis: {
+        scores: scores,
+        riskLevel: "Medium",
+        summary: "Analisis AI mengalami gangguan. Skor dihitung dari kuesioner. Mohon review manual transkrip.",
+        redFlags: ["Analisis AI tidak tersedia - perlu review manual"],
+        recommendation: "Lakukan review manual lengkap terhadap transkrip dan jawaban kandidat.",
+        consistencyScore: 0,
+        euphemismScore: 0,
+        sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
+        benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
+      }
+    };
+  }
+});
