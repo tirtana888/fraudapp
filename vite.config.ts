@@ -10,6 +10,17 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
       'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),
     },
+    optimizeDeps: {
+      include: [
+        '@supabase/supabase-js',
+        '@supabase/postgrest-js',
+        '@supabase/realtime-js',
+        '@supabase/storage-js',
+        '@supabase/functions-js',
+        '@supabase/auth-js'
+      ],
+      force: true
+    },
     server: {
       host: '0.0.0.0',
       port: 8080,
