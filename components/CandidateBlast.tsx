@@ -127,10 +127,10 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
 
         if (result.success > 0) {
             setBlastStatus('success');
-            setStatusMessage(`${result.success} undangan berhasil dikirim. ${result.failed > 0 ? `${result.failed} gagal.` : ''}`);
+            setStatusMessage(`✅ ${result.success} kandidat berhasil ditambahkan! ${result.failed > 0 ? `⚠️ ${result.failed} gagal. ` : ''}Kode akses tersimpan di database.`);
             setCandidates([{ name: '', email: '', role: '' }]);
         } else {
-            throw new Error(`Gagal mengirim semua undangan. Kemungkinan ada masalah dengan layanan email. (${result.failed} gagal)`);
+            throw new Error(`Gagal menambahkan kandidat. ${result.failed} gagal. Periksa koneksi internet Anda.`);
         }
     } catch (error: any) {
         console.error("Blast sending failed:", error);
