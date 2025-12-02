@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown } from 'lucide-react';
+import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown, Upload } from 'lucide-react';
 import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
+import BulkUploadCandidates from './BulkUploadCandidates';
 
 interface CandidateBlastProps {
   currentCompany: CompanyProfile;
@@ -19,11 +20,12 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
     { name: '', email: '', role: '' }
   ]);
   const [invites, setInvites] = useState<AssessmentInvite[]>([]);
-  
+
   // UI States
   const [isSending, setIsSending] = useState(false);
   const [blastStatus, setBlastStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     if (currentCompany?.id) {
@@ -113,6 +115,13 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                 Kirim link asesmen dengan Kode Akses unik yang aman untuk setiap kandidat.
             </p>
         </div>
+        <button
+            onClick={() => setIsBulkUploadOpen(true)}
+            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2 hover:scale-105"
+        >
+            <Upload size={20} />
+            Upload Bulk Excel/CSV
+        </button>
       </div>
 
       {/* INPUT FORM */}
@@ -268,6 +277,17 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
               </table>
           </div>
       </div>
+
+      {/* Bulk Upload Modal */}
+      {isBulkUploadOpen && (
+        <BulkUploadCandidates
+          companyId={currentCompany.id}
+          onClose={() => setIsBulkUploadOpen(false)}
+          onSuccess={() => {
+            setIsBulkUploadOpen(false);
+          }}
+        />
+      )}
 
     </div>
   );
