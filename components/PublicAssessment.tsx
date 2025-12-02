@@ -86,8 +86,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       try {
           const invite = await verifyAccessCode(accessCode);
           if (invite) {
-              // MARK CODE AS USED IMMEDIATELY AFTER VERIFICATION
-              await markAccessCodeUsed(accessCode);
+              // MARK CODE AS ACCESSING IMMEDIATELY AFTER VERIFICATION
+              await markAccessCodeUsed(accessCode, 'ACCESSING');
 
               setInviteData(invite);
               setCandidateName(invite.name);
@@ -139,7 +139,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
   const handleStartChat = async () => {
       setStep('loading');
-      
+
       const initialHistory: Array<{ speaker: 'ai' | 'candidate'; text: string }> = [
           { speaker: 'ai', text: `Halo ${candidateName}. Profil Anda sedang kami proses. Saya ingin mengklarifikasi beberapa poin dari survei Anda. Kita punya waktu 10 menit. Bisa kita mulai?` }
       ];
@@ -158,7 +158,12 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
       const realSessionId = await saveSessionToDB(sessionData);
       setSessionId(realSessionId);
-      
+
+      // Update invite status to IN_PROGRESS
+      if (inviteData?.access_code) {
+          await markAccessCodeUsed(inviteData.access_code, 'IN_PROGRESS', realSessionId);
+      }
+
       setChatHistory(initialHistory);
       setTimeLeft(CHAT_TIME_LIMIT_SECONDS);
       setStep('chat');
@@ -223,6 +228,11 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         transcript: chatHistory,
         source: 'public_link'
       });
+
+      // Update invite status to COMPLETED
+      if (inviteData?.access_code) {
+          await markAccessCodeUsed(inviteData.access_code, 'COMPLETED', sessionId);
+      }
 
       setStep('done');
     } catch (dbError) {

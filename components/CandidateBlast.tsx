@@ -239,12 +239,22 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                                   {new Date(inv.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute:'2-digit'})}
                               </td>
                               <td className="p-4">
-                                  <span className={`px-2 py-1 rounded text-xs font-bold border ${
-                                      inv.status === 'USED' 
-                                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400' 
+                                  <span className={`px-2 py-1 rounded text-xs font-bold border whitespace-nowrap ${
+                                      inv.status === 'COMPLETED'
+                                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
+                                      : inv.status === 'IN_PROGRESS'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
+                                      : inv.status === 'ACCESSING'
+                                      ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
+                                      : inv.status === 'EXPIRED'
+                                      ? 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400'
                                       : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400'
                                   }`}>
-                                      {inv.status === 'USED' ? 'Sudah Tes' : 'Pending'}
+                                      {inv.status === 'COMPLETED' ? '✓ Selesai'
+                                       : inv.status === 'IN_PROGRESS' ? '⏳ Sedang Interview'
+                                       : inv.status === 'ACCESSING' ? '👀 Sedang Mengakses'
+                                       : inv.status === 'EXPIRED' ? '❌ Kadaluarsa'
+                                       : '⏱️ Menunggu Kandidat'}
                                   </span>
                               </td>
                           </tr>
