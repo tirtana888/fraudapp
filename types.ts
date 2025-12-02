@@ -115,9 +115,12 @@ export interface AssessmentInvite {
   name: string;
   role?: string;
   companyId: string;
-  status: 'PENDING' | 'USED';
+  status: 'PENDING' | 'ACCESSING' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
   createdAt: string;
-  usedAt?: string;
+  accessedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  sessionId?: string;
 }
 
 export interface TimelineEvent {

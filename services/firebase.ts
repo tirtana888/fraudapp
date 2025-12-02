@@ -556,22 +556,34 @@ export const verifyAccessCode = async (code: string): Promise<AssessmentInvite |
   }
 };
 
-export const markAccessCodeUsed = async (code: string) => {
+export const markAccessCodeUsed = async (code: string, status: 'ACCESSING' | 'IN_PROGRESS' | 'COMPLETED' = 'ACCESSING', sessionId?: string) => {
   if (!db) return;
-  
+
   try {
     const q = query(
-      collection(db, COLLECTIONS.INVITES), 
+      collection(db, COLLECTIONS.INVITES),
       where("access_code", "==", code.toUpperCase().trim())
     );
     const snapshot = await getDocs(q);
-    
+
     if (!snapshot.empty) {
       const docRef = snapshot.docs[0].ref;
-      await updateDoc(docRef, { status: 'USED', usedAt: new Date().toISOString() });
+      const updateData: any = { status };
+
+      if (status === 'ACCESSING') {
+        updateData.accessedAt = new Date().toISOString();
+      } else if (status === 'IN_PROGRESS') {
+        updateData.startedAt = new Date().toISOString();
+        if (sessionId) updateData.sessionId = sessionId;
+      } else if (status === 'COMPLETED') {
+        updateData.completedAt = new Date().toISOString();
+        if (sessionId) updateData.sessionId = sessionId;
+      }
+
+      await updateDoc(docRef, updateData);
     }
   } catch (e) {
-    console.error("Failed to mark code used:", e);
+    console.error("Failed to update access code status:", e);
   }
 };
 
