@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/firebase';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/supabase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -145,14 +145,17 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       ];
 
       const sessionData = {
-          candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
+          company_id: companyId || 'unknown',
+          candidate_id: Date.now().toString(),
+          candidate_name: candidateName,
+          candidate_email: candidateEmail,
+          candidate_role: candidateRole,
           date: new Date().toISOString(),
-          status: 'active',
-          structuredAssessment: ftAnswers,
-          financialStrainResults: finAnswers,
-          sjtResults: sjtAnswers,
+          status: 'active' as const,
+          structured_assessment: ftAnswers,
+          financial_strain_results: finAnswers,
+          sjt_results: sjtAnswers,
           transcript: initialHistory,
-          companyId: companyId || 'unknown',
           source: 'public_link'
       };
 

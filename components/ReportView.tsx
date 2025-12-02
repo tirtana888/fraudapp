@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile } from '../types';
-import { getCompanyById } from '../services/firebase';
+import { getCompanyById } from '../services/supabase';
 
 interface ReportViewProps {
   session: InterviewSession;

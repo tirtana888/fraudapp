@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, ShieldAlert, Eye, EyeOff, KeyRound, ArrowLeft, Send } from 'lucide-react';
 import { UserProfile } from '../types';
-import { loginWithFirestore, resetUserPassword } from '../services/firebase';
+import { signIn, resetUserPassword } from '../services/supabase';
 
 interface LoginPageProps {
   onLogin: (user: UserProfile) => void;
@@ -29,7 +29,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      const user = await loginWithFirestore(email, password);
+      const user = await signIn(email, password);
       if (user) {
         onLogin(user);
       }

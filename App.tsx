@@ -13,7 +13,11 @@ import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidateBlast from './components/CandidateBlast';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
-import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
+import { subscribeToSessions, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/supabase';
+
+const resetConnectionState = () => {
+  console.log('Connection reset');
+};
 
 const App: React.FC = () => {
   // Auth State

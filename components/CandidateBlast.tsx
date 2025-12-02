@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
+import { blastAssessmentInvites, subscribeToInvites } from '../services/supabase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 
