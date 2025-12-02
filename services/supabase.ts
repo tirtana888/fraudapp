@@ -387,12 +387,12 @@ export const subscribeToInvites = (
 export const seedRealDatabase = async () => {
   console.log('[Supabase] Checking for initial seed data...');
 
-  const { data: existingCompanies } = await supabase
-    .from(COLLECTIONS.COMPANIES)
+  const { data: existingUsers } = await supabase
+    .from(COLLECTIONS.USERS)
     .select('id')
     .limit(1);
 
-  if (existingCompanies && existingCompanies.length > 0) {
+  if (existingUsers && existingUsers.length > 0) {
     console.log('[Supabase] Database already seeded');
     return;
   }
@@ -400,68 +400,62 @@ export const seedRealDatabase = async () => {
   console.log('[Supabase] Seeding initial data...');
 
   try {
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
     const { data: systemCompany } = await supabase
       .from(COLLECTIONS.COMPANIES)
-      .insert({
-        id: 'c83e87d5-8f90-4c5a-9d3b-1a2b3c4d5e6f',
-        name: 'System Admin',
-        tier: 'Enterprise',
-        status: 'Active',
-        admin_email: 'admin@fraudguard.id',
-        joined_date: new Date().toISOString(),
-        subscription_ends_at: new Date(2099, 11, 31).toISOString(),
-        custom_candidate_limit: 999999,
-        verification_credits: 999999,
-        users_count: 1,
-        brand_color: '#1e293b'
-      })
-      .select()
-      .single();
+      .select('*')
+      .eq('admin_email', 'admin@fraudguard.id')
+      .maybeSingle();
 
     if (systemCompany) {
-      await signUp(
-        'admin@fraudguard.id',
-        'admin123',
-        {
-          name: 'Super Admin',
-          role: 'System Admin',
-          company_id: systemCompany.id,
-          avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
+      console.log('[Supabase] System company found, creating admin user...');
+      try {
+        await signUp(
+          'admin@fraudguard.id',
+          'admin123',
+          {
+            name: 'Super Admin',
+            role: 'System Admin',
+            company_id: systemCompany.id,
+            avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
+          }
+        );
+        console.log('[Supabase] Admin user created');
+      } catch (e: any) {
+        if (e.message?.includes('already registered')) {
+          console.log('[Supabase] Admin user already exists');
+        } else {
+          throw e;
         }
-      );
+      }
     }
 
     const { data: demoCompany } = await supabase
       .from(COLLECTIONS.COMPANIES)
-      .insert({
-        name: 'PT Maju Bersama',
-        tier: 'Enterprise',
-        status: 'Active',
-        admin_email: 'enterprise@fraudguard.id',
-        joined_date: new Date().toISOString(),
-        subscription_ends_at: oneYearFromNow.toISOString(),
-        custom_candidate_limit: 0,
-        verification_credits: 100,
-        users_count: 1,
-        brand_color: '#CC5500'
-      })
-      .select()
-      .single();
+      .select('*')
+      .eq('admin_email', 'enterprise@fraudguard.id')
+      .maybeSingle();
 
     if (demoCompany) {
-      await signUp(
-        'enterprise@fraudguard.id',
-        'password123',
-        {
-          name: 'Budi Santoso',
-          role: 'Company Admin',
-          company_id: demoCompany.id,
-          avatar: 'https://ui-avatars.com/api/?background=CC5500&color=fff&name=Budi+Santoso'
+      console.log('[Supabase] Demo company found, creating enterprise user...');
+      try {
+        await signUp(
+          'enterprise@fraudguard.id',
+          'password123',
+          {
+            name: 'Budi Santoso',
+            role: 'Company Admin',
+            company_id: demoCompany.id,
+            avatar: 'https://ui-avatars.com/api/?background=CC5500&color=fff&name=Budi+Santoso'
+          }
+        );
+        console.log('[Supabase] Enterprise user created');
+      } catch (e: any) {
+        if (e.message?.includes('already registered')) {
+          console.log('[Supabase] Enterprise user already exists');
+        } else {
+          throw e;
         }
-      );
+      }
     }
 
     console.log('[Supabase] Database seeded successfully');
