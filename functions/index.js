@@ -7,6 +7,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getFirestore } = require("firebase-admin/firestore");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
+const https = require("https");
 
 admin.initializeApp();
 const db = getFirestore();
@@ -17,6 +18,14 @@ const db = getFirestore();
 const SMTP_CONFIG = {
   user: "email.anda@gmail.com",      // GANTI DENGAN EMAIL GMAIL ASLI ANDA
   pass: "xxxx xxxx xxxx xxxx"        // GANTI DENGAN APP PASSWORD (16 digit)
+};
+
+// KONFIGURASI EMAILJS (AMAN DI SERVER-SIDE)
+const EMAILJS_CONFIG = {
+  publicKey: "bclRHuJQwKQIOljiq",
+  serviceId: "service_8o2nl6d",
+  templateBusiness: "template_gfg2qr4",
+  templateCandidate: "template_dvgrjda"
 };
 // ==========================================
 
@@ -124,5 +133,67 @@ exports.inviteCompany = onCall({ region: "europe-west1" }, async (request) => {
     console.error("[ERROR] Invite Failed:", error);
     // Lempar error agar frontend tahu kalau gagal
     throw new HttpsError('internal', `Gagal memproses undangan: ${error.message}`);
+  }
+});
+
+/**
+ * Fungsi: sendEmailViaEmailJS
+ * Trigger: Frontend (semua fitur yang butuh email)
+ * Deskripsi: Mengirim email via EmailJS API secara aman dari server-side
+ * Region: europe-west1 (Sesuai dengan frontend)
+ */
+exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request) => {
+  const { type, to_email, to_name, data } = request.data;
+
+  // Validasi Input
+  if (!type || !to_email || !to_name) {
+    throw new HttpsError('invalid-argument', 'Parameter type, to_email, dan to_name wajib diisi.');
+  }
+
+  try {
+    console.log(`[EMAIL] Sending ${type} email to ${to_email}`);
+
+    // Pilih template berdasarkan type
+    let templateId = EMAILJS_CONFIG.templateBusiness;
+    if (type === "candidate") {
+      templateId = EMAILJS_CONFIG.templateCandidate;
+    }
+
+    // Prepare EmailJS payload
+    const emailPayload = {
+      service_id: EMAILJS_CONFIG.serviceId,
+      template_id: templateId,
+      user_id: EMAILJS_CONFIG.publicKey,
+      template_params: {
+        to_email: to_email,
+        to_name: to_name,
+        ...data
+      }
+    };
+
+    // Kirim via EmailJS REST API
+    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(emailPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`EmailJS API Error: ${errorText}`);
+    }
+
+    console.log(`[EMAIL] Successfully sent to ${to_email}`);
+
+    return {
+      success: true,
+      message: "Email berhasil dikirim"
+    };
+
+  } catch (error) {
+    console.error("[ERROR] Email sending failed:", error);
+    throw new HttpsError('internal', `Gagal mengirim email: ${error.message}`);
   }
 });

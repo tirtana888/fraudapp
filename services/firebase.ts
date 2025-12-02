@@ -1,6 +1,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc, limit } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { CompanyProfile, UserProfile, AssessmentInvite } from "../types";
 
 // --- KONFIGURASI FIREBASE REAL (PRODUCTION) ---
@@ -21,22 +22,51 @@ export const COLLECTIONS = {
   INVITES: 'assessment_invites'
 };
 
-// --- EMAILJS CONFIGURATION ---
-const EMAILJS_SERVICE_ID = "service_8o2nl6d";
-const EMAILJS_TEMPLATE_BUSINESS = "template_gfg2qr4"; // For Business Invite & Password Reset
-const EMAILJS_TEMPLATE_CANDIDATE = "template_dvgrjda"; // For Candidate Assessment Invite
-
 let db: Firestore;
+let functions: any;
 
-// Declare EmailJS globally
-declare const emailjs: any;
+// Helper function untuk kirim email via Firebase Cloud Function
+const sendEmailViaCloudFunction = async (
+  type: "business" | "candidate" | "reset",
+  to_email: string,
+  to_name: string,
+  data: Record<string, any>
+): Promise<boolean> => {
+  try {
+    if (!functions) {
+      console.error("Firebase Functions belum diinisialisasi");
+      return false;
+    }
+
+    // Panggil Firebase Cloud Function
+    const sendEmail = httpsCallable(functions, "sendEmailViaEmailJS");
+    const result = await sendEmail({
+      type,
+      to_email,
+      to_name,
+      data,
+    });
+
+    const response = result.data as { success: boolean; message?: string };
+
+    if (!response.success) {
+      throw new Error(response.message || "Gagal mengirim email");
+    }
+
+    return true;
+  } catch (error: any) {
+    console.error("Error sending email via Firebase Function:", error);
+    return false;
+  }
+};
 
 try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  console.log("[FraudGuard System] Connected to Real Cloud Firestore (Blaze Plan Active).");
+  functions = getFunctions(app, "europe-west1"); // Set region sesuai dengan Cloud Function
+  console.log("[FraudGuard System] Connected to Firebase (Firestore + Functions).");
 } catch (error) {
-  console.error("CRITICAL: Gagal menghubungkan ke Firebase Real.", error);
+  console.error("CRITICAL: Gagal menghubungkan ke Firebase.", error);
 }
 
 // --- REAL AUTHENTICATION SERVICE ---
@@ -97,17 +127,22 @@ export const resetUserPassword = async (email: string) => {
             password: tempPassword
         });
 
-        // Send Email via EmailJS
-        const templateParams = {
-            to_email: cleanEmail,
-            to_name: userData.name,
-            password: tempPassword,
-            login_url: window.location.origin,
-            tier: "Reset Request",
-            message: `Permintaan reset password Anda berhasil. Gunakan password sementara di atas untuk login.`
-        };
+        // Send Email via Firebase Cloud Function
+        const emailSent = await sendEmailViaCloudFunction(
+            "reset",
+            cleanEmail,
+            userData.name,
+            {
+                password: tempPassword,
+                login_url: window.location.origin,
+                tier: "Reset Request",
+                message: `Permintaan reset password Anda berhasil. Gunakan password sementara di atas untuk login.`
+            }
+        );
 
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
+        if (!emailSent) {
+            throw new Error("Gagal mengirim email. Silakan coba lagi.");
+        }
         
         return { success: true, message: `Password baru telah dikirim ke ${cleanEmail}.` };
 
@@ -316,23 +351,32 @@ export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>)
         });
 
         try {
-            const templateParams = {
-                to_email: companyData.adminEmail,
-                to_name: companyData.name,
-                password: generatedPassword,
-                login_url: window.location.origin,
-                tier: companyData.tier,
-                message: `Selamat bergabung! Akun ${companyData.tier} Anda aktif hingga ${defaultExpiry.toLocaleDateString('id-ID')}.`
-            };
+            const emailSent = await sendEmailViaCloudFunction(
+                "business",
+                companyData.adminEmail,
+                companyData.name,
+                {
+                    password: generatedPassword,
+                    login_url: window.location.origin,
+                    tier: companyData.tier,
+                    message: `Selamat bergabung! Akun ${companyData.tier} Anda aktif hingga ${defaultExpiry.toLocaleDateString('id-ID')}.`
+                }
+            );
 
-            await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
+            if (!emailSent) {
+                return {
+                    success: true,
+                    message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL.`
+                };
+            }
+
             return { success: true, message: `Perusahaan disimpan. Email kredensial terkirim ke ${companyData.adminEmail}.` };
 
         } catch (emailError: any) {
-            console.warn("EmailJS Error:", emailError);
-            return { 
-                success: true, 
-                message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL.` 
+            console.warn("Email Error:", emailError);
+            return {
+                success: true,
+                message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL.`
             };
         }
 
@@ -361,16 +405,22 @@ export const resendInviteEmail = async (companyId: string) => {
         const userData = querySnapshot.docs[0].data() as UserProfile;
         const userPassword = userData.password || "Hubungi Super Admin";
 
-        const templateParams = {
-            to_email: companyData.adminEmail,
-            to_name: companyData.name,
-            password: userPassword,
-            login_url: window.location.origin,
-            tier: companyData.tier,
-            message: `[KIRIM ULANG] Berikut adalah kredensial akses Anda.`
-        };
+        const emailSent = await sendEmailViaCloudFunction(
+            "business",
+            companyData.adminEmail,
+            companyData.name,
+            {
+                password: userPassword,
+                login_url: window.location.origin,
+                tier: companyData.tier,
+                message: `[KIRIM ULANG] Berikut adalah kredensial akses Anda.`
+            }
+        );
 
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
+        if (!emailSent) {
+            throw new Error("Gagal mengirim email. Silakan coba lagi.");
+        }
+
         return { success: true, message: `Email kredensial berhasil dikirim ulang ke ${companyData.adminEmail}` };
 
     } catch (error: any) {
@@ -487,9 +537,9 @@ export const blastAssessmentInvites = async (
 ) => {
   if (!db) throw new Error("Database offline");
 
-  // Check if EmailJS is available
-  if (typeof emailjs === 'undefined') {
-      throw new Error("Layanan EmailJS tidak terhubung. Cek koneksi internet atau konfigurasi index.html");
+  // Check if Firebase Functions is initialized
+  if (!functions) {
+      throw new Error("Layanan email tidak dikonfigurasi dengan benar. Hubungi administrator.");
   }
 
   const results = { success: 0, failed: 0 };
@@ -512,18 +562,24 @@ export const blastAssessmentInvites = async (
 
       await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
 
-      // C. Send Email via EmailJS
-      const assessmentLink = `${window.location.origin}?mode=assess`; // No cid here, code implies company
-      const templateParams = {
-        to_email: candidate.email,
-        to_name: candidate.name,
-        company_name: companyName,
-        access_code: accessCode,
-        assessment_link: assessmentLink,
-        message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
-      };
+      // C. Send Email via Firebase Cloud Function
+      const assessmentLink = `${window.location.origin}?mode=assess`;
+      const emailSent = await sendEmailViaCloudFunction(
+        "candidate",
+        candidate.email,
+        candidate.name,
+        {
+          company_name: companyName,
+          access_code: accessCode,
+          assessment_link: assessmentLink,
+          message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
+        }
+      );
 
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_CANDIDATE, templateParams);
+      if (!emailSent) {
+        throw new Error("Gagal mengirim email");
+      }
+
       results.success++;
 
     } catch (error) {
