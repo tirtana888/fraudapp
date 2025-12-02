@@ -134,20 +134,32 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
               // --- RENDER INVITE EVENT ---
               if (event.type === 'INVITE') {
                 const invite = event.data as AssessmentInvite;
+
+                // Determine status color and label
+                const statusConfig = invite.status === 'COMPLETED'
+                  ? { bg: 'bg-green-50 dark:bg-green-900/10', border: 'border-green-100 dark:border-green-900/30', iconBg: 'bg-green-100', iconColor: 'text-green-700', label: '✓ Selesai', labelColor: 'text-green-600 dark:text-green-400' }
+                  : invite.status === 'IN_PROGRESS'
+                  ? { bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-900/30', iconBg: 'bg-blue-100', iconColor: 'text-blue-700', label: '⏳ Sedang Interview', labelColor: 'text-blue-600 dark:text-blue-400' }
+                  : invite.status === 'ACCESSING'
+                  ? { bg: 'bg-purple-50 dark:bg-purple-900/10', border: 'border-purple-100 dark:border-purple-900/30', iconBg: 'bg-purple-100', iconColor: 'text-purple-700', label: '👀 Sedang Mengakses', labelColor: 'text-purple-600 dark:text-purple-400' }
+                  : invite.status === 'EXPIRED'
+                  ? { bg: 'bg-gray-50 dark:bg-gray-900/10', border: 'border-gray-100 dark:border-gray-900/30', iconBg: 'bg-gray-100', iconColor: 'text-gray-700', label: '❌ Kadaluarsa', labelColor: 'text-gray-600 dark:text-gray-400' }
+                  : { bg: 'bg-yellow-50 dark:bg-yellow-900/10', border: 'border-yellow-100 dark:border-yellow-900/30', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-700', label: '⏱️ Menunggu Kandidat', labelColor: 'text-yellow-600 dark:text-yellow-400' };
+
                 return (
-                  <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-xl transition-all gap-3">
+                  <div key={event.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${statusConfig.bg} border ${statusConfig.border} rounded-xl transition-all gap-3`}>
                     <div className="flex items-center space-x-4">
-                       <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                       <div className={`h-10 w-10 rounded-full ${statusConfig.iconBg} ${statusConfig.iconColor} flex items-center justify-center shrink-0`}>
                            <Send size={18} />
                        </div>
                        <div>
                            <p className="font-bold text-gray-900 dark:text-gray-100">{invite.name}</p>
                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                               Undangan Terkirim via Email
+                               Undangan via Email • <span className={`font-bold ${statusConfig.labelColor}`}>{statusConfig.label}</span>
                            </p>
                        </div>
                     </div>
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium whitespace-nowrap self-start sm:self-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap self-start sm:self-center">
                         {new Date(invite.createdAt).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>

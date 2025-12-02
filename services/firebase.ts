@@ -537,18 +537,24 @@ export const blastAssessmentInvites = async (
 
 export const verifyAccessCode = async (code: string): Promise<AssessmentInvite | null> => {
   if (!db) throw new Error("Database offline");
-  
+
   try {
     const q = query(
-      collection(db, COLLECTIONS.INVITES), 
-      where("access_code", "==", code.toUpperCase().trim()),
-      where("status", "==", "PENDING")
+      collection(db, COLLECTIONS.INVITES),
+      where("access_code", "==", code.toUpperCase().trim())
     );
-    
+
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
 
     const docData = snapshot.docs[0].data() as AssessmentInvite;
+
+    // Only allow PENDING codes (one-time use enforcement)
+    if (docData.status !== 'PENDING') {
+      console.warn(`Access code ${code} has status: ${docData.status}. Already used.`);
+      return null;
+    }
+
     return { ...docData, id: snapshot.docs[0].id };
   } catch (e) {
     console.error("Verification failed:", e);
@@ -556,7 +562,11 @@ export const verifyAccessCode = async (code: string): Promise<AssessmentInvite |
   }
 };
 
-export const markAccessCodeUsed = async (code: string, status: 'ACCESSING' | 'IN_PROGRESS' | 'COMPLETED' = 'ACCESSING', sessionId?: string) => {
+export const markAccessCodeUsed = async (
+  code: string,
+  status: 'ACCESSING' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' = 'COMPLETED',
+  sessionId?: string
+) => {
   if (!db) return;
 
   try {
@@ -570,6 +580,7 @@ export const markAccessCodeUsed = async (code: string, status: 'ACCESSING' | 'IN
       const docRef = snapshot.docs[0].ref;
       const updateData: any = { status };
 
+      // Add timestamps based on status
       if (status === 'ACCESSING') {
         updateData.accessedAt = new Date().toISOString();
       } else if (status === 'IN_PROGRESS') {
