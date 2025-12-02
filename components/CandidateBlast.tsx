@@ -1,11 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown } from 'lucide-react';
-import { subscribeToInvites } from '../services/firebase';
+import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '../services/firebase';
 
 interface CandidateBlastProps {
   currentCompany: CompanyProfile;
@@ -78,24 +76,14 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
 
         setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
 
-        // Call backend Cloud Function
-        const functions = getFunctions(app, 'europe-west1');
-        const sendInvites = httpsCallable(functions, 'sendCandidateInvites');
+        const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
 
-        const result = await sendInvites({
-            candidates: validCandidates,
-            companyId: currentCompany.id,
-            companyName: currentCompany.name
-        });
-
-        const data = result.data as { success: number; failed: number; errors: any[] };
-
-        if (data.success > 0) {
+        if (result.success > 0) {
             setBlastStatus('success');
-            setStatusMessage(`${data.success} undangan berhasil dikirim. ${data.failed > 0 ? `${data.failed} gagal.` : ''}`);
+            setStatusMessage(`${result.success} undangan berhasil dikirim. ${result.failed > 0 ? `${result.failed} gagal.` : ''}`);
             setCandidates([{ name: '', email: '', role: '' }]);
         } else {
-            throw new Error(`Gagal mengirim semua undangan. (${data.failed} gagal)`);
+            throw new Error(`Gagal mengirim semua undangan. Kemungkinan ada masalah dengan layanan email. (${result.failed} gagal)`);
         }
     } catch (error: any) {
         console.error("Blast sending failed:", error);

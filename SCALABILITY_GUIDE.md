@@ -2,7 +2,7 @@
 
 ## Overview
 
-Aplikasi telah ditingkatkan untuk scalability dengan memindahkan API keys dan operasi sensitif dari client-side ke backend (Firebase Cloud Functions).
+Aplikasi telah ditingkatkan untuk scalability dengan memindahkan Gemini AI calls dari client-side ke backend (Firebase Cloud Functions).
 
 ## ✅ What's Been Fixed
 
@@ -10,13 +10,15 @@ Aplikasi telah ditingkatkan untuk scalability dengan memindahkan API keys dan op
 - ❌ **Before:** Frontend langsung hit Gemini API (exposed API key)
 - ✅ **After:** Frontend → Firebase Cloud Function → Gemini API
 
-### 2. **Email Sending - Now Server-Side**
-- ❌ **Before:** EmailJS dari client (limit kecil, tidak reliable)
-- ✅ **After:** Frontend → Firebase Cloud Function → Nodemailer SMTP
+### 2. **Email Sending - EmailJS (Paid Tier)**
+- ✅ **Status:** Tetap menggunakan EmailJS di client-side
+- ✅ **Reason:** Upgrade ke paid tier EmailJS untuk reliability
+- ✅ **Benefit:** Lebih mudah konfigurasi, no server setup needed
 
 ### 3. **API Keys Security**
-- ❌ **Before:** All keys exposed di `.env` frontend
-- ✅ **After:** Keys tersimpan aman di `functions/index.js` (server-side only)
+- ❌ **Before:** Gemini API key exposed di `.env` frontend
+- ✅ **After:** Gemini key tersimpan aman di `functions/index.js` (server-side only)
+- ℹ️ **Note:** EmailJS keys tetap di frontend (aman karena domain restriction)
 
 ---
 
@@ -24,30 +26,20 @@ Aplikasi telah ditingkatkan untuk scalability dengan memindahkan API keys dan op
 
 ### Step 1: Configure Backend (Firebase Functions)
 
-Edit file `functions/index.js` dan ganti konfigurasi berikut:
+Edit file `functions/index.js` dan ganti konfigurasi Gemini API Key:
 
 ```javascript
-// Line 18-21: SMTP Configuration
-const SMTP_CONFIG = {
-  user: "your-gmail@gmail.com",      // GANTI dengan email Gmail Anda
-  pass: "xxxx xxxx xxxx xxxx"        // GANTI dengan App Password Gmail (16 digit)
-};
-
 // Line 23: Gemini API Key
 const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // GANTI dengan API Key Gemini
 ```
-
-#### How to Get Gmail App Password:
-1. Login ke Google Account
-2. Buka: https://myaccount.google.com/apppasswords
-3. Enable 2-Factor Authentication (wajib)
-4. Generate App Password untuk "Mail"
-5. Copy 16-digit code dan paste ke `SMTP_CONFIG.pass`
 
 #### How to Get Gemini API Key:
 1. Buka: https://aistudio.google.com/app/apikey
 2. Create new API key
 3. Copy dan paste ke `GEMINI_API_KEY`
+
+#### Note: SMTP Configuration
+SMTP config tetap ada di `functions/index.js` untuk function `inviteCompany` (company onboarding email). Anda bisa skip konfigurasi ini jika tidak pakai fitur invite company.
 
 ### Step 2: Install Dependencies
 
@@ -77,7 +69,6 @@ firebase deploy --only functions
 Function URLs:
 ✔  generateNextQuestion (europe-west1) - https://...
 ✔  analyzeFraudRisk (europe-west1) - https://...
-✔  sendCandidateInvites (europe-west1) - https://...
 ✔  inviteCompany (europe-west1) - https://...
 ```
 
@@ -120,13 +111,7 @@ firebase deploy --only hosting
 - **Model:** Gemini 1.5 Pro
 - **Max Instances:** 5
 
-### 3. `sendCandidateInvites`
-- **Purpose:** Send mass email invitations
-- **Input:** `{ candidates[], companyId, companyName }`
-- **Output:** `{ success: number, failed: number, errors: [] }`
-- **Max Instances:** 5
-
-### 4. `inviteCompany` (Existing)
+### 3. `inviteCompany` (Existing)
 - **Purpose:** Send company onboarding email
 - **Max Instances:** Default
 
@@ -139,7 +124,7 @@ firebase deploy --only hosting
 | **Concurrent Users** | ~50-100 | ~500-1000 |
 | **Daily Assessments** | ~500 | ~5000+ |
 | **API Key Exposure** | High Risk | Secured |
-| **Email Reliability** | Low (EmailJS) | High (SMTP) |
+| **Email Reliability** | EmailJS Free | EmailJS Paid |
 | **Cost Predictability** | Unpredictable | More predictable |
 
 ---
@@ -162,18 +147,9 @@ firebase deploy --only hosting
 }
 ```
 
-### Test Email Function:
+### Test Email (EmailJS):
 
-```javascript
-// Test data
-{
-  "candidates": [
-    {"name": "John Doe", "email": "test@example.com", "role": "Staff Keuangan"}
-  ],
-  "companyId": "test-company-123",
-  "companyName": "PT Test Jaya"
-}
-```
+Test langsung dari dashboard aplikasi di tab "Blast Kandidat". EmailJS akan mengirim email dari client-side setelah Anda upgrade ke paid tier.
 
 ---
 
@@ -211,9 +187,10 @@ firebase functions:log --follow
 - **Pro (1.5):** $1.25 per 1M input tokens
 - Monitor usage: https://aistudio.google.com/app/usage
 
-### Gmail SMTP:
-- **Free:** 500 emails/day
-- **Google Workspace:** 2000 emails/day
+### EmailJS Pricing:
+- **Free Tier:** 200 emails/month
+- **Paid Tier:** Starting from $15/month (1000 emails)
+- Upgrade di: https://www.emailjs.com/pricing
 
 ---
 
@@ -235,10 +212,10 @@ firebase init functions
 - Check `GEMINI_API_KEY` in `functions/index.js`
 - Verify API key is valid at https://aistudio.google.com/app/apikey
 
-### Problem: "SMTP authentication failed"
-- Verify Gmail App Password is correct
-- Check 2FA is enabled
-- Try regenerating App Password
+### Problem: EmailJS "Quota exceeded"
+- Upgrade ke paid tier di https://www.emailjs.com/pricing
+- Check monthly quota di EmailJS dashboard
+- Consider batching emails untuk large campaigns
 
 ### Problem: CORS errors
 - Functions already configured with CORS headers
