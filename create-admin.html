@@ -1,12 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create Admin User</title>
+    <title>FraudGuard - Create Admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .output {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 200px;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .success { color: #16a34a; font-weight: bold; }
+        .error { color: #dc2626; font-weight: bold; }
+        .info { color: #2563eb; font-weight: bold; }
+        .credentials {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+        .credentials h3 {
+            color: #92400e;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .cred-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #fde68a;
+        }
+        .cred-item:last-child { border-bottom: none; }
+        .cred-label { color: #78350f; font-weight: 600; }
+        .cred-value { color: #1e293b; font-family: 'Courier New', monospace; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>Creating Admin User...</h1>
-    <pre id="output"></pre>
+    <div class="container">
+        <h1>🛡️ FraudGuard Admin Setup</h1>
+        <p class="subtitle">Membuat akun superadmin otomatis...</p>
+
+        <div class="output" id="output"><span class="loading"></span> Memulai setup...</div>
+
+        <div class="credentials" id="credentials">
+            <h3>✅ Kredensial Login Anda:</h3>
+            <div class="cred-item">
+                <span class="cred-label">Email:</span>
+                <span class="cred-value">admin@fraudguard.id</span>
+            </div>
+            <div class="cred-item">
+                <span class="cred-label">Password:</span>
+                <span class="cred-value">admin123</span>
+            </div>
+            <div class="cred-item">
+                <span class="cred-label">Role:</span>
+                <span class="cred-value">System Admin</span>
+            </div>
+        </div>
+    </div>
 
     <script>
         const { createClient } = supabase;
@@ -16,37 +120,58 @@
 
         const client = createClient(supabaseUrl, supabaseKey);
         const output = document.getElementById('output');
+        const credentials = document.getElementById('credentials');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'success' ? '✅' : type === 'error' ? '❌' : '📝';
+            output.innerHTML += `<span class="${type}">[${timestamp}] ${prefix} ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
 
         async function createAdmin() {
             try {
-                output.textContent += 'Creating admin user...\n';
+                log('Memeriksa company yang tersedia...', 'info');
 
-                // Sign up admin
+                const companyId = 'cc62285d-a8e9-4ca6-8a8b-988785473b2a';
+                log('Company ID: ' + companyId, 'info');
+
+                log('Membuat user di Supabase Auth...', 'info');
+
                 const { data: authData, error: authError } = await client.auth.signUp({
                     email: 'admin@fraudguard.id',
                     password: 'admin123',
                     options: {
+                        emailRedirectTo: window.location.origin,
                         data: {
                             name: 'Super Admin',
                             role: 'System Admin',
-                            company_id: 'cc62285d-a8e9-4ca6-8a8b-988785473b2a',
+                            company_id: companyId,
                             avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
                         }
                     }
                 });
 
                 if (authError) {
-                    output.textContent += 'Auth Error: ' + authError.message + '\n';
-                    if (authError.message.includes('already registered')) {
-                        output.textContent += 'User already exists! Try logging in.\n';
+                    if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+                        log('User sudah terdaftar di auth.users', 'info');
+                        log('Coba login dengan: admin@fraudguard.id / admin123', 'success');
+                        credentials.style.display = 'block';
                         return;
                     }
                     throw authError;
                 }
 
-                output.textContent += 'User created in auth: ' + authData.user.id + '\n';
+                if (!authData.user) {
+                    throw new Error('Tidak bisa membuat user di auth');
+                }
 
-                // Create user profile
+                log('User auth berhasil dibuat: ' + authData.user.id, 'success');
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                log('Membuat profile user di tabel users...', 'info');
+
                 const { error: profileError } = await client
                     .from('users')
                     .insert({
@@ -54,22 +179,38 @@
                         email: 'admin@fraudguard.id',
                         name: 'Super Admin',
                         role: 'System Admin',
-                        company_id: 'cc62285d-a8e9-4ca6-8a8b-988785473b2a',
+                        company_id: companyId,
                         avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
                     });
 
                 if (profileError) {
-                    output.textContent += 'Profile Error: ' + profileError.message + '\n';
-                    throw profileError;
+                    if (profileError.message.includes('duplicate') || profileError.code === '23505') {
+                        log('Profile sudah ada di tabel users', 'info');
+                    } else {
+                        throw profileError;
+                    }
+                } else {
+                    log('Profile user berhasil dibuat!', 'success');
                 }
 
-                output.textContent += '\n✅ SUCCESS!\n\n';
-                output.textContent += 'Email: admin@fraudguard.id\n';
-                output.textContent += 'Password: admin123\n';
-                output.textContent += '\nYou can now close this page and login.\n';
+                log('═══════════════════════════════════════', 'success');
+                log('SETUP SELESAI! 🎉', 'success');
+                log('Silakan tutup halaman ini dan login', 'success');
+                log('═══════════════════════════════════════', 'success');
+
+                credentials.style.display = 'block';
 
             } catch (error) {
-                output.textContent += '\n❌ ERROR: ' + error.message + '\n';
+                log('GAGAL: ' + error.message, 'error');
+                log('Detail: ' + JSON.stringify(error), 'error');
+                log('', 'info');
+                log('Solusi alternatif:', 'info');
+                log('1. Buka Supabase Dashboard', 'info');
+                log('2. Masuk ke Authentication > Users', 'info');
+                log('3. Klik "Add user" > "Create new user"', 'info');
+                log('4. Email: admin@fraudguard.id', 'info');
+                log('5. Password: admin123', 'info');
+                log('6. Centang "Auto Confirm User"', 'info');
                 console.error(error);
             }
         }
