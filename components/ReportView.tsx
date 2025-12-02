@@ -89,9 +89,9 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
 
   // Chart Data using safe scores
   const radarData = [
-    { subject: 'Pressure', A: scores.pressure, fullMark: 100 },
-    { subject: 'Rationalization', A: scores.rationalization, fullMark: 100 },
-    { subject: 'Opportunity', A: scores.opportunity, fullMark: 100 },
+    { subject: 'Tekanan', A: scores.pressure, fullMark: 100 },
+    { subject: 'Rasionalisasi', A: scores.rationalization, fullMark: 100 },
+    { subject: 'Peluang', A: scores.opportunity, fullMark: 100 },
   ];
 
   const benchmarkData = analysis.benchmarkComparison ? [
@@ -195,15 +195,15 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
             </div>
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mt-4 text-center">
                 <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
-                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Pressure</p>
+                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Tekanan</p>
                     <p className="text-lg font-black text-red-700 dark:text-red-400">{scores.pressure}</p>
                 </div>
                 <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Opportunity</p>
+                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Peluang</p>
                     <p className="text-lg font-black text-blue-700 dark:text-blue-400">{scores.opportunity}</p>
                 </div>
                 <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
-                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Rationalization</p>
+                    <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Rasionalisasi</p>
                     <p className="text-lg font-black text-yellow-700 dark:text-yellow-400">{scores.rationalization}</p>
                 </div>
             </div>
@@ -215,8 +215,8 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                     <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center text-center p-6">
                         <Lock className="text-brand-dark dark:text-white mb-3" size={32} />
                         <h4 className="text-lg font-bold text-gray-900 dark:text-white">Fitur Enterprise</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 max-w-xs">Upgrade untuk melihat perbandingan skor kandidat melawan rata-rata industri.</p>
-                        <button className="bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">Upgrade Plan</button>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 max-w-xs">Tingkatkan paket untuk melihat perbandingan skor kandidat melawan rata-rata industri.</p>
+                        <button className="bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">Tingkatkan Paket</button>
                     </div>
                 )}
                 

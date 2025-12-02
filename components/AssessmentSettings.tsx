@@ -179,7 +179,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
              <div className={!features.white_label ? 'opacity-50 pointer-events-none relative' : ''}>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <ImageIcon size={16} /> Logo Perusahaan
-                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Enterprise Only</span>}
+                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Khusus Enterprise</span>}
                 </label>
                 
                 <div className="flex items-start gap-4">
@@ -231,7 +231,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
              <div className={!features.white_label ? 'opacity-50 pointer-events-none relative' : ''}>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <Palette size={16} /> Warna Brand Utama
-                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Enterprise Only</span>}
+                    {!features.white_label && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 rounded-full">Khusus Enterprise</span>}
                 </label>
                 <div className="flex gap-3 items-center">
                     <div className="relative">
@@ -306,7 +306,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
             <div className="bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
                  <Lock className="text-gray-400 mb-3" size={32} />
                  <h3 className="font-bold text-gray-600 dark:text-gray-300">Link Publik Dikunci</h3>
-                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Anda menggunakan paket Basic. Upgrade ke Premium untuk membagikan link rekrutmen.</p>
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Anda menggunakan paket Basic. Tingkatkan ke Premium untuk membagikan link rekrutmen.</p>
             </div>
         )}
       </div>

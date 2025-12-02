@@ -87,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                 </div>
                 <div>
                     <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">Link Asesmen Dikunci</h4>
-                    <p className="text-[10px] text-gray-500">Upgrade ke Premium untuk membuka fitur link mandiri.</p>
+                    <p className="text-[10px] text-gray-500">Tingkatkan ke Premium untuk membuka fitur link mandiri.</p>
                 </div>
             </div>
         )}

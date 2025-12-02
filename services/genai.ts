@@ -280,9 +280,18 @@ export const analyzeFraudRisk = async (
         ${sjtSummary}
         CHAT TRANSCRIPT:
         ${context}
-        
+
         TASK:
-        Provide a final verdict. Output a JSON with these keys: "scores" (pressure, opportunity, rationalization from 0-100), "riskLevel" ("Low", "Medium", "High", "Critical"), "summary" (2 paragraphs), "redFlags" (string array), "recommendation", "consistencyScore" (0-100), "euphemismScore" (0-100).
+        Provide a final verdict in Indonesian language. Output a JSON with these keys:
+        - "scores" (object with pressure, opportunity, rationalization from 0-100)
+        - "riskLevel" ("Low", "Medium", "High", "Critical")
+        - "summary" (2 paragraphs in Indonesian explaining the analysis)
+        - "redFlags" (string array in Indonesian listing concerning behaviors)
+        - "recommendation" (string in Indonesian with action recommendations)
+        - "consistencyScore" (0-100, measure consistency between survey and interview)
+        - "euphemismScore" (0-100, detect euphemistic language patterns)
+        - "sentimentBreakdown" (object with positive, neutral, negative percentages summing to 100)
+        - "benchmarkComparison" (object with candidateAvg, companyAvg 45-55, industryAvg 40-50 as baseline scores)
     `;
 
     // Strategy: Gemini Pro -> OpenAI -> Manual
@@ -318,5 +327,15 @@ export const analyzeFraudRisk = async (
         isManualFallback: true,
         consistencyScore: 0,
         euphemismScore: 0,
+        sentimentBreakdown: {
+            positive: 33,
+            neutral: 34,
+            negative: 33
+        },
+        benchmarkComparison: {
+            candidateAvg: avgScore,
+            companyAvg: 48,
+            industryAvg: 45
+        }
     } as FraudAnalysis;
 };
