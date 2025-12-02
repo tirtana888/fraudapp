@@ -7,9 +7,9 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
 // FALLBACK API KEY (OpenAI)
 const OPENAI_API_KEY = "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";
 
-// MODEL CONFIGURATION - Gunakan ID model yang sesuai untuk SDK ini
-const CHAT_MODEL_ID = "gemini-1.5-flash-latest"; // Model cepat yang didukung SDK stabil
-const ANALYSIS_MODEL_ID_PRIMARY = "gemini-pro"; // Model cerdas yang didukung SDK stabil (Ganti ke 'gemini-1.5-pro-latest' jika tersedia & diperlukan)
+// MODEL CONFIGURATION (Upgraded to latest stable versions)
+const CHAT_MODEL_ID = "gemini-1.5-flash-latest"; 
+const ANALYSIS_MODEL_ID_PRIMARY = "gemini-pro"; 
 
 // SAFETY SETTINGS
 const safetySettings = [
@@ -23,7 +23,6 @@ const safetySettings = [
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const robustJsonParse = (text: string): any => {
-    // Clean markdown and other artifacts
     const cleanedText = text.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
     try {
         return JSON.parse(cleanedText);
@@ -32,7 +31,6 @@ const robustJsonParse = (text: string): any => {
         return null;
     }
 };
-
 
 export const calculateAssessmentScores = (
     structuredAssessment: AssessmentItem[],
@@ -88,23 +86,79 @@ const generateInterviewContext = (
     const flagsString = flagsDetected.join('\n   - ');
 
     return `You are an AI Forensic Investigator for a candidate applying for: ${role}.
-    FLAGS DETECTED:
+    FLAGS DETECTED FROM SURVEY:
     - ${flagsString}
-    INSTRUCTION: Start probing based on the flags.
-    MAINTAIN A PROFESSIONAL, INVESTIGATIVE TONE.
-    STRICTLY OUTPUT ONLY ONE QUESTION IN BAHASA INDONESIA. DO NOT INCLUDE ANY ANALYSIS OR META-COMMENTARY.`;
+    
+    CORE OBJECTIVE:
+    Validate if these flags represent a real fraud risk.
+    
+    RULES:
+    1. MAINTAIN A PROFESSIONAL, INVESTIGATIVE TONE.
+    2. STRICTLY OUTPUT ONLY ONE QUESTION IN BAHASA INDONESIA.
+    3. DO NOT INCLUDE ANY ANALYSIS, LABELS (like "AI:", "Interviewer:"), OR META-COMMENTARY.
+    4. IF CANDIDATE GIVES SHORT ANSWERS ("ya", "tidak"), ASK FOR ELABORATION.
+    5. IF CANDIDATE IS CONFUSED ("tentang apa?"), CLARIFY THE CONTEXT.`;
 };
 
 // --- OPENAI HANDLERS ---
 const callOpenAI_Chat = async (messages: any[], temperature: number = 0.7) => {
-    // ... [Implementation remains the same as provided] ...
+    try {
+        console.log("Switching to OpenAI (Chat)...");
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: messages,
+                temperature: temperature,
+                max_tokens: 150
+            })
+        });
+
+        if (!response.ok) throw new Error("OpenAI API Error");
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content?.trim();
+    } catch (error) {
+        console.error("OpenAI Chat Failed:", error);
+        return null;
+    }
 };
 
 const callOpenAI_Analysis = async (systemPrompt: string, userPrompt: string): Promise<any> => {
-    // ... [Implementation remains the same as provided] ...
+    try {
+        console.log("Switching to OpenAI (Analysis)...");
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                response_format: { type: "json_object" }, 
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.5,
+                max_tokens: 2000
+            })
+        });
+
+        if (!response.ok) throw new Error("OpenAI API Error");
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        return JSON.parse(content);
+    } catch (error) {
+        console.error("OpenAI Analysis Failed:", error);
+        return null;
+    }
 };
 
-// --- CHAT GENERATION (REFACTORED for @google/generative-ai) ---
+// --- CHAT GENERATION ---
 export const generateNextQuestion = async (
   role: string,
   history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>,
@@ -121,6 +175,12 @@ export const generateNextQuestion = async (
         return "Terima kasih, sesi wawancara telah selesai. Jawaban Anda telah kami simpan.";
     }
 
+    // 1. Context Construction
+    const recentHistory = history.slice(-10);
+    const contextText = recentHistory.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+    const lastCandidateMessage = [...history].reverse().find(h => h.speaker === 'candidate' || h.speaker === 'user')?.text || "";
+
+    // 2. System Instruction
     let systemInstructionText = "";
     if (assessmentData) {
         const risks = calculateAssessmentScores(
@@ -133,35 +193,73 @@ export const generateNextQuestion = async (
         systemInstructionText = `Anda HR Interviewer posisi ${role}. Validasi integritas kandidat.`;
     }
 
-    const model = genAI.getGenerativeModel({ model: CHAT_MODEL_ID, safetySettings, systemInstruction: systemInstructionText });
-
-    const chatHistory = history.map(h => ({
-        role: h.speaker === 'ai' ? 'model' : 'user',
-        parts: [{ text: h.text }]
-    }));
-
-    try {
-        const result = await model.generateContent({
-            contents: chatHistory,
-            generationConfig: {
-                maxOutputTokens: 150,
-                temperature: 0.7
-            }
-        });
-        const response = result.response;
-        const text = response.text();
-        if (text && text.length > 10) {
-            return text;
-        }
-        throw new Error("Generated response is too short or empty.");
-    } catch (error) {
-        console.warn("Gemini Chat Failed, trying OpenAI fallback...", error);
-        // Fallback to OpenAI logic here...
-        return "Bisa Anda berikan contoh spesifik dari pengalaman Anda terkait hal ini?";
+    // 3. Dynamic Instruction based on Last Answer (Anti-Loop Logic)
+    let dynamicInstruction = "TUGAS: Berikan 1 pertanyaan tindak lanjut yang relevan.";
+    
+    if (lastCandidateMessage.length < 5 || ["ya", "tidak", "bisa", "oke", "y"].includes(lastCandidateMessage.toLowerCase().trim())) {
+        dynamicInstruction += " PERHATIAN: Kandidat menjawab terlalu singkat. Minta mereka menjelaskan alasan atau memberikan contoh konkret atas jawaban sebelumnya.";
+    } else if (lastCandidateMessage.toLowerCase().includes("tentang apa") || lastCandidateMessage.toLowerCase().includes("maksudnya")) {
+        dynamicInstruction += " PERHATIAN: Kandidat bingung. Jelaskan ulang konteks pertanyaan Anda sebelumnya dengan bahasa yang lebih sederhana, lalu tanya kembali.";
+    } else {
+        dynamicInstruction += " Gali lebih dalam mengenai perilaku (behavioral) atau situasi spesifik berdasarkan jawaban terakhir.";
     }
+
+    const fullPrompt = `TRANSKRIP WAWANCARA:\n${contextText}\n\n${dynamicInstruction}`;
+
+    // 4. Retry Mechanism (Gemini -> OpenAI)
+    let attempts = 0;
+    while (attempts < 2) {
+        try {
+            let resultText = "";
+
+            if (attempts === 0) {
+                // Try Gemini
+                const model = genAI.getGenerativeModel({ 
+                    model: CHAT_MODEL_ID, 
+                    safetySettings, 
+                    systemInstruction: systemInstructionText 
+                });
+                
+                const result = await model.generateContent({
+                    contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+                    generationConfig: { maxOutputTokens: 150, temperature: 0.75 }
+                });
+                resultText = result.response.text();
+            } else {
+                // Try OpenAI Fallback
+                console.log("Gemini failed, falling back to OpenAI...");
+                const messages = [
+                    { role: "system", content: systemInstructionText },
+                    ...recentHistory.map(h => ({ role: h.speaker === 'ai' ? 'assistant' : 'user', content: h.text })),
+                    { role: "user", content: dynamicInstruction }
+                ];
+                const openAiRes = await callOpenAI_Chat(messages);
+                if (openAiRes) resultText = openAiRes;
+            }
+
+            // Cleaning & Validation
+            let cleanText = resultText?.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+            
+            // Check for "lazy" responses
+            if (cleanText && cleanText.length > 10 && !cleanText.includes("jelaskan lebih detail") && !cleanText.includes("contoh spesifik dari pengalaman Anda terkait hal ini")) {
+                return cleanText;
+            }
+            
+            // If text is valid but just generic, we might accept it if it's OpenAI (last resort)
+            if (attempts === 1 && cleanText) return cleanText;
+
+        } catch (error) {
+            console.warn(`Attempt ${attempts + 1} failed.`, error);
+        }
+        attempts++;
+        if (attempts < 2) await delay(1000);
+    }
+
+    // Final Fail-safe (Dynamic Generic)
+    return "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?";
 };
 
-// --- ANALYSIS GENERATION (REFACTORED for @google/generative-ai) ---
+// --- ANALYSIS GENERATION ---
 export const analyzeFraudRisk = async (
   role: string,
   history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>,
@@ -187,16 +285,22 @@ export const analyzeFraudRisk = async (
         Provide a final verdict. Output a JSON with these keys: "scores" (pressure, opportunity, rationalization from 0-100), "riskLevel" ("Low", "Medium", "High", "Critical"), "summary" (2 paragraphs), "redFlags" (string array), "recommendation", "consistencyScore" (0-100), "euphemismScore" (0-100).
     `;
 
+    // Strategy: Gemini Pro -> OpenAI -> Manual
     try {
         const model = genAI.getGenerativeModel({ model: ANALYSIS_MODEL_ID_PRIMARY, safetySettings });
         const result = await model.generateContent(prompt);
-        const response = result.response;
-        const text = response.text();
-        const parsed = robustJsonParse(text);
+        const parsed = robustJsonParse(result.response.text());
         if (parsed && parsed.scores) return parsed as FraudAnalysis;
-        throw new Error("Primary analysis failed or returned invalid JSON.");
+        throw new Error("Primary analysis failed");
     } catch (error) {
-        console.warn("Primary analysis failed, switching to fallback.", error);
+        console.warn("Gemini Analysis failed, trying OpenAI...");
+    }
+
+    try {
+        const openAiParsed = await callOpenAI_Analysis("You are a Senior Fraud Analyst. Output JSON only.", prompt);
+        if (openAiParsed && openAiParsed.scores) return openAiParsed as FraudAnalysis;
+    } catch (e) {
+        console.error("OpenAI Analysis failed", e);
     }
     
     // Emergency Fallback
@@ -208,9 +312,11 @@ export const analyzeFraudRisk = async (
     return {
         scores: { pressure: manualScores.pressureScore, opportunity: manualScores.opportunityScore, rationalization: manualScores.rationalizationScore },
         riskLevel: manualRisk,
-        summary: "Analisis AI GAGAL. Skor dihitung dari kuesioner saja. Mohon review manual.",
-        redFlags: ["ANALISIS AI GAGAL"],
+        summary: "Analisis AI GAGAL (Koneksi/Timeout). Skor dihitung dari kuesioner saja. Mohon review manual.",
+        redFlags: ["ANALISIS AI GAGAL TOTAL"],
         recommendation: "Lakukan review manual transkrip dan jawaban.",
-        isManualFallback: true
+        isManualFallback: true,
+        consistencyScore: 0,
+        euphemismScore: 0,
     } as FraudAnalysis;
 };

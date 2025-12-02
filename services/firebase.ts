@@ -202,10 +202,11 @@ export const seedRealDatabase = async () => {
 
 // --- SESSION SERVICES ---
 
-export const saveSessionToDB = async (sessionData: any) => {
+export const saveSessionToDB = async (sessionData: any): Promise<string> => {
   try {
     if (!db) throw new Error("Database not initialized");
-    return await addDoc(collection(db, COLLECTIONS.SESSIONS), sessionData);
+    const docRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), sessionData);
+    return docRef.id;
   } catch (e: any) {
     console.error("Gagal menyimpan ke Cloud:", e);
     throw e;

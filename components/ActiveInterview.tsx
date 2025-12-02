@@ -6,7 +6,6 @@ import { analyzeFraudRisk } from '../services/genai';
 
 interface ActiveInterviewProps {
   onComplete: () => void;
-  initialCandidate?: Candidate;
   companyId: string;
   existingSession?: InterviewSession;
 }
@@ -31,7 +30,7 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
       try {
           const newAnalysis = await analyzeFraudRisk(
               session.candidate.role, 
-              session.transcript, 
+              session.transcript || [], 
               session.structuredAssessment || [], 
               session.sjtResults, 
               companyTier
@@ -109,14 +108,20 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
                       <p className="text-xs text-gray-500">Otomatis dilakukan oleh sistem via Link Publik.</p>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                      {session.transcript.map((msg, idx) => (
-                          <div key={idx} className={`flex ${msg.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                              <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.speaker === 'ai' ? 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white' : 'bg-brand-blue text-white'}`}>
-                                  <p className="text-[9px] uppercase font-bold mb-1 opacity-70">{msg.speaker}</p>
-                                  {msg.text}
+                      {session.transcript && session.transcript.length > 0 ? (
+                          session.transcript.map((msg, idx) => (
+                              <div key={idx} className={`flex ${msg.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                                  <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.speaker === 'ai' ? 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white' : 'bg-brand-blue text-white'}`}>
+                                      <p className="text-[9px] uppercase font-bold mb-1 opacity-70">{msg.speaker}</p>
+                                      {msg.text}
+                                  </div>
                               </div>
+                          ))
+                      ) : (
+                          <div className="text-center text-gray-400 dark:text-slate-500 italic text-sm p-8">
+                              Tidak ada transkrip percakapan yang tercatat untuk sesi ini.
                           </div>
-                      ))}
+                      )}
                   </div>
               </div>
           </div>

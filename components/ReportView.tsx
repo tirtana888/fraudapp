@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
@@ -64,27 +63,57 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
       );
   }
 
-  // Chart Data
+  // ANTI-CRASH: Safely access scores with numerical conversion
+  const safeNumber = (val: any) => {
+      if (val === null || val === undefined) return 0;
+      const n = Number(val);
+      return isNaN(n) ? 0 : n;
+  };
+
+  // Helper to ensure text rendering and prevent Object error
+  const safeText = (text: any) => {
+      if (text === null || text === undefined) return '';
+      if (typeof text === 'string') return text;
+      if (typeof text === 'number') return String(text);
+      if (Array.isArray(text)) return text.join(', ');
+      if (typeof text === 'object') return JSON.stringify(text); // Last resort to prevent crash
+      return String(text);
+  };
+
+  // Safely extract scores
+  const scores = {
+    pressure: safeNumber(analysis.scores?.pressure),
+    rationalization: safeNumber(analysis.scores?.rationalization),
+    opportunity: safeNumber(analysis.scores?.opportunity),
+  };
+
+  // Chart Data using safe scores
   const radarData = [
-    { subject: 'Pressure', A: analysis.scores.pressure, fullMark: 100 },
-    { subject: 'Rationalization', A: analysis.scores.rationalization, fullMark: 100 },
-    { subject: 'Opportunity', A: analysis.scores.opportunity, fullMark: 100 },
+    { subject: 'Pressure', A: scores.pressure, fullMark: 100 },
+    { subject: 'Rationalization', A: scores.rationalization, fullMark: 100 },
+    { subject: 'Opportunity', A: scores.opportunity, fullMark: 100 },
   ];
 
   const benchmarkData = analysis.benchmarkComparison ? [
-    { name: 'Kandidat', score: analysis.benchmarkComparison.candidateAvg, fill: '#CC5500' },
-    { name: 'Rata-rata Perusahaan', score: analysis.benchmarkComparison.companyAvg, fill: '#3b82f6' },
-    { name: 'Industri Sejenis', score: analysis.benchmarkComparison.industryAvg, fill: '#94a3b8' },
+    { name: 'Kandidat', score: safeNumber(analysis.benchmarkComparison.candidateAvg), fill: '#CC5500' },
+    { name: 'Rata-rata Perusahaan', score: safeNumber(analysis.benchmarkComparison.companyAvg), fill: '#3b82f6' },
+    { name: 'Industri Sejenis', score: safeNumber(analysis.benchmarkComparison.industryAvg), fill: '#94a3b8' },
   ] : [];
 
-  const getRiskColor = (level: RiskLevel) => {
-    switch (level) {
+  const getRiskColor = (level: RiskLevel | string) => {
+    const riskLevel = safeText(level);
+    switch (riskLevel) {
       case RiskLevel.CRITICAL: return 'bg-red-600';
       case RiskLevel.HIGH: return 'bg-brand-orange';
       case RiskLevel.MEDIUM: return 'bg-yellow-500';
       default: return 'bg-green-500';
     }
   };
+  
+  const averageScore = Math.round((scores.pressure + scores.opportunity + scores.rationalization) / 3);
+
+  // Safely extract red flags array
+  const redFlags = Array.isArray(analysis.redFlags) ? analysis.redFlags : [];
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-10">
@@ -94,7 +123,6 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
           </button>
           
           <div className="flex gap-2">
-              {/* BUTTON TO VIEW TRANSCRIPT (Uses Re-Review Prop) */}
               {onReReview && (
                   <button 
                     onClick={onReReview}
@@ -103,7 +131,6 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                      <FileText size={14} /> Lihat Transkrip & Jawaban
                   </button>
               )}
-              {/* EDIT REPORT */}
               {onReReview && (
                   <button 
                     onClick={onReReview}
@@ -122,17 +149,17 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
         )}
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white truncate">{candidate.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white truncate">{safeText(candidate.name)}</h1>
             <span className={`px-4 py-1.5 rounded-full text-white text-xs font-bold shadow-sm uppercase tracking-wider self-start ${getRiskColor(analysis.riskLevel)}`}>
-              Risiko {analysis.riskLevel}
+              Risiko {safeText(analysis.riskLevel)}
             </span>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium text-sm md:text-base">{candidate.role} • {new Date(session.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium text-sm md:text-base">{safeText(candidate.role)} • {new Date(session.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
         </div>
         <div className="w-full md:w-auto text-right bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 flex flex-row md:flex-col items-center justify-between md:items-end z-10">
           <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold md:mb-1">Skor Fraud</p>
           <div className="text-3xl md:text-4xl font-black text-brand-dark dark:text-white flex items-baseline justify-end gap-1">
-            {Math.round((analysis.scores.pressure + analysis.scores.opportunity + analysis.scores.rationalization) / 3)}
+            {averageScore}
             <span className="text-sm md:text-lg text-gray-400 dark:text-slate-500 font-medium">/100</span>
           </div>
         </div>
@@ -169,15 +196,15 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mt-4 text-center">
                 <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Pressure</p>
-                    <p className="text-lg font-black text-red-700 dark:text-red-400">{analysis.scores.pressure}</p>
+                    <p className="text-lg font-black text-red-700 dark:text-red-400">{scores.pressure}</p>
                 </div>
                 <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Opportunity</p>
-                    <p className="text-lg font-black text-blue-700 dark:text-blue-400">{analysis.scores.opportunity}</p>
+                    <p className="text-lg font-black text-blue-700 dark:text-blue-400">{scores.opportunity}</p>
                 </div>
                 <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Rationalization</p>
-                    <p className="text-lg font-black text-yellow-700 dark:text-yellow-400">{analysis.scores.rationalization}</p>
+                    <p className="text-lg font-black text-yellow-700 dark:text-yellow-400">{scores.rationalization}</p>
                 </div>
             </div>
             </div>
@@ -229,12 +256,12 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               Ringkasan Analisis AI
             </h3>
             <p className="text-gray-600 dark:text-gray-300 leading-loose text-justify text-sm">
-              {analysis.summary}
+              {safeText(analysis.summary)}
             </p>
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-700">
                <h4 className="font-bold text-gray-800 dark:text-white mb-3 text-xs md:text-sm uppercase tracking-wide">Rekomendasi Tindakan</h4>
                <p className="text-sm font-medium text-brand-dark dark:text-white bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border-l-4 border-brand-orange leading-relaxed">
-                 {analysis.recommendation}
+                 {safeText(analysis.recommendation)}
                </p>
             </div>
           </div>
@@ -248,13 +275,13 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                     <h4 className="font-bold text-gray-800 dark:text-white text-sm">Skor Konsistensi</h4>
                 </div>
                 <div className="flex items-end gap-2 mb-2">
-                    <span className="text-3xl font-black text-gray-800 dark:text-white">{analysis.consistencyScore || 0}%</span>
+                    <span className="text-3xl font-black text-gray-800 dark:text-white">{safeNumber(analysis.consistencyScore)}%</span>
                     <span className="text-xs text-gray-500 mb-1.5">Akurasi Jawaban</span>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                     <div 
-                        className={`h-full rounded-full ${analysis.consistencyScore && analysis.consistencyScore > 75 ? 'bg-green-500' : 'bg-yellow-500'}`} 
-                        style={{ width: `${analysis.consistencyScore || 0}%` }}
+                        className={`h-full rounded-full ${(safeNumber(analysis.consistencyScore)) > 75 ? 'bg-green-500' : 'bg-yellow-500'}`} 
+                        style={{ width: `${safeNumber(analysis.consistencyScore)}%` }}
                     ></div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">Mengukur konsistensi antara tes tertulis dan wawancara.</p>
@@ -270,26 +297,26 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                     <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-green-600 font-bold">Positif</span>
-                            <span className="text-gray-600 dark:text-gray-300">{analysis.sentimentBreakdown.positive}%</span>
+                            <span className="text-gray-600 dark:text-gray-300">{safeNumber(analysis.sentimentBreakdown.positive)}%</span>
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: `${analysis.sentimentBreakdown.positive}%` }}></div>
+                            <div className="h-full bg-green-500" style={{ width: `${safeNumber(analysis.sentimentBreakdown.positive)}%` }}></div>
                         </div>
 
                         <div className="flex items-center justify-between text-xs mt-2">
                             <span className="text-gray-500 font-bold">Netral</span>
-                            <span className="text-gray-600 dark:text-gray-300">{analysis.sentimentBreakdown.neutral}%</span>
+                            <span className="text-gray-600 dark:text-gray-300">{safeNumber(analysis.sentimentBreakdown.neutral)}%</span>
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gray-400" style={{ width: `${analysis.sentimentBreakdown.neutral}%` }}></div>
+                            <div className="h-full bg-gray-400" style={{ width: `${safeNumber(analysis.sentimentBreakdown.neutral)}%` }}></div>
                         </div>
 
                         <div className="flex items-center justify-between text-xs mt-2">
                             <span className="text-red-600 font-bold">Negatif</span>
-                            <span className="text-gray-600 dark:text-gray-300">{analysis.sentimentBreakdown.negative}%</span>
+                            <span className="text-gray-600 dark:text-gray-300">{safeNumber(analysis.sentimentBreakdown.negative)}%</span>
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full bg-red-500" style={{ width: `${analysis.sentimentBreakdown.negative}%` }}></div>
+                            <div className="h-full bg-red-500" style={{ width: `${safeNumber(analysis.sentimentBreakdown.negative)}%` }}></div>
                         </div>
                     </div>
                 ) : <p className="text-xs text-gray-400">Data tidak tersedia.</p>}
@@ -303,13 +330,13 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               Identifikasi Red Flags
             </h3>
             <ul className="space-y-3">
-              {analysis.redFlags.map((flag, idx) => (
+              {redFlags.map((flag, idx) => (
                 <li key={idx} className="flex items-start gap-3 text-sm text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
                   <AlertOctagon size={18} className="mt-0.5 shrink-0 text-red-600 dark:text-red-400" />
-                  <span className="font-medium">{flag}</span>
+                  <span className="font-medium">{safeText(flag)}</span>
                 </li>
               ))}
-              {analysis.redFlags.length === 0 && (
+              {redFlags.length === 0 && (
                 <li className="text-gray-500 dark:text-gray-400 text-sm italic p-4 bg-gray-50 dark:bg-slate-800 rounded-lg text-center">Tidak ada tanda bahaya signifikan yang terdeteksi.</li>
               )}
             </ul>

@@ -137,14 +137,12 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   const handleStartChat = async () => {
       setStep('loading');
       
-      const newSessionId = Date.now().toString();
       const initialHistory: Array<{ speaker: 'ai' | 'candidate'; text: string }> = [
           { speaker: 'ai', text: `Halo ${candidateName}. Profil Anda sedang kami proses. Saya ingin mengklarifikasi beberapa poin dari survei Anda. Kita punya waktu 10 menit. Bisa kita mulai?` }
       ];
 
       const sessionData = {
-          id: newSessionId,
-          candidate: { id: newSessionId, name: candidateName, email: candidateEmail, role: candidateRole },
+          candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
           date: new Date().toISOString(),
           status: 'active',
           structuredAssessment: ftAnswers,
@@ -155,20 +153,21 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           source: 'public_link'
       };
 
-      await saveSessionToDB(sessionData);
-      setSessionId(newSessionId);
+      const realSessionId = await saveSessionToDB(sessionData);
+      setSessionId(realSessionId);
+      
       setChatHistory(initialHistory);
       setTimeLeft(CHAT_TIME_LIMIT_SECONDS);
       setStep('chat');
   };
 
   const handleSendMessage = async () => {
-      if (!userInput.trim()) return;
+      if (!userInput.trim() || !sessionId) return;
       const newHistory = [...chatHistory, { speaker: 'candidate', text: userInput } as const];
       setChatHistory(newHistory);
       setUserInput('');
       setIsAiThinking(true);
-      updateSessionInDB(sessionId, { transcript: newHistory });
+      await updateSessionInDB(sessionId, { transcript: newHistory });
 
       try {
           const nextQuestion = await generateNextQuestion(
@@ -189,7 +188,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   };
 
   const handleFinishAssessment = async () => {
-    if (step === 'analyzing' || step === 'done') return;
+    if (step === 'analyzing' || step === 'done' || !sessionId) return;
     setStep('analyzing');
     
     let finalAnalysis: FraudAnalysis;
@@ -244,7 +243,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           setTimeout(handleFinishAssessment, 3000);
       }
       return () => clearInterval(timer);
-  }, [step, timeLeft]);
+  }, [step, timeLeft, sessionId]); // Added sessionId to dependencies
 
   useEffect(() => {
       if (step === 'chat') chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
