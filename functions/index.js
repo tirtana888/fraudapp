@@ -20,7 +20,7 @@ const SMTP_CONFIG = {
   pass: "xxxx xxxx xxxx xxxx"        // GANTI DENGAN APP PASSWORD (16 digit)
 };
 
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // GANTI dengan API Key Gemini yang aman
+const GEMINI_API_KEY = "AIzaSyAVbrnX5yFZdong2xpQ_qiKYDv7IXLUskI";
 // ==========================================
 
 // Initialize Gemini AI
