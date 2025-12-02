@@ -18,8 +18,7 @@ export default defineConfig(({ mode }) => {
         '@supabase/storage-js',
         '@supabase/functions-js',
         '@supabase/auth-js'
-      ],
-      force: true
+      ]
     },
     server: {
       host: '0.0.0.0',
