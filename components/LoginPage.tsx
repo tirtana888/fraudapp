@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, ShieldAlert, Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, ShieldAlert, Eye, EyeOff, KeyRound, ArrowLeft, Send } from 'lucide-react';
 import { UserProfile } from '../types';
 import { loginWithFirestore, resetUserPassword } from '../services/firebase';
 
@@ -174,90 +173,80 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                      </div>
                  ) : (
                     <form onSubmit={handleResetPassword} className="space-y-5">
-                        <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Email Perusahaan</label>
-                        <div className="relative">
-                            <Mail className="absolute left-4 top-3.5 text-gray-400" size={20} />
-                            <input 
-                            type="email" 
-                            required
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
-                            placeholder="name@company.com"
-                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
-                            />
-                        </div>
-                        </div>
+                         <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Email Perusahaan</label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                                <input 
+                                type="email" 
+                                value={resetEmail}
+                                onChange={(e) => setResetEmail(e.target.value)}
+                                placeholder="name@company.com"
+                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                                />
+                            </div>
+                         </div>
 
-                        {error && (
-                        <div className="text-red-600 text-sm font-bold bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2 animate-in slide-in-from-top-2">
-                            <ShieldAlert size={16} />
-                            {error}
-                        </div>
-                        )}
+                         {error && (
+                            <div className="text-red-600 text-sm font-bold bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2 animate-in slide-in-from-top-2">
+                                <ShieldAlert size={16} />
+                                {error}
+                            </div>
+                         )}
 
-                        <button 
-                        type="submit" 
-                        disabled={isLoading}
-                        className="w-full bg-brand-dark text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                        {isLoading ? (
-                            <>
-                            <Loader2 size={20} className="animate-spin" />
-                            Memproses...
-                            </>
-                        ) : (
-                            <>
-                            Kirim Password Baru <SendIcon />
-                            </>
-                        )}
-                        </button>
+                         <button 
+                            type="submit" 
+                            disabled={isLoading}
+                            className="w-full bg-brand-dark text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                         >
+                            {isLoading ? (
+                                <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                                <>
+                                <Send size={18} /> Kirim Password Baru
+                                </>
+                            )}
+                         </button>
                     </form>
                  )}
             </>
           )}
 
         </div>
+        
+        <div className="absolute bottom-6 left-0 right-0 text-center">
+             <p className="text-xs text-gray-300 font-medium">© 2024 FraudGuard System AI</p>
+        </div>
       </div>
 
-      {/* RIGHT SIDE: VISUAL */}
-      <div className="hidden lg:flex w-1/2 bg-brand-slate-900 relative overflow-hidden items-center justify-center">
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-orange opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-brand-blue opacity-10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
-        
-        <div className="relative z-10 max-w-lg px-10 text-center">
-          <div className="w-24 h-24 bg-gradient-to-br from-brand-orange to-red-600 rounded-3xl mx-auto mb-8 shadow-2xl flex items-center justify-center rotate-3 transform hover:rotate-6 transition-transform duration-500">
-             <ShieldCheck size={48} className="text-white" />
-          </div>
-          
-          <h2 className="text-3xl font-extrabold text-white mb-6 leading-tight">
-            Advanced Fraud Detection.
-          </h2>
-          <p className="text-gray-300 text-lg leading-relaxed mb-8">
-            Platform SaaS Enterprise dengan keamanan tingkat tinggi, integrasi database real-time, dan audit otomatis.
-          </p>
+      {/* RIGHT SIDE: IMAGE/BRANDING */}
+      <div className="hidden lg:flex w-1/2 bg-gray-900 relative overflow-hidden items-center justify-center">
+           <div className="absolute inset-0 bg-gradient-to-br from-brand-dark to-black opacity-90"></div>
+           
+           <div className="relative z-10 max-w-lg text-center p-10">
+               <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/20 shadow-2xl">
+                   <ShieldCheck size={40} className="text-brand-orange" />
+               </div>
+               <h2 className="text-4xl font-extrabold text-white mb-6 leading-tight">Secure Your Hiring with <span className="text-brand-orange">AI Intelligence</span></h2>
+               <p className="text-gray-300 text-lg leading-relaxed">
+                   Platform deteksi risiko rekrutmen #1 di Indonesia yang menggabungkan psikologi forensik dengan kecerdasan buatan.
+               </p>
 
-          <div className="flex justify-center gap-4">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 rounded-xl">
-               <p className="text-2xl font-bold text-white">99.9%</p>
-               <p className="text-xs text-gray-400 uppercase tracking-wider">Uptime</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 rounded-xl">
-               <p className="text-2xl font-bold text-white">ISO</p>
-               <p className="text-xs text-gray-400 uppercase tracking-wider">27001 Ready</p>
-            </div>
-          </div>
-        </div>
+               <div className="mt-10 grid grid-cols-2 gap-4 text-left">
+                   <div className="bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                       <h4 className="font-bold text-white mb-1">98% Akurasi</h4>
+                       <p className="text-xs text-gray-400">Dalam mendeteksi potensi fraud kandidat.</p>
+                   </div>
+                   <div className="bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                       <h4 className="font-bold text-white mb-1">ISO 27001</h4>
+                       <p className="text-xs text-gray-400">Standar keamanan data perbankan.</p>
+                   </div>
+               </div>
+           </div>
       </div>
 
     </div>
   );
 };
-
-// Helper Icon for button
-const SendIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-)
 
 export default LoginPage;

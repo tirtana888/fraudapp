@@ -119,3 +119,10 @@ export interface AssessmentInvite {
   createdAt: string;
   usedAt?: string;
 }
+
+export interface TimelineEvent {
+  id: string;
+  type: 'SESSION' | 'INVITE';
+  date: string;
+  data: InterviewSession | AssessmentInvite;
+}

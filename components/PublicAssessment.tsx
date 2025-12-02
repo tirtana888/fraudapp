@@ -2,13 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound } from 'lucide-react';
 import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/firebase';
-import { generateNextQuestion, analyzeFraudRisk } from '../services/genai';
-import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite } from '../types';
+import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
+import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
-
-interface PublicAssessmentProps {
-  companyId: string | null;
-}
 
 const AVAILABLE_ROLES = [
   "Manajer Keuangan", "Staff Pengadaan (Procurement)", "Kepala Gudang / Logistik", 
@@ -19,83 +15,89 @@ type AssessmentStep = 'login' | 'loading' | 'welcome' | 'profile' | 'survey_ft' 
 
 const CHAT_TIME_LIMIT_SECONDS = 600; 
 
-const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialCompanyId }) => {
-  const [step, setStep] = useState<AssessmentStep>('login'); 
-  const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+interface PublicAssessmentProps {
+  companyId: string | null;
+}
+
+const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propCompanyId }) => {
+  const [step, setStep] = useState<AssessmentStep>(propCompanyId ? 'loading' : 'login'); 
+  const [companyId, setCompanyId] = useState<string | null>(propCompanyId);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   
-  // LOGIN STATE (BLAST FLOW)
   const [accessCode, setAccessCode] = useState('');
   const [inviteData, setInviteData] = useState<AssessmentInvite | null>(null);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
-  // CANDIDATE DATA
   const [candidateName, setCandidateName] = useState('');
   const [candidateEmail, setCandidateEmail] = useState('');
   const [candidateRole, setCandidateRole] = useState('');
   
-  // SURVEY DATA
   const [ftAnswers, setFtAnswers] = useState<AssessmentItem[]>(FRAUD_TRIANGLE_QUESTIONS);
   const [finAnswers, setFinAnswers] = useState<AssessmentItem[]>(FINANCIAL_STRAIN_QUESTIONS);
   const [sjtAnswers, setSjtAnswers] = useState<SJTItem[]>(SJT_SCENARIOS);
 
-  // CHAT DATA
   const [chatHistory, setChatHistory] = useState<Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>>([]);
   const [userInput, setUserInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // TIMER
   const [timeLeft, setTimeLeft] = useState(CHAT_TIME_LIMIT_SECONDS);
-
-  // SECURITY GATE
   const [isAccessDenied, setIsAccessDenied] = useState(false);
 
-  useEffect(() => {
-    if (initialCompanyId) {
-       fetchCompany(initialCompanyId);
-    }
-  }, [initialCompanyId]);
-
-  const fetchCompany = async (id: string) => {
+  const fetchCompany = async (id: string): Promise<boolean> => {
       try {
         const data = await getCompanyById(id);
         if (data) {
           if (data.tier === 'Basic') {
               setIsAccessDenied(true);
-              setStep('welcome'); 
-              return;
+              setStep('welcome'); // Show access denied message on welcome screen
+              return false;
           }
           setCompany(data);
           setCompanyId(id);
-          // Only skip login if we are currently at login and it's a generic link
-          // For Blast Links, we might want to enforce code, but keeping it flexible for now.
-          if (step === 'login') setStep('welcome');
+          return true;
         } else {
-          setErrorMsg("Link perusahaan tidak valid.");
+          setErrorMsg("Data perusahaan untuk kode ini tidak valid.");
+          return false;
         }
       } catch (err) {
-        setErrorMsg("Gagal memuat data.");
+        setErrorMsg("Gagal memuat data perusahaan.");
+        return false;
       }
   };
+
+  useEffect(() => {
+    // This effect is for GENERIC links (cid in URL)
+    if (propCompanyId && !inviteData) { // Only run if it's not an access code flow
+      fetchCompany(propCompanyId).then((companyLoaded) => {
+        if (companyLoaded) {
+          setStep('welcome');
+        }
+      });
+    }
+  }, [propCompanyId, inviteData]);
 
   const handleVerifyCode = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsVerifyingCode(true);
       setErrorMsg(null);
-
       try {
           const invite = await verifyAccessCode(accessCode);
           if (invite) {
               setInviteData(invite);
-              setCompanyId(invite.companyId);
               setCandidateName(invite.name);
               setCandidateEmail(invite.email);
               if (invite.role) setCandidateRole(invite.role);
               
-              await fetchCompany(invite.companyId);
+              const companyLoaded = await fetchCompany(invite.companyId);
+
+              if(companyLoaded) {
+                  // SUCCESS: Move to next step
+                  setStep('welcome');
+              }
+              
           } else {
               setErrorMsg("Kode akses tidak valid atau sudah terpakai.");
           }
@@ -187,21 +189,48 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
   };
 
   const handleFinishAssessment = async () => {
-      if (step === 'analyzing' || step === 'done') return;
-      setStep('analyzing');
+    if (step === 'analyzing' || step === 'done') return;
+    setStep('analyzing');
+    
+    let finalAnalysis: FraudAnalysis;
+    try {
+      finalAnalysis = await analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Basic');
+    } catch (error) {
+      console.error("CRITICAL: analyzeFraudRisk threw an unexpected error. Generating emergency fallback.", error);
+      const manualScores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
+      const avgScore = (manualScores.pressureScore + manualScores.rationalizationScore + manualScores.opportunityScore) / 3;
+      let manualRisk = RiskLevel.LOW;
+      if (avgScore > 75) manualRisk = RiskLevel.CRITICAL;
+      else if (avgScore > 50) manualRisk = RiskLevel.HIGH;
+      else if (avgScore > 30) manualRisk = RiskLevel.MEDIUM;
+
+      finalAnalysis = {
+          scores: { pressure: manualScores.pressureScore, opportunity: manualScores.opportunityScore, rationalization: manualScores.rationalizationScore },
+          riskLevel: manualRisk,
+          summary: "Laporan GAGAL dibuat karena gangguan koneksi saat analisis AI. Skor dihitung berdasarkan jawaban kuesioner saja. Mohon review manual.",
+          redFlags: ["ANALISIS AI GAGAL TOTAL"],
+          recommendation: "Lakukan review manual transkrip dan jawaban yang tersimpan.",
+          isManualFallback: true,
+      } as FraudAnalysis;
+    }
+
+    try {
+      await updateSessionInDB(sessionId, { 
+        status: 'completed', 
+        analysis: finalAnalysis, 
+        transcript: chatHistory, 
+        source: 'public_link' 
+      });
       
-      try {
-          const analysis = await analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Basic');
-          await updateSessionInDB(sessionId, { status: 'completed', analysis, transcript: chatHistory, source: 'public_link' });
-          
-          if (inviteData && inviteData.access_code) {
-              await markAccessCodeUsed(inviteData.access_code);
-          }
-          setStep('done');
-      } catch (error) {
-          try { await updateSessionInDB(sessionId, { status: 'completed' }); } catch(e) {}
-          setStep('done');
+      if (inviteData && inviteData.access_code) {
+        await markAccessCodeUsed(inviteData.access_code);
       }
+      setStep('done');
+    } catch (dbError) {
+      console.error("Failed to save final session to DB:", dbError);
+      setErrorMsg("Gagal menyimpan hasil akhir. Mohon hubungi administrator.");
+      setStep('chat');
+    }
   };
 
   useEffect(() => {
@@ -260,31 +289,6 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
       );
   }
 
-  if (step === 'analyzing_profile') {
-      return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-white font-sans">
-              <div className="relative">
-                  <div className="w-24 h-24 rounded-full border-4 border-gray-100 border-t-orange-500 animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                      <User size={32} className="text-gray-400" />
-                  </div>
-              </div>
-              <h3 className="mt-6 text-xl font-bold text-gray-800">Menganalisis Profil...</h3>
-              <p className="text-gray-500 text-sm mt-2">AI sedang menyiapkan strategi interview berdasarkan jawaban Anda.</p>
-          </div>
-      );
-  }
-
-  if (isAccessDenied) return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center font-sans">
-          <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full border border-gray-200">
-              <Lock size={32} className="text-gray-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Akses Dibatasi</h2>
-              <p className="text-gray-500 text-sm mb-4">Fitur ini tidak tersedia untuk paket Basic.</p>
-          </div>
-      </div>
-  );
-
   const Header = () => (
     <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-center sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3">
@@ -293,7 +297,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
         </div>
     </div>
   );
-
+  
   if (step === 'done') {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans">
@@ -324,12 +328,18 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-6">
                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><User /> Identitas Diri</h2>
                <form onSubmit={handleProfileSubmit} className="space-y-4">
-                  <div><label className="block text-sm font-bold text-gray-700 mb-2">Nama Lengkap</label><input required type="text" value={candidateName} onChange={e => setCandidateName(e.target.value)} className="w-full p-3 border rounded-xl" readOnly={!!inviteData} /></div>
-                  <div><label className="block text-sm font-bold text-gray-700 mb-2">Email</label><input required type="email" value={candidateEmail} onChange={e => setCandidateEmail(e.target.value)} className="w-full p-3 border rounded-xl" readOnly={!!inviteData} /></div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Nama Lengkap</label>
+                    <input required type="text" value={candidateName} onChange={e => setCandidateName(e.target.value)} className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
+                    <input required type="email" value={candidateEmail} onChange={e => setCandidateEmail(e.target.value)} className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData} />
+                  </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Posisi</label>
                     <div className="relative">
-                        <select required value={candidateRole} onChange={e => setCandidateRole(e.target.value)} className="w-full p-3 border rounded-xl bg-white appearance-none" disabled={!!inviteData?.role}>
+                        <select required value={candidateRole} onChange={e => setCandidateRole(e.target.value)} className="w-full p-3 border rounded-xl bg-white appearance-none disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData?.role}>
                             <option value="" disabled>-- Pilih Posisi --</option>
                             {AVAILABLE_ROLES.map((role, idx) => <option key={idx} value={role}>{role}</option>)}
                         </select>
@@ -341,6 +351,10 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
            </div>
         )}
 
+        {/* ====================================================== */}
+        {/* ========= RESTORED SURVEY BLOCKS START HERE ========== */}
+        {/* ====================================================== */}
+        
         {step === 'survey_ft' && (
            <div className="space-y-6">
                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-sm font-medium">Bagian 1/3: Kuesioner Gaya Kerja</div>
@@ -391,10 +405,14 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: initialC
                      </div>
                   </div>
                 ))}
-                <button onClick={() => handleStartAnalysisBridge()} disabled={sjtAnswers.some(a => a.selectedOptionIndex === null)} className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50" style={{ backgroundColor: brandColor }}>Selesai & Mulai Interview</button>
+                <button onClick={handleStartAnalysisBridge} disabled={sjtAnswers.some(a => a.selectedOptionIndex === null)} className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50" style={{ backgroundColor: brandColor }}>Selesai & Mulai Interview</button>
             </div>
         )}
-
+        
+        {/* ==================================================== */}
+        {/* ========= RESTORED SURVEY BLOCKS END HERE ========== */}
+        {/* ==================================================== */}
+        
         {step === 'intro_chat' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-10 text-center animate-in zoom-in-95">
                 <div className="w-20 h-20 bg-brand-orange/10 rounded-full flex items-center justify-center mx-auto mb-6">

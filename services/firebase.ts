@@ -21,6 +21,11 @@ export const COLLECTIONS = {
   INVITES: 'assessment_invites'
 };
 
+// --- EMAILJS CONFIGURATION ---
+const EMAILJS_SERVICE_ID = "service_8o2nl6d";
+const EMAILJS_TEMPLATE_BUSINESS = "template_gfg2qr4"; // For Business Invite & Password Reset
+const EMAILJS_TEMPLATE_CANDIDATE = "template_dvgrjda"; // For Candidate Assessment Invite
+
 let db: Firestore;
 
 // Declare EmailJS globally
@@ -102,10 +107,7 @@ export const resetUserPassword = async (email: string) => {
             message: `Permintaan reset password Anda berhasil. Gunakan password sementara di atas untuk login.`
         };
 
-        const SERVICE_ID = "service_8o2nl6d";
-        const TEMPLATE_ID = "template_gfg2qr4"; 
-
-        await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
         
         return { success: true, message: `Password baru telah dikirim ke ${cleanEmail}.` };
 
@@ -322,10 +324,7 @@ export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>)
                 message: `Selamat bergabung! Akun ${companyData.tier} Anda aktif hingga ${defaultExpiry.toLocaleDateString('id-ID')}.`
             };
 
-            const SERVICE_ID = "service_8o2nl6d";
-            const TEMPLATE_ID = "template_gfg2qr4"; 
-
-            await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+            await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
             return { success: true, message: `Perusahaan disimpan. Email kredensial terkirim ke ${companyData.adminEmail}.` };
 
         } catch (emailError: any) {
@@ -370,10 +369,7 @@ export const resendInviteEmail = async (companyId: string) => {
             message: `[KIRIM ULANG] Berikut adalah kredensial akses Anda.`
         };
 
-        const SERVICE_ID = "service_8o2nl6d";
-        const TEMPLATE_ID = "template_gfg2qr4";
-
-        await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_BUSINESS, templateParams);
         return { success: true, message: `Email kredensial berhasil dikirim ulang ke ${companyData.adminEmail}` };
 
     } catch (error: any) {
@@ -516,7 +512,7 @@ export const blastAssessmentInvites = async (
       await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
 
       // C. Send Email via EmailJS
-      const assessmentLink = `${window.location.origin}?mode=assess&cid=${companyId}`;
+      const assessmentLink = `${window.location.origin}?mode=assess`; // No cid here, code implies company
       const templateParams = {
         to_email: candidate.email,
         to_name: candidate.name,
@@ -526,10 +522,7 @@ export const blastAssessmentInvites = async (
         message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
       };
 
-      const SERVICE_ID = "service_8o2nl6d";
-      const TEMPLATE_ID = "template_gfg2qr4"; 
-
-      await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_CANDIDATE, templateParams);
       results.success++;
 
     } catch (error) {
@@ -581,7 +574,7 @@ export const markAccessCodeUsed = async (code: string) => {
   }
 };
 
-export const getAssessmentInvites = (companyId: string, onUpdate: (data: AssessmentInvite[]) => void) => {
+export const subscribeToInvites = (companyId: string, onUpdate: (data: AssessmentInvite[]) => void) => {
     if (!db) return () => {};
     
     const executeSimpleQuery = () => {

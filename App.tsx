@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard } from 'lucide-react';
 import Sidebar from './components/Sidebar';
@@ -11,8 +12,8 @@ import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidateBlast from './components/CandidateBlast';
-import { InterviewSession, UserProfile, CompanyProfile } from './types';
-import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById } from './services/firebase';
+import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
+import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 
 const App: React.FC = () => {
   // Auth State
@@ -21,7 +22,7 @@ const App: React.FC = () => {
   // Public Link State (Lazy Initialization to prevent Login Flash)
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('mode') === 'assess' && !!params.get('cid');
+    return params.get('mode') === 'assess';
   });
   
   const [publicCompanyId, setPublicCompanyId] = useState<string | null>(() => {
@@ -32,7 +33,12 @@ const App: React.FC = () => {
   // App State
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentCompany, setCurrentCompany] = useState<CompanyProfile | null>(null);
+  
+  // Real-time Data States
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
+  const [invites, setInvites] = useState<AssessmentInvite[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [reviewingSession, setReviewingSession] = useState<InterviewSession | null>(null);
@@ -57,21 +63,21 @@ const App: React.FC = () => {
     setIsLoadingData(true);
     
     const initCompany = async () => {
-       if(currentUser.companyId && currentUser.companyId !== 'system') {
+       if(currentUser.companyId) {
            const company = await getCompanyById(currentUser.companyId);
            setCurrentCompany(company);
-       } else {
-           setCurrentCompany({
-               id: 'system', name: 'System Admin View', tier: 'Enterprise', status: 'Active', adminEmail: 'admin@fraudguard.id', joinedDate: new Date().toISOString()
-           });
        }
     };
     initCompany();
 
-    const unsubscribe = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
+    const unsubscribeSessions = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
       setSessions(fetchedSessions as InterviewSession[]);
       setIsLoadingData(false);
     });
+
+    const unsubscribeInvites = currentUser.companyId ? subscribeToInvites(currentUser.companyId, (fetchedInvites) => {
+      setInvites(fetchedInvites as AssessmentInvite[]);
+    }) : () => {};
 
     const handleConnectionError = (e: any) => {
        setApiError(e.detail || "Koneksi database bermasalah.");
@@ -80,10 +86,43 @@ const App: React.FC = () => {
     window.addEventListener('firebase-connection-error', handleConnectionError as EventListener);
 
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') unsubscribe();
+      if (unsubscribeSessions) unsubscribeSessions();
+      if (unsubscribeInvites) unsubscribeInvites();
       window.removeEventListener('firebase-connection-error', handleConnectionError as EventListener);
     };
   }, [currentUser, isPublicMode]); 
+
+  // --- TIMELINE ENGINE ---
+  // Merges sessions and invites into a single, sorted, real-time feed.
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const sessionEvents: TimelineEvent[] = sessions.map(s => ({
+        id: s.id,
+        type: 'SESSION',
+        date: s.date,
+        data: s
+    }));
+
+    const inviteEvents: TimelineEvent[] = invites.map(i => ({
+        id: i.id || i.access_code,
+        type: 'INVITE',
+        date: i.createdAt,
+        data: i
+    }));
+
+    const combined = [...sessionEvents, ...inviteEvents];
+    
+    // Filter by company for non-admin users
+    const filtered = currentUser.role === 'System Admin' 
+        ? combined 
+        : combined.filter(event => event.data.companyId === currentUser.companyId);
+
+    // Sort by date descending
+    filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    setTimelineEvents(filtered.slice(0, 50)); // Limit for performance
+  }, [sessions, invites, currentUser]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -115,25 +154,25 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
     setSessions([]);
+    setInvites([]);
+    setTimelineEvents([]);
     setCurrentCompany(null);
     setViewingSessionId(null);
     setReviewingSession(null);
     setActiveTab('dashboard');
   };
 
-  // Navigasi Utama: Reset semua state view saat pindah tab
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     setViewingSessionId(null); 
     setReviewingSession(null); 
     setIsMobileMenuOpen(false);
-    // Reset settings tab to profile when entering settings
     if (tabId === 'settings') setSettingsTab('profile');
   };
 
   const handleReviewSession = (session: InterviewSession) => {
       setReviewingSession(session);
-      setViewingSessionId(null); // Close report view if open
+      setViewingSessionId(null);
       setActiveTab('new-interview'); 
   };
 
@@ -157,13 +196,8 @@ const App: React.FC = () => {
       }
   }
 
-  const companySessions = sessions.filter(s => {
-      if (currentUser?.role === 'System Admin') return true; 
-      return s.companyId === currentCompany?.id;
-  });
-
   // PRIORITY RENDER: Check Public Mode First
-  if (isPublicMode && publicCompanyId) {
+  if (isPublicMode) {
     return <PublicAssessment companyId={publicCompanyId} />;
   }
 
@@ -196,7 +230,7 @@ const App: React.FC = () => {
       }
     }
 
-    if (isLoadingData && sessions.length === 0) {
+    if (isLoadingData && sessions.length === 0 && invites.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center animate-in fade-in">
           <Loader2 className="w-10 h-10 text-brand-orange animate-spin mb-4" />
@@ -209,7 +243,7 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard 
-                  sessions={companySessions} 
+                  timelineEvents={timelineEvents} 
                   currentCompany={currentCompany!} 
                   onViewSession={setViewingSessionId}
                   onReviewSession={handleReviewSession} 
@@ -243,7 +277,7 @@ const App: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {companySessions.map(s => (
+                    {sessions.map(s => (
                       <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group">
                         <td className="p-5">
                           <p className="font-bold text-gray-800 dark:text-gray-200 text-sm group-hover:text-brand-orange transition-colors">{s.candidate.name}</p>
@@ -282,7 +316,7 @@ const App: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                    {companySessions.length === 0 && (
+                    {sessions.length === 0 && (
                       <tr>
                         <td colSpan={4} className="p-10 text-center text-gray-400 dark:text-gray-500 italic">
                           Belum ada data di database untuk perusahaan ini.
