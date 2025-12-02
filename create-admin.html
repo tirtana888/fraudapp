@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Admin User</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Creating Admin User...</h1>
+    <pre id="output"></pre>
+
+    <script>
+        const { createClient } = supabase;
+
+        const supabaseUrl = 'https://ouukyqpdmdkugrlickhj.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91dWt5cXBkbWRrdWdybGlja2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2NTYzMzQsImV4cCI6MjA4MDIzMjMzNH0.UbORcEsEpKj655KZ0tXWgjywF_XBbbikbQZszqLvkgE';
+
+        const client = createClient(supabaseUrl, supabaseKey);
+        const output = document.getElementById('output');
+
+        async function createAdmin() {
+            try {
+                output.textContent += 'Creating admin user...\n';
+
+                // Sign up admin
+                const { data: authData, error: authError } = await client.auth.signUp({
+                    email: 'admin@fraudguard.id',
+                    password: 'admin123',
+                    options: {
+                        data: {
+                            name: 'Super Admin',
+                            role: 'System Admin',
+                            company_id: 'cc62285d-a8e9-4ca6-8a8b-988785473b2a',
+                            avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    output.textContent += 'Auth Error: ' + authError.message + '\n';
+                    if (authError.message.includes('already registered')) {
+                        output.textContent += 'User already exists! Try logging in.\n';
+                        return;
+                    }
+                    throw authError;
+                }
+
+                output.textContent += 'User created in auth: ' + authData.user.id + '\n';
+
+                // Create user profile
+                const { error: profileError } = await client
+                    .from('users')
+                    .insert({
+                        id: authData.user.id,
+                        email: 'admin@fraudguard.id',
+                        name: 'Super Admin',
+                        role: 'System Admin',
+                        company_id: 'cc62285d-a8e9-4ca6-8a8b-988785473b2a',
+                        avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
+                    });
+
+                if (profileError) {
+                    output.textContent += 'Profile Error: ' + profileError.message + '\n';
+                    throw profileError;
+                }
+
+                output.textContent += '\n✅ SUCCESS!\n\n';
+                output.textContent += 'Email: admin@fraudguard.id\n';
+                output.textContent += 'Password: admin123\n';
+                output.textContent += '\nYou can now close this page and login.\n';
+
+            } catch (error) {
+                output.textContent += '\n❌ ERROR: ' + error.message + '\n';
+                console.error(error);
+            }
+        }
+
+        createAdmin();
+    </script>
+</body>
+</html>
