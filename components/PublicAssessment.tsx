@@ -86,18 +86,21 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       try {
           const invite = await verifyAccessCode(accessCode);
           if (invite) {
+              // MARK CODE AS USED IMMEDIATELY AFTER VERIFICATION
+              await markAccessCodeUsed(accessCode);
+
               setInviteData(invite);
               setCandidateName(invite.name);
               setCandidateEmail(invite.email);
               if (invite.role) setCandidateRole(invite.role);
-              
+
               const companyLoaded = await fetchCompany(invite.companyId);
 
               if(companyLoaded) {
                   // SUCCESS: Move to next step
                   setStep('welcome');
               }
-              
+
           } else {
               setErrorMsg("Kode akses tidak valid atau sudah terpakai.");
           }
@@ -214,16 +217,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
-      await updateSessionInDB(sessionId, { 
-        status: 'completed', 
-        analysis: finalAnalysis, 
-        transcript: chatHistory, 
-        source: 'public_link' 
+      await updateSessionInDB(sessionId, {
+        status: 'completed',
+        analysis: finalAnalysis,
+        transcript: chatHistory,
+        source: 'public_link'
       });
-      
-      if (inviteData && inviteData.access_code) {
-        await markAccessCodeUsed(inviteData.access_code);
-      }
+
       setStep('done');
     } catch (dbError) {
       console.error("Failed to save final session to DB:", dbError);
