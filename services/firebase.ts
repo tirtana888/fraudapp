@@ -654,9 +654,64 @@ export const markAccessCodeUsed = async (
   }
 };
 
+export const resendCandidateInvite = async (inviteId: string, companyName: string): Promise<{ success: boolean; message: string }> => {
+  if (!db) throw new Error("Database offline");
+
+  try {
+    const inviteRef = doc(db, COLLECTIONS.INVITES, inviteId);
+    const inviteDoc = await getDoc(inviteRef);
+
+    if (!inviteDoc.exists()) {
+      throw new Error("Undangan tidak ditemukan");
+    }
+
+    const inviteData = inviteDoc.data() as AssessmentInvite;
+
+    const assessmentLink = `${window.location.origin}?mode=assess`;
+    const emailSent = await sendEmailViaCloudFunction(
+      "candidate",
+      inviteData.email,
+      inviteData.name,
+      {
+        company_name: companyName,
+        access_code: inviteData.access_code,
+        assessment_link: assessmentLink,
+        message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${inviteData.access_code}. Kode ini hanya berlaku 1 kali.`
+      }
+    );
+
+    if (!emailSent) {
+      throw new Error("Gagal mengirim email");
+    }
+
+    await updateDoc(inviteRef, {
+      resentAt: new Date().toISOString()
+    });
+
+    return { success: true, message: "Email undangan berhasil dikirim ulang" };
+  } catch (error: any) {
+    console.error("Error resending invite:", error);
+    return { success: false, message: error.message || "Gagal mengirim ulang undangan" };
+  }
+};
+
+export const deleteCandidateInvite = async (inviteId: string): Promise<{ success: boolean; message: string }> => {
+  if (!db) throw new Error("Database offline");
+
+  try {
+    const inviteRef = doc(db, COLLECTIONS.INVITES, inviteId);
+    await deleteDoc(inviteRef);
+
+    return { success: true, message: "Kandidat berhasil dihapus" };
+  } catch (error: any) {
+    console.error("Error deleting invite:", error);
+    return { success: false, message: error.message || "Gagal menghapus kandidat" };
+  }
+};
+
 export const subscribeToInvites = (companyId: string, onUpdate: (data: AssessmentInvite[]) => void) => {
     if (!db) return () => {};
-    
+
     const executeSimpleQuery = () => {
         const q = query(
             collection(db, COLLECTIONS.INVITES),

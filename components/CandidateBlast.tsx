@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown, Upload } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites } from '../services/firebase';
+import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown, Upload, MoreVertical, Trash2, RefreshCw } from 'lucide-react';
+import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, deleteCandidateInvite } from '../services/firebase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
@@ -26,6 +26,8 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
   const [blastStatus, setBlastStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (currentCompany?.id) {
@@ -53,6 +55,49 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
     setCandidates(newArr);
   };
 
+  const handleResendInvite = async (inviteId: string) => {
+    if (actionLoading) return;
+
+    setActionLoading(true);
+    try {
+      const result = await resendCandidateInvite(inviteId, currentCompany.name);
+      if (result.success) {
+        alert(`✅ ${result.message}`);
+      } else {
+        alert(`❌ ${result.message}`);
+      }
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setActionLoading(false);
+      setActiveMenuId(null);
+    }
+  };
+
+  const handleDeleteInvite = async (inviteId: string) => {
+    if (actionLoading) return;
+
+    if (!confirm("Apakah Anda yakin ingin menghapus kandidat ini? Data tidak dapat dikembalikan.")) {
+      setActiveMenuId(null);
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const result = await deleteCandidateInvite(inviteId);
+      if (result.success) {
+        alert(`✅ ${result.message}`);
+      } else {
+        alert(`❌ ${result.message}`);
+      }
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setActionLoading(false);
+      setActiveMenuId(null);
+    }
+  };
+
   const handleSendBlast = async () => {
     setIsSending(true);
     setBlastStatus('idle');
@@ -64,22 +109,22 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
         if (!currentCompany || !currentCompany.id) {
             throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
         }
-        
+
         const planFeatures = PLAN_LIMITS[currentCompany.tier];
         if (!planFeatures.allow_permanent_link) {
             throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
         }
-        
+
         const validCandidates = candidates.filter(c => c.name.trim() && c.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
-        
+
         if (validCandidates.length === 0) {
             throw new Error("Mohon isi minimal Nama dan Email yang valid untuk satu kandidat.");
         }
-        
+
         setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
 
         const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
-        
+
         if (result.success > 0) {
             setBlastStatus('success');
             setStatusMessage(`${result.success} undangan berhasil dikirim. ${result.failed > 0 ? `${result.failed} gagal.` : ''}`);
@@ -103,7 +148,7 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20" onClick={() => setActiveMenuId(null)}>
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -219,6 +264,7 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                           <th className="p-4">Kode Akses</th>
                           <th className="p-4">Tanggal Kirim</th>
                           <th className="p-4">Status</th>
+                          <th className="p-4 text-right">Aksi</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -266,11 +312,51 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                                        : '⏱️ Menunggu Kandidat'}
                                   </span>
                               </td>
+                              <td className="p-4 text-right relative">
+                                  <button
+                                      onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveMenuId(activeMenuId === inv.id ? null : inv.id);
+                                      }}
+                                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                                      disabled={actionLoading}
+                                  >
+                                      <MoreVertical size={18} />
+                                  </button>
+
+                                  {activeMenuId === inv.id && (
+                                      <div className="absolute right-8 top-8 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-20 overflow-hidden animate-in zoom-in-95 duration-100 text-left">
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleResendInvite(inv.id!);
+                                              }}
+                                              className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
+                                              disabled={actionLoading}
+                                          >
+                                              {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                              Kirim Ulang Email
+                                          </button>
+                                          <div className="border-b border-gray-100 dark:border-slate-700"></div>
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteInvite(inv.id!);
+                                              }}
+                                              className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                                              disabled={actionLoading}
+                                          >
+                                              {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                              Hapus Kandidat
+                                          </button>
+                                      </div>
+                                  )}
+                              </td>
                           </tr>
                       ))}
                       {invites.length === 0 && (
                           <tr>
-                              <td colSpan={4} className="p-8 text-center text-gray-400 text-sm italic">Belum ada undangan terkirim.</td>
+                              <td colSpan={5} className="p-8 text-center text-gray-400 text-sm italic">Belum ada undangan terkirim.</td>
                           </tr>
                       )}
                   </tbody>
