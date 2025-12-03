@@ -202,7 +202,7 @@ const App: React.FC = () => {
           case 'jobs': return 'Kelola Lowongan';
           case 'job-applications': return 'Aplikasi Lowongan';
           case 'candidate-blast': return 'Undang Kandidat';
-          case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Wawancara Baru';
+          case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
           case 'history': return 'Riwayat Audit';
           case 'settings': return 'Pengaturan';
           case 'admin-panel': return 'Admin Panel (Super Admin)';
