@@ -129,3 +129,34 @@ export interface TimelineEvent {
   date: string;
   data: InterviewSession | AssessmentInvite;
 }
+
+export interface Job {
+  id?: string;
+  companyId: string;
+  slug: string;
+  title: string;
+  location: string;
+  jobType: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
+  description: string;
+  status: 'Active' | 'Closed';
+  enableInstantAssessment: boolean;
+  datePosted: string;
+  applicantsCount?: number;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface JobApplication {
+  id?: string;
+  jobId: string;
+  companyId: string;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  cvUrl: string;
+  status: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Rejected';
+  assessmentToken?: string;
+  sessionId?: string;
+  appliedAt: string;
+  createdAt?: any;
+}

@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc, limit } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { CompanyProfile, UserProfile, AssessmentInvite } from "../types";
+import { CompanyProfile, UserProfile, AssessmentInvite, Job, JobApplication } from "../types";
 
 // --- KONFIGURASI FIREBASE REAL (PRODUCTION) ---
 const firebaseConfig = {
@@ -20,7 +20,9 @@ export const COLLECTIONS = {
   SESSIONS: 'interview_sessions',
   USERS: 'users',
   COMPANIES: 'companies',
-  INVITES: 'assessment_invites'
+  INVITES: 'assessment_invites',
+  JOBS: 'jobs',
+  APPLICATIONS: 'applications'
 };
 
 export let db: Firestore;
@@ -964,4 +966,140 @@ export const deleteCompanyLogo = async (companyId: string): Promise<void> => {
   } catch (error) {
     console.error(`[STORAGE] Error during logo deletion:`, error);
   }
+};
+
+export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'datePosted' | 'applicantsCount'>): Promise<string> => {
+  try {
+    const now = new Date().toISOString();
+    const job: Omit<Job, 'id'> = {
+      ...jobData,
+      datePosted: now,
+      applicantsCount: 0,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.JOBS), job);
+    console.log('[JOBS] Job created with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('[JOBS] Error creating job:', error);
+    throw error;
+  }
+};
+
+export const updateJob = async (jobId: string, updates: Partial<Job>): Promise<void> => {
+  try {
+    const jobRef = doc(db, COLLECTIONS.JOBS, jobId);
+    await updateDoc(jobRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+    console.log('[JOBS] Job updated:', jobId);
+  } catch (error) {
+    console.error('[JOBS] Error updating job:', error);
+    throw error;
+  }
+};
+
+export const deleteJob = async (jobId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.JOBS, jobId));
+    console.log('[JOBS] Job deleted:', jobId);
+  } catch (error) {
+    console.error('[JOBS] Error deleting job:', error);
+    throw error;
+  }
+};
+
+export const getJobsByCompany = async (companyId: string): Promise<Job[]> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.JOBS),
+      where('companyId', '==', companyId),
+      orderBy('datePosted', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+  } catch (error) {
+    console.error('[JOBS] Error fetching jobs:', error);
+    throw error;
+  }
+};
+
+export const getJobBySlug = async (companyId: string, jobSlug: string): Promise<Job | null> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.JOBS),
+      where('companyId', '==', companyId),
+      where('slug', '==', jobSlug),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Job;
+  } catch (error) {
+    console.error('[JOBS] Error fetching job by slug:', error);
+    throw error;
+  }
+};
+
+export const createApplication = async (applicationData: Omit<JobApplication, 'id' | 'createdAt'>): Promise<string> => {
+  try {
+    const now = new Date().toISOString();
+    const application: Omit<JobApplication, 'id'> = {
+      ...applicationData,
+      createdAt: now
+    };
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.APPLICATIONS), application);
+    console.log('[APPLICATIONS] Application created with ID:', docRef.id);
+
+    const jobRef = doc(db, COLLECTIONS.JOBS, applicationData.jobId);
+    const jobSnap = await getDoc(jobRef);
+    if (jobSnap.exists()) {
+      const currentCount = jobSnap.data().applicantsCount || 0;
+      await updateDoc(jobRef, { applicantsCount: currentCount + 1 });
+    }
+
+    return docRef.id;
+  } catch (error) {
+    console.error('[APPLICATIONS] Error creating application:', error);
+    throw error;
+  }
+};
+
+export const uploadCV = async (applicationId: string, file: File): Promise<string> => {
+  if (!storage) throw new Error("Firebase Storage tidak tersedia");
+
+  const validTypes = ['application/pdf'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error("Format file tidak valid. Gunakan PDF.");
+  }
+
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    throw new Error(`Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB). Maksimal 5MB.`);
+  }
+
+  try {
+    const storagePath = `cvs/${applicationId}/${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log('[STORAGE] CV uploaded successfully:', downloadURL);
+    return downloadURL;
+  } catch (error: any) {
+    console.error('[STORAGE] CV upload failed:', error);
+    throw new Error(`Gagal upload CV: ${error.message}`);
+  }
+};
+
+export const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 };

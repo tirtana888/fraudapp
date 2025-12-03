@@ -12,6 +12,8 @@ import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidateBlast from './components/CandidateBlast';
+import JobManager from './components/JobManager';
+import PublicJobPage from './components/PublicJobPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 
@@ -22,12 +24,22 @@ const App: React.FC = () => {
   // Public Link State (Lazy Initialization to prevent Login Flash)
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('mode') === 'assess';
+    const pathname = window.location.pathname;
+    return params.get('mode') === 'assess' || pathname.startsWith('/careers/');
   });
-  
+
   const [publicCompanyId, setPublicCompanyId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('cid');
+  });
+
+  const [publicJobRoute, setPublicJobRoute] = useState<{companySlug: string; jobSlug: string} | null>(() => {
+    const pathname = window.location.pathname;
+    const match = pathname.match(/^\/careers\/([^/]+)\/([^/]+)$/);
+    if (match) {
+      return { companySlug: match[1], jobSlug: match[2] };
+    }
+    return null;
   });
 
   // App State
@@ -186,6 +198,7 @@ const App: React.FC = () => {
   const getPageTitle = (tab: string) => {
       switch(tab) {
           case 'dashboard': return 'Ringkasan Eksekutif';
+          case 'jobs': return 'Kelola Lowongan';
           case 'candidate-blast': return 'Undang Kandidat';
           case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Wawancara Baru';
           case 'history': return 'Riwayat Audit';
@@ -198,6 +211,9 @@ const App: React.FC = () => {
 
   // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode) {
+    if (publicJobRoute) {
+      return <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />;
+    }
     return <PublicAssessment companyId={publicCompanyId} />;
   }
 
@@ -242,12 +258,14 @@ const App: React.FC = () => {
     // 2. Jika tidak melihat laporan, render Tab yang aktif
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard 
-                  timelineEvents={timelineEvents} 
-                  currentCompany={currentCompany!} 
+        return <Dashboard
+                  timelineEvents={timelineEvents}
+                  currentCompany={currentCompany!}
                   onViewSession={setViewingSessionId}
-                  onReviewSession={handleReviewSession} 
+                  onReviewSession={handleReviewSession}
                />;
+      case 'jobs':
+        return <JobManager currentCompany={currentCompany!} />;
       case 'candidate-blast':
         return <CandidateBlast currentCompany={currentCompany!} />;
       case 'new-interview':
