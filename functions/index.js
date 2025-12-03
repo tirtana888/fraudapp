@@ -232,7 +232,11 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
   const GEMINI_API_KEY = functions.config().gemini?.key;
   const OPENAI_API_KEY = functions.config().openai?.key;
 
+  console.log(`[AI-CONFIG] Gemini API Key present: ${!!GEMINI_API_KEY}`);
+  console.log(`[AI-CONFIG] OpenAI API Key present: ${!!OPENAI_API_KEY}`);
+
   if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
+    console.error('[AI-CONFIG] NO API KEYS CONFIGURED! Using static fallback.');
     throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
   }
 
@@ -284,8 +288,9 @@ PENTING:
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ];
 
+      // Use Gemini 2.0 Flash Experimental for better chat responses
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash-latest",
+        model: "gemini-2.0-flash-exp",
         safetySettings
       });
 
@@ -304,7 +309,12 @@ PENTING:
       };
 
     } catch (geminiError) {
-      console.warn("[WARN] Gemini failed, trying OpenAI fallback:", geminiError.message);
+      console.error("[ERROR] Gemini failed:", {
+        message: geminiError.message,
+        stack: geminiError.stack,
+        name: geminiError.name
+      });
+      console.log("[AI] Attempting OpenAI fallback...");
     }
   }
 
@@ -320,7 +330,7 @@ PENTING:
           "Authorization": `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o",
           messages: [
             { role: "system", content: "Anda adalah HR Interviewer profesional yang melakukan wawancara dalam Bahasa Indonesia." },
             { role: "user", content: prompt }
@@ -343,12 +353,18 @@ PENTING:
       }
 
     } catch (openaiError) {
-      console.error("[ERROR] OpenAI also failed:", openaiError);
+      console.error("[ERROR] OpenAI also failed:", {
+        message: openaiError.message,
+        stack: openaiError.stack
+      });
     }
   }
 
   // Final fallback - static response
-  console.log("[AI] All AI providers failed, using static fallback");
+  console.error("[AI] ⚠️ ALL AI PROVIDERS FAILED! Using static fallback response.");
+  console.error("[AI] This means BOTH Gemini and OpenAI are not working properly.");
+  console.error("[AI] Check: 1) API Keys configured? 2) API Keys valid? 3) Quota exceeded?");
+
   return {
     success: true,
     response: "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?"
@@ -369,7 +385,11 @@ exports.analyzeFraudRisk = onCall({ region: "europe-west1" }, async (request) =>
   const GEMINI_API_KEY = functions.config().gemini?.key;
   const OPENAI_API_KEY = functions.config().openai?.key;
 
+  console.log(`[ANALYSIS-CONFIG] Gemini API Key present: ${!!GEMINI_API_KEY}`);
+  console.log(`[ANALYSIS-CONFIG] OpenAI API Key present: ${!!OPENAI_API_KEY}`);
+
   if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
+    console.error('[ANALYSIS-CONFIG] NO API KEYS CONFIGURED!');
     throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
   }
 
@@ -422,7 +442,8 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ];
 
-      const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
+      // Use Gemini 2.0 Flash Experimental for analysis
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", safetySettings });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       let text = response.text();
@@ -439,7 +460,12 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
       };
 
     } catch (geminiError) {
-      console.warn("[WARN] Gemini analysis failed, trying OpenAI fallback:", geminiError.message);
+      console.error("[ERROR] Gemini analysis failed:", {
+        message: geminiError.message,
+        stack: geminiError.stack,
+        name: geminiError.name
+      });
+      console.log("[ANALYSIS] Attempting OpenAI fallback...");
     }
   }
 
@@ -455,7 +481,7 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
           "Authorization": `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o",
           messages: [
             { role: "system", content: "You are a Senior Fraud Analyst. Respond with valid JSON only." },
             { role: "user", content: prompt }
@@ -481,12 +507,16 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
       }
 
     } catch (openaiError) {
-      console.error("[ERROR] OpenAI analysis also failed:", openaiError);
+      console.error("[ERROR] OpenAI analysis also failed:", {
+        message: openaiError.message,
+        stack: openaiError.stack
+      });
     }
   }
 
   // Final fallback - manual calculation
-  console.log("[ANALYSIS] All AI providers failed, using manual calculation");
+  console.error("[ANALYSIS] ⚠️ ALL AI PROVIDERS FAILED! Using manual fallback calculation.");
+  console.error("[ANALYSIS] Check: 1) API Keys configured? 2) API Keys valid? 3) Quota exceeded?");
   const scores = { pressure: 50, opportunity: 50, rationalization: 50 };
 
   return {
