@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -19,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   const menuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
     { id: 'jobs', label: 'Kelola Lowongan', icon: Briefcase },
+    { id: 'job-applications', label: 'Aplikasi Lowongan', icon: Users },
     { id: 'candidate-blast', label: 'Undang Kandidat', icon: Mail },
     { id: 'new-interview', label: 'Wawancara Baru', icon: PlusCircle },
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },

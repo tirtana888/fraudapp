@@ -1100,9 +1100,54 @@ export const createApplication = async (applicationData: Omit<JobApplication, 'i
       await updateDoc(jobRef, { applicantsCount: currentCount + 1 });
     }
 
+    console.log('[APPLICATIONS] Creating interview session for application...');
+    const sessionId = await createInterviewSessionFromApplication(docRef.id, applicationData);
+    console.log('[APPLICATIONS] Interview session created:', sessionId);
+
+    await updateDoc(docRef, { sessionId });
+    console.log('[APPLICATIONS] Application updated with sessionId');
+
     return docRef.id;
   } catch (error) {
     console.error('[APPLICATIONS] Error creating application:', error);
+    throw error;
+  }
+};
+
+export const createInterviewSessionFromApplication = async (
+  applicationId: string,
+  applicationData: Omit<JobApplication, 'id' | 'createdAt'>
+): Promise<string> => {
+  try {
+    const session = {
+      candidate: {
+        id: applicationId,
+        name: applicationData.fullName,
+        email: applicationData.email,
+        role: 'Applicant'
+      },
+      date: new Date().toISOString(),
+      status: 'pending_review' as const,
+      transcript: [
+        {
+          speaker: 'ai' as const,
+          text: `Aplikasi diterima dari ${applicationData.fullName} via Job Portal. CV: ${applicationData.cvUrl}`
+        }
+      ],
+      companyId: applicationData.companyId,
+      source: 'job_application',
+      jobId: applicationData.jobId,
+      applicationId: applicationId,
+      cvUrl: applicationData.cvUrl,
+      whatsapp: applicationData.whatsapp
+    };
+
+    const sessionRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), session);
+    console.log('[SESSIONS] Interview session created from job application:', sessionRef.id);
+
+    return sessionRef.id;
+  } catch (error) {
+    console.error('[SESSIONS] Error creating interview session:', error);
     throw error;
   }
 };

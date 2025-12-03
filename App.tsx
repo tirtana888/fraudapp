@@ -13,6 +13,7 @@ import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidateBlast from './components/CandidateBlast';
 import JobManager from './components/JobManager';
+import JobApplicationsView from './components/JobApplicationsView';
 import PublicJobPage from './components/PublicJobPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
@@ -199,6 +200,7 @@ const App: React.FC = () => {
       switch(tab) {
           case 'dashboard': return 'Ringkasan Eksekutif';
           case 'jobs': return 'Kelola Lowongan';
+          case 'job-applications': return 'Aplikasi Lowongan';
           case 'candidate-blast': return 'Undang Kandidat';
           case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Wawancara Baru';
           case 'history': return 'Riwayat Audit';
@@ -266,6 +268,14 @@ const App: React.FC = () => {
                />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
+      case 'job-applications':
+        return <JobApplicationsView companyId={currentCompany!.id} onViewSession={(sessionId) => {
+          const session = sessions.find(s => s.id === sessionId);
+          if (session) {
+            setReviewingSession(session);
+            setActiveTab('new-interview');
+          }
+        }} />;
       case 'candidate-blast':
         return <CandidateBlast currentCompany={currentCompany!} />;
       case 'new-interview':

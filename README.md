@@ -6,6 +6,8 @@
 ## 🚀 Fitur Utama
 
 - **Multi-Tenant SaaS**: Mendukung multiple perusahaan dengan isolasi data yang aman.
+- **Job Portal Integration**: Public job posting dengan auto-create interview sessions untuk setiap aplikasi.
+- **HR-Friendly Dashboard**: Kelola aplikasi kandidat dengan filter, quick actions, dan one-click contact.
 - **AI Forensic Interview**: Wawancara otomatis menggunakan Google Gemini AI dengan teknik investigasi bertahap.
 - **Fraud Triangle Analysis**: Visualisasi risiko kandidat dalam grafik radar.
 - **Situational Judgment Test (SJT)**: Tes psikometri untuk mengukur integritas bawah sadar (Tier Premium/Enterprise).
