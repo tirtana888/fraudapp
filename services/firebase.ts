@@ -25,7 +25,65 @@ export const COLLECTIONS = {
 export let db: Firestore;
 let functions: any;
 
-// Helper function untuk kirim email via Firebase Cloud Function
+// EmailJS Configuration (Client-side fallback)
+const EMAILJS_CONFIG = {
+  publicKey: "bclRHuJQwKQIOljiq",
+  serviceId: "service_8o2nl6d",
+  templateBusiness: "template_gfg2qr4",
+  templateCandidate: "template_dvgrjda"
+};
+
+// Helper function untuk kirim email via EmailJS (Client-side direct)
+const sendEmailDirectly = async (
+  type: "business" | "candidate" | "reset",
+  to_email: string,
+  to_name: string,
+  data: Record<string, any>
+): Promise<boolean> => {
+  try {
+    console.log(`Sending ${type} email to ${to_email} via EmailJS direct...`);
+
+    // Pilih template berdasarkan type
+    let templateId = EMAILJS_CONFIG.templateBusiness;
+    if (type === "candidate") {
+      templateId = EMAILJS_CONFIG.templateCandidate;
+    }
+
+    // Prepare EmailJS payload
+    const emailPayload = {
+      service_id: EMAILJS_CONFIG.serviceId,
+      template_id: templateId,
+      user_id: EMAILJS_CONFIG.publicKey,
+      template_params: {
+        to_email: to_email,
+        to_name: to_name,
+        ...data
+      }
+    };
+
+    // Kirim via EmailJS REST API
+    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(emailPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`EmailJS API Error: ${errorText}`);
+    }
+
+    console.log(`Email sent successfully to ${to_email}`);
+    return true;
+  } catch (error: any) {
+    console.error("Error sending email via EmailJS:", error);
+    throw new Error(`Email gagal dikirim: ${error.message || 'Unknown error'}`);
+  }
+};
+
+// Helper function untuk kirim email via Firebase Cloud Function (Production)
 const sendEmailViaCloudFunction = async (
   type: "business" | "candidate" | "reset",
   to_email: string,
@@ -34,11 +92,11 @@ const sendEmailViaCloudFunction = async (
 ): Promise<boolean> => {
   try {
     if (!functions) {
-      console.error("Firebase Functions not initialized");
-      throw new Error("Layanan email tidak tersedia. Pastikan Firebase Functions sudah di-deploy.");
+      console.warn("Firebase Functions not deployed, using direct EmailJS...");
+      return await sendEmailDirectly(type, to_email, to_name, data);
     }
 
-    console.log(`Sending ${type} email to ${to_email}...`);
+    console.log(`Sending ${type} email to ${to_email} via Firebase Functions...`);
 
     // Panggil Firebase Cloud Function
     const sendEmail = httpsCallable(functions, "sendEmailViaEmailJS");
@@ -55,20 +113,14 @@ const sendEmailViaCloudFunction = async (
       throw new Error(response.message || "Gagal mengirim email");
     }
 
-    console.log(`Email sent successfully to ${to_email}`);
+    console.log(`Email sent successfully via Firebase Functions to ${to_email}`);
     return true;
   } catch (error: any) {
     console.error("Error sending email via Firebase Function:", error);
 
-    // Log detailed error for debugging
-    if (error.code) {
-      console.error("Firebase Error Code:", error.code);
-    }
-    if (error.message) {
-      console.error("Error Message:", error.message);
-    }
-
-    throw new Error(`Email gagal dikirim: ${error.message || 'Unknown error'}`);
+    // Fallback to direct EmailJS if Functions fail
+    console.warn("Firebase Functions failed, falling back to direct EmailJS...");
+    return await sendEmailDirectly(type, to_email, to_name, data);
   }
 };
 
