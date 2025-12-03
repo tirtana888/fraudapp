@@ -53,6 +53,13 @@ export interface InterviewSession {
   applicationId?: string;
   cvUrl?: string;
   whatsapp?: string;
+  recruitmentStage?: string;
+  timeline?: Array<{
+    stage: string;
+    status: 'completed' | 'current' | 'pending';
+    date?: string;
+    note?: string;
+  }>;
 }
 
 export interface FraudAnalysis {

@@ -15,6 +15,8 @@ import CandidateBlast from './components/CandidateBlast';
 import JobManager from './components/JobManager';
 import JobApplicationsView from './components/JobApplicationsView';
 import PublicJobPage from './components/PublicJobPage';
+import CandidateList from './components/CandidateList';
+import CandidateDetail from './components/CandidateDetail';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 
@@ -55,7 +57,8 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [reviewingSession, setReviewingSession] = useState<InterviewSession | null>(null);
-  
+  const [viewingCandidateId, setViewingCandidateId] = useState<string | null>(null);
+
   // Settings View State
   const [settingsTab, setSettingsTab] = useState<'profile' | 'subscription'>('profile');
 
@@ -201,6 +204,7 @@ const App: React.FC = () => {
           case 'dashboard': return 'Ringkasan Eksekutif';
           case 'jobs': return 'Kelola Lowongan';
           case 'job-applications': return 'Aplikasi Lowongan';
+          case 'candidates': return viewingCandidateId ? 'Candidate Details' : 'Candidate Management';
           case 'candidate-blast': return 'Undang Kandidat';
           case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
           case 'history': return 'Riwayat Audit';
@@ -276,6 +280,11 @@ const App: React.FC = () => {
             setActiveTab('new-interview');
           }
         }} />;
+      case 'candidates':
+        if (viewingCandidateId) {
+          return <CandidateDetail sessionId={viewingCandidateId} onBack={() => setViewingCandidateId(null)} />;
+        }
+        return <CandidateList companyId={currentCompany!.id} onViewCandidate={(sessionId) => setViewingCandidateId(sessionId)} />;
       case 'candidate-blast':
         return <CandidateBlast currentCompany={currentCompany!} />;
       case 'new-interview':
