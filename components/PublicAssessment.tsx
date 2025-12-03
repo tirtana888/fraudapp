@@ -58,7 +58,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
             hasLogo: !!data.logoUrl,
             logoLength: data.logoUrl?.length || 0,
             brandColor: data.brandColor,
-            headerTitle: data.headerTitle
+            headerTitle: data.headerTitle,
+            welcomeMessage: data.welcomeMessage?.substring(0, 50) + '...'
           });
 
           if (data.tier === 'Basic') {

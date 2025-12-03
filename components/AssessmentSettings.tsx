@@ -177,9 +177,11 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     try {
       console.log("Saving company settings:", {
         companyId: currentCompany.id,
+        logoUrl: formData.logoUrl.substring(0, 100) + '...',
         logoLength: formData.logoUrl.length,
         brandColor: formData.brandColor,
-        headerTitle: formData.headerTitle
+        headerTitle: formData.headerTitle,
+        welcomeMessage: formData.welcomeMessage.substring(0, 50) + '...'
       });
 
       await updateCompany(currentCompany.id, formData);
@@ -195,12 +197,13 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
         console.log("Verified data from Firestore:", {
           logoUrlLength: verifyData.logoUrl?.length || 0,
           brandColor: verifyData.brandColor,
-          headerTitle: verifyData.headerTitle
+          headerTitle: verifyData.headerTitle,
+          welcomeMessage: verifyData.welcomeMessage?.substring(0, 50) + '...'
         });
 
         if (formData.logoUrl && !verifyData.logoUrl) {
           console.error("❌ VERIFICATION FAILED: Logo was not saved to Firestore!");
-          alert("⚠️ Logo gagal tersimpan. Kemungkinan ukuran terlalu besar (max 1MB). Coba logo yang lebih kecil.");
+          alert("⚠️ Logo gagal tersimpan. Silakan coba lagi atau gunakan logo yang lebih kecil.");
           return;
         }
 
@@ -221,9 +224,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
 
       // Check specific error types
       if (error.code === 'invalid-argument') {
-        alert("❌ Gagal menyimpan: Data tidak valid. Logo mungkin terlalu besar.");
-      } else if (error.message && error.message.includes("larger than 1 MB")) {
-        alert("❌ Gagal menyimpan: Ukuran Logo terlalu besar (maksimal 1MB di Firestore).");
+        alert("❌ Gagal menyimpan: Data tidak valid.");
       } else if (error.message && error.message.toLowerCase().includes("permission")) {
         alert("❌ Gagal menyimpan: Izin akses ditolak. Pastikan Anda login sebagai admin perusahaan ini.");
       } else {
