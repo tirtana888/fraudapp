@@ -53,12 +53,19 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   const features = PLAN_LIMITS[currentCompany.tier];
 
   useEffect(() => {
-    setFormData({
+    // Only update form if data actually changed (not just reference)
+    const newData = {
         logoUrl: currentCompany.logoUrl || '',
         brandColor: currentCompany.brandColor || '#CC5500',
         headerTitle: currentCompany.headerTitle || currentCompany.name,
         welcomeMessage: currentCompany.welcomeMessage || 'Silakan lengkapi data berikut untuk melanjutkan proses seleksi.'
-    });
+    };
+
+    // Only update if values are different
+    if (JSON.stringify(formData) !== JSON.stringify(newData)) {
+      console.log('[FORM] Updating form data from currentCompany');
+      setFormData(newData);
+    }
     setHasUnsavedChanges(false);
   }, [currentCompany]);
 
@@ -116,7 +123,10 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("[LOGO-UPLOAD] No file selected");
+      return;
+    }
 
     console.log("[LOGO-UPLOAD] Starting logo upload:", {
       fileName: file.name,
@@ -127,6 +137,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
         alert(`❌ Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB)! Maksimal 5MB.`);
+        setIsProcessingImg(false);
         return;
     }
 
@@ -146,8 +157,14 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
         alert(`✅ Logo berhasil di-upload (${(file.size / 1024 / 1024).toFixed(2)}MB)! Klik "Simpan Perubahan" untuk menyimpan.`);
     } catch (error: any) {
         console.error("[LOGO-UPLOAD] ❌ Upload failed:", error);
-        alert(`❌ Gagal upload logo: ${error.message}`);
+        console.error("[LOGO-UPLOAD] Error details:", {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
+        alert(`❌ Gagal upload logo: ${error.message || 'Unknown error'}`);
     } finally {
+        console.log("[LOGO-UPLOAD] Cleaning up, setting isProcessingImg to false");
         setIsProcessingImg(false);
     }
   };
@@ -217,7 +234,11 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
       }
 
       setHasUnsavedChanges(false);
+
+      // Update parent component to refresh company data
+      // Note: This will trigger useEffect but formData should match so no reset
       onUpdate();
+
       alert("✅ Pengaturan Link Asesmen berhasil disimpan dan terverifikasi!");
     } catch (error: any) {
       console.error("Gagal menyimpan:", error);

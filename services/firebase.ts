@@ -863,41 +863,77 @@ export const subscribeToInvites = (companyId: string, onUpdate: (data: Assessmen
  * @returns Download URL for the uploaded logo
  */
 export const uploadCompanyLogo = async (companyId: string, file: File): Promise<string> => {
-  if (!storage) throw new Error("Firebase Storage tidak tersedia");
+  console.log(`[STORAGE] uploadCompanyLogo called with:`, {
+    companyId,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    storageAvailable: !!storage
+  });
+
+  if (!storage) {
+    console.error("[STORAGE] Storage not initialized!");
+    throw new Error("Firebase Storage tidak tersedia. Refresh halaman dan coba lagi.");
+  }
 
   // Validate file type
   const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
   if (!validTypes.includes(file.type)) {
+    console.error(`[STORAGE] Invalid file type: ${file.type}`);
     throw new Error("Format file tidak valid. Gunakan PNG atau JPG.");
   }
 
   // Validate file size (5MB max)
   const maxSize = 5 * 1024 * 1024; // 5MB in bytes
   if (file.size > maxSize) {
+    console.error(`[STORAGE] File too large: ${file.size} bytes`);
     throw new Error(`Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB). Maksimal 5MB.`);
   }
 
-  console.log(`[STORAGE] Uploading logo for company: ${companyId}, size: ${(file.size / 1024).toFixed(2)}KB`);
+  console.log(`[STORAGE] Validation passed. Uploading logo for company: ${companyId}, size: ${(file.size / 1024).toFixed(2)}KB`);
 
   try {
     // Create storage reference: logos/companyId/logo.ext
     const fileExtension = file.name.split('.').pop() || 'png';
     const storagePath = `logos/${companyId}/logo.${fileExtension}`;
+
+    console.log(`[STORAGE] Creating storage reference: ${storagePath}`);
     const storageRef = ref(storage, storagePath);
 
     // Upload file
-    console.log(`[STORAGE] Uploading to path: ${storagePath}`);
+    console.log(`[STORAGE] Starting upload to: ${storagePath}`);
     const snapshot = await uploadBytes(storageRef, file);
-    console.log(`[STORAGE] Upload complete, getting download URL...`);
+    console.log(`[STORAGE] Upload complete! Snapshot:`, {
+      fullPath: snapshot.ref.fullPath,
+      name: snapshot.ref.name
+    });
 
     // Get download URL
+    console.log(`[STORAGE] Getting download URL...`);
     const downloadURL = await getDownloadURL(snapshot.ref);
-    console.log(`[STORAGE] ✅ Logo uploaded successfully: ${downloadURL}`);
+    console.log(`[STORAGE] ✅ Logo uploaded successfully!`);
+    console.log(`[STORAGE] Download URL length: ${downloadURL.length} chars`);
 
     return downloadURL;
   } catch (error: any) {
-    console.error(`[STORAGE] ❌ Upload failed:`, error);
-    throw new Error(`Gagal upload logo: ${error.message}`);
+    console.error(`[STORAGE] ❌ Upload failed with error:`, error);
+    console.error(`[STORAGE] Error details:`, {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      serverResponse: error.serverResponse
+    });
+
+    // Provide more specific error messages
+    if (error.code === 'storage/unauthorized') {
+      throw new Error("Izin akses ditolak. Pastikan Firebase Storage Rules sudah di-deploy.");
+    } else if (error.code === 'storage/canceled') {
+      throw new Error("Upload dibatalkan. Silakan coba lagi.");
+    } else if (error.code === 'storage/unknown') {
+      throw new Error("Terjadi kesalahan. Pastikan koneksi internet stabil dan coba lagi.");
+    } else {
+      throw new Error(`Gagal upload logo: ${error.message || 'Unknown error'}`);
+    }
   }
 };
 
