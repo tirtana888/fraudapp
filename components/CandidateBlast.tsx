@@ -368,6 +368,7 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
       {isBulkUploadOpen && (
         <BulkUploadCandidates
           companyId={currentCompany.id}
+          companyName={currentCompany.name}
           onClose={() => setIsBulkUploadOpen(false)}
           onSuccess={() => {
             setIsBulkUploadOpen(false);

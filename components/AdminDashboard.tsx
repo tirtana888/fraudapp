@@ -16,7 +16,7 @@ const AdminDashboard: React.FC = () => {
 
   // Bulk Upload Modal State
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-  const [selectedCompanyForBulk, setSelectedCompanyForBulk] = useState<string>('');
+  const [selectedCompanyForBulk, setSelectedCompanyForBulk] = useState<CompanyProfile | null>(null);
   
   // Subscription Management Modal State
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -303,7 +303,7 @@ const AdminDashboard: React.FC = () => {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedCompanyForBulk(company.id);
+                                    setSelectedCompanyForBulk(company);
                                     setIsBulkUploadOpen(true);
                                     setActiveMenuId(null);
                                 }}
@@ -456,10 +456,11 @@ const AdminDashboard: React.FC = () => {
       {/* Bulk Upload Modal */}
       {isBulkUploadOpen && selectedCompanyForBulk && (
         <BulkUploadCandidates
-          companyId={selectedCompanyForBulk}
+          companyId={selectedCompanyForBulk.id}
+          companyName={selectedCompanyForBulk.name}
           onClose={() => {
             setIsBulkUploadOpen(false);
-            setSelectedCompanyForBulk('');
+            setSelectedCompanyForBulk(null);
           }}
           onSuccess={() => {
             fetchCompanies();

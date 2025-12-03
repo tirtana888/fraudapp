@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import { Upload, Download, AlertCircle, CheckCircle, X, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { blastAssessmentInvites } from '../services/firebase';
 
 interface BulkUploadCandidatesProps {
   companyId: string;
+  companyName: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -24,13 +24,14 @@ interface ValidationError {
   message: string;
 }
 
-export default function BulkUploadCandidates({ companyId, onClose, onSuccess }: BulkUploadCandidatesProps) {
+export default function BulkUploadCandidates({ companyId, companyName, onClose, onSuccess }: BulkUploadCandidatesProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<CandidateRow[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateEmail = (email: string): boolean => {
@@ -118,33 +119,31 @@ export default function BulkUploadCandidates({ companyId, onClose, onSuccess }: 
 
     setLoading(true);
     setUploadedCount(0);
+    setFailedCount(0);
 
     try {
-      let successCount = 0;
+      // Format candidates untuk blastAssessmentInvites
+      const candidatesToInvite = preview.map(row => ({
+        email: row.email.trim(),
+        name: row.name.trim(),
+        role: row.role.trim()
+      }));
 
-      for (const candidate of preview) {
-        try {
-          await addDoc(collection(db, 'candidates'), {
-            email: candidate.email.trim().toLowerCase(),
-            name: candidate.name.trim(),
-            role: candidate.role.trim(),
-            companyId,
-            status: 'invited',
-            invitedAt: serverTimestamp(),
-            createdAt: serverTimestamp()
-          });
-          successCount++;
-          setUploadedCount(successCount);
-        } catch (error) {
-          console.error('Error adding candidate:', candidate.email, error);
-        }
+      // Gunakan fungsi blastAssessmentInvites yang sama dengan manual input
+      const result = await blastAssessmentInvites(candidatesToInvite, companyId, companyName);
+
+      setUploadedCount(result.success);
+      setFailedCount(result.failed);
+
+      if (result.success > 0) {
+        setUploadStatus('success');
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 2500);
+      } else {
+        setUploadStatus('error');
       }
-
-      setUploadStatus('success');
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
     } catch (error) {
       console.error('Error bulk upload:', error);
       setUploadStatus('error');
@@ -299,9 +298,18 @@ export default function BulkUploadCandidates({ companyId, onClose, onSuccess }: 
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-600" />
-                <p className="text-green-800 font-medium">
-                  Berhasil upload {uploadedCount} kandidat!
-                </p>
+                <div className="flex-1">
+                  <p className="text-green-800 font-medium">
+                    ✅ Berhasil mengirim {uploadedCount} undangan kandidat!
+                  </p>
+                  <p className="text-green-700 text-sm mt-1">
+                    Email undangan dengan kode akses telah dikirim ke kandidat.
+                    {failedCount > 0 && ` (${failedCount} gagal dikirim)`}
+                  </p>
+                  <p className="text-green-600 text-xs mt-2">
+                    Kandidat akan muncul di tabel "Status Undangan Terkirim" di bawah.
+                  </p>
+                </div>
               </div>
             </div>
           )}
