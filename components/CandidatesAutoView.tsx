@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock } from 'lucide-react';
+import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -135,6 +135,30 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     window.open(cvUrl, '_blank');
   };
 
+  const getRiskScoreBadge = (score: number) => {
+    if (score <= 20) {
+      return <span className="px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-sm flex items-center gap-1">🟢 {score}</span>;
+    } else if (score <= 50) {
+      return <span className="px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-sm flex items-center gap-1">🟡 {score}</span>;
+    } else {
+      return <span className="px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold text-sm flex items-center gap-1">🔴 {score}</span>;
+    }
+  };
+
+  const getStageBadge = (status: string, hasAnalysis: boolean) => {
+    if (status === 'completed' && hasAnalysis) {
+      return <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold text-xs">Integrity Check</span>;
+    } else if (status === 'completed') {
+      return <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold text-xs">Awaiting Review</span>;
+    } else {
+      return <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs">In Progress</span>;
+    }
+  };
+
+  const getAvatarInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
@@ -201,107 +225,87 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredCandidates.map((candidate) => (
-            <div
-              key={candidate.id}
-              className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:shadow-lg transition-all duration-200 hover:border-brand-orange"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">{candidate.candidate.name}</h3>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    <Briefcase size={14} />
-                    <span>{candidate.jobTitle}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-500">
-                    <MapPin size={14} />
-                    <span>{candidate.jobLocation}</span>
-                  </div>
-                </div>
-                <div>
-                  {getRiskBadge(candidate.analysis?.riskLevel)}
-                </div>
-              </div>
-
-              <div className="mb-4 py-3 border-y border-gray-100 dark:border-slate-700 space-y-3">
-                {candidate.status === 'completed' ? (
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-brand-orange" />
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Score:</span>
-                      <span className="text-lg font-bold text-brand-orange">{candidate.testScore || 0}/100</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      <Calendar size={14} />
-                      {new Date(candidate.completedAt || candidate.date).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-gray-700 dark:text-gray-300">Progress:</span>
-                      <span className="text-brand-orange font-bold">{Math.round((candidate.currentQuestionIndex || 0) / (candidate.totalQuestions || 10) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5">
-                      <div
-                        className="bg-brand-orange h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.round((candidate.currentQuestionIndex || 0) / (candidate.totalQuestions || 10) * 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                      <Clock size={12} />
-                      <span>Sedang mengerjakan: {candidate.currentQuestionIndex || 0} / {candidate.totalQuestions || 10} pertanyaan</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <a
-                  href={`mailto:${candidate.candidate.email}`}
-                  className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-brand-orange transition-colors"
-                >
-                  <Mail size={14} />
-                  {candidate.candidate.email}
-                </a>
-                {candidate.whatsapp && (
-                  <a
-                    href={`https://wa.me/${candidate.whatsapp.replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-brand-orange transition-colors"
+        <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Candidate
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Applied For
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Stage
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Risk Score
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                {filteredCandidates.map((candidate) => (
+                  <tr
+                    key={candidate.id}
+                    className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
                   >
-                    <Phone size={14} />
-                    {candidate.whatsapp}
-                  </a>
-                )}
-              </div>
+                    {/* Candidate Column */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                          {getAvatarInitials(candidate.candidate.name)}
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white">
+                            {candidate.candidate.name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {candidate.candidate.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
 
-              <div className="flex gap-2">
-                {candidate.cvUrl && (
-                  <button
-                    onClick={() => downloadCV(candidate.cvUrl, candidate.candidate.name)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-semibold transition-colors"
-                  >
-                    <FileText size={16} />
-                    CV
-                  </button>
-                )}
-                <button
-                  onClick={() => onViewSession(candidate.id)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-lg text-sm font-semibold transition-colors"
-                >
-                  <Eye size={16} />
-                  {candidate.status === 'completed' ? 'Lihat Report Lengkap' : 'Lihat Progress'}
-                </button>
-              </div>
-            </div>
-          ))}
+                    {/* Applied For Column */}
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {candidate.jobTitle}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                        <MapPin size={12} />
+                        {candidate.jobLocation}
+                      </div>
+                    </td>
+
+                    {/* Stage Column */}
+                    <td className="px-6 py-4">
+                      {getStageBadge(candidate.status, !!candidate.analysis)}
+                    </td>
+
+                    {/* Risk Score Column */}
+                    <td className="px-6 py-4">
+                      {getRiskScoreBadge(candidate.testScore || 0)}
+                    </td>
+
+                    {/* Action Column */}
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => onViewSession(candidate.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                      >
+                        <Eye size={16} />
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
