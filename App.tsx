@@ -11,9 +11,10 @@ import AdminDashboard from './components/AdminDashboard';
 import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
-import CandidateBlast from './components/CandidateBlast';
+import CandidatesManualInvite from './components/CandidatesManualInvite';
+import CandidatesAutoView from './components/CandidatesAutoView';
+import CandidatesReviewInvite from './components/CandidatesReviewInvite';
 import JobManager from './components/JobManager';
-import JobApplicationsView from './components/JobApplicationsView';
 import PublicJobPage from './components/PublicJobPage';
 import CandidateList from './components/CandidateList';
 import CandidateDetail from './components/CandidateDetail';
@@ -203,9 +204,9 @@ const App: React.FC = () => {
       switch(tab) {
           case 'dashboard': return 'Ringkasan Eksekutif';
           case 'jobs': return 'Kelola Lowongan';
-          case 'job-applications': return 'Aplikasi Lowongan';
-          case 'candidates': return viewingCandidateId ? 'Candidate Details' : 'Candidate Management';
-          case 'candidate-blast': return 'Undang Kandidat';
+          case 'candidates-auto': return 'Otomatis (Instant Assessment)';
+          case 'candidates-manual': return 'Manual Invite';
+          case 'candidates-review': return 'Review & Invite';
           case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
           case 'history': return 'Riwayat Audit';
           case 'settings': return 'Pengaturan';
@@ -272,21 +273,24 @@ const App: React.FC = () => {
                />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
-      case 'job-applications':
-        return <JobApplicationsView companyId={currentCompany!.id} onViewSession={(sessionId) => {
+      case 'candidates-auto':
+        return <CandidatesAutoView companyId={currentCompany!.id} onViewSession={(sessionId) => {
           const session = sessions.find(s => s.id === sessionId);
           if (session) {
             setReviewingSession(session);
             setActiveTab('new-interview');
           }
         }} />;
-      case 'candidates':
-        if (viewingCandidateId) {
-          return <CandidateDetail sessionId={viewingCandidateId} onBack={() => setViewingCandidateId(null)} />;
-        }
-        return <CandidateList companyId={currentCompany!.id} onViewCandidate={(sessionId) => setViewingCandidateId(sessionId)} />;
-      case 'candidate-blast':
-        return <CandidateBlast currentCompany={currentCompany!} />;
+      case 'candidates-manual':
+        return <CandidatesManualInvite currentCompany={currentCompany!} />;
+      case 'candidates-review':
+        return <CandidatesReviewInvite companyId={currentCompany!.id} onViewSession={(sessionId) => {
+          const session = sessions.find(s => s.id === sessionId);
+          if (session) {
+            setReviewingSession(session);
+            setActiveTab('new-interview');
+          }
+        }} />;
       case 'new-interview':
         return <ActiveInterview 
                   onComplete={handleInterviewComplete} 

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -15,16 +15,24 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName, userRole, isDarkMode, toggleTheme, isOpen, onClose, onLogout }) => {
-  
+  const [candidatesExpanded, setCandidatesExpanded] = useState(true);
+
   const menuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
-    { id: 'candidates', label: 'Candidate', icon: Users },
     { id: 'jobs', label: 'Kelola Lowongan', icon: Briefcase },
-    { id: 'candidate-blast', label: 'Undang Kandidat', icon: Mail },
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
     { id: 'history', label: 'Riwayat Audit', icon: History },
     { id: 'settings', label: 'Pengaturan', icon: Settings },
   ];
+
+  const candidateSubMenus = [
+    { id: 'candidates-auto', label: 'Otomatis (Instant)', icon: Zap, description: 'Auto-complete test' },
+    { id: 'candidates-manual', label: 'Manual Invite', icon: UserPlus, description: 'HR invite kandidat' },
+    { id: 'candidates-review', label: 'Review & Invite', icon: ClipboardCheck, description: 'Portal (Instant OFF)' },
+  ];
+
+  const isCandidateSubmenu = activeTab.startsWith('candidates-');
+  const shouldShowCandidateActive = isCandidateSubmenu;
 
   const adminItem = { id: 'admin-panel', label: 'Admin Panel', icon: Shield };
 
@@ -87,6 +95,54 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             </button>
           );
         })}
+
+        {/* Manajemen Kandidat - Parent Menu dengan Submenu */}
+        <div className="mt-2">
+          <button
+            onClick={() => setCandidatesExpanded(!candidatesExpanded)}
+            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+              shouldShowCandidateActive
+                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Users size={20} className={shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+              <span>Manajemen Kandidat</span>
+            </div>
+            {candidatesExpanded ?
+              <ChevronDown size={16} className={shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'} /> :
+              <ChevronRight size={16} className={shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'} />
+            }
+          </button>
+
+          {/* Submenu Items */}
+          {candidatesExpanded && (
+            <div className="mt-1 ml-4 pl-4 border-l-2 border-gray-200 dark:border-slate-700 space-y-1">
+              {candidateSubMenus.map((subItem) => {
+                const SubIcon = subItem.icon;
+                const isActive = activeTab === subItem.id;
+                return (
+                  <button
+                    key={subItem.id}
+                    onClick={() => setActiveTab(subItem.id)}
+                    className={`w-full flex items-start space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm ${
+                      isActive
+                        ? 'bg-brand-orange/10 text-brand-orange dark:bg-brand-orange/20 font-semibold'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    <SubIcon size={18} className={isActive ? 'text-brand-orange mt-0.5' : 'text-gray-400 dark:text-slate-500 mt-0.5'} />
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{subItem.label}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{subItem.description}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="p-4 border-t border-gray-100 dark:border-slate-700 space-y-2">
