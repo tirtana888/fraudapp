@@ -1108,27 +1108,65 @@ export const createApplication = async (applicationData: Omit<JobApplication, 'i
 };
 
 export const uploadCV = async (applicationId: string, file: File): Promise<string> => {
-  if (!storage) throw new Error("Firebase Storage tidak tersedia");
+  console.log('[STORAGE] uploadCV called with:', {
+    applicationId,
+    fileName: file.name,
+    fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+    fileType: file.type
+  });
+
+  if (!storage) {
+    console.error('[STORAGE] Storage not initialized!');
+    throw new Error("Firebase Storage tidak tersedia");
+  }
+  console.log('[STORAGE] Storage initialized OK');
 
   const validTypes = ['application/pdf'];
   if (!validTypes.includes(file.type)) {
+    console.error('[STORAGE] Invalid file type:', file.type);
     throw new Error("Format file tidak valid. Gunakan PDF.");
   }
+  console.log('[STORAGE] File type validation passed');
 
   const maxSize = 5 * 1024 * 1024;
   if (file.size > maxSize) {
-    throw new Error(`Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB). Maksimal 5MB.`);
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    console.error('[STORAGE] File too large:', sizeMB, 'MB');
+    throw new Error(`Ukuran file terlalu besar (${sizeMB}MB). Maksimal 5MB.`);
   }
+  console.log('[STORAGE] File size validation passed');
 
   try {
     const storagePath = `cvs/${applicationId}/${file.name}`;
+    console.log('[STORAGE] Storage path:', storagePath);
+
+    console.log('[STORAGE] Creating storage reference...');
     const storageRef = ref(storage, storagePath);
+    console.log('[STORAGE] Storage reference created');
+
+    console.log('[STORAGE] Starting file upload...');
     const snapshot = await uploadBytes(storageRef, file);
+    console.log('[STORAGE] File uploaded to storage, getting download URL...');
+
     const downloadURL = await getDownloadURL(snapshot.ref);
-    console.log('[STORAGE] CV uploaded successfully:', downloadURL);
+    console.log('[STORAGE] CV uploaded successfully!');
+    console.log('[STORAGE] Download URL:', downloadURL);
     return downloadURL;
   } catch (error: any) {
-    console.error('[STORAGE] CV upload failed:', error);
+    console.error('[STORAGE] CV upload failed!');
+    console.error('[STORAGE] Error:', error);
+    console.error('[STORAGE] Error code:', error.code);
+    console.error('[STORAGE] Error message:', error.message);
+    console.error('[STORAGE] Error details:', JSON.stringify(error, null, 2));
+
+    if (error.code === 'storage/unauthorized') {
+      throw new Error('Permission denied. Pastikan Storage Rules sudah di-deploy.');
+    } else if (error.code === 'storage/canceled') {
+      throw new Error('Upload dibatalkan.');
+    } else if (error.code === 'storage/unknown') {
+      throw new Error('Network error. Cek koneksi internet Anda.');
+    }
+
     throw new Error(`Gagal upload CV: ${error.message}`);
   }
 };

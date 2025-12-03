@@ -76,25 +76,53 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[PUBLIC-JOB] ========== FORM SUBMIT START ==========');
+
+    console.log('[PUBLIC-JOB] Form data:', {
+      fullName: formData.fullName,
+      email: formData.email,
+      whatsapp: formData.whatsapp,
+      cvFile: formData.cvFile ? {
+        name: formData.cvFile.name,
+        size: formData.cvFile.size,
+        type: formData.cvFile.type
+      } : null
+    });
 
     if (!formData.fullName || !formData.email || !formData.whatsapp || !formData.cvFile) {
+      console.error('[PUBLIC-JOB] Validation failed: missing required fields');
       alert('Mohon lengkapi semua field');
       return;
     }
+    console.log('[PUBLIC-JOB] Validation passed');
 
-    if (!job || !company) return;
+    if (!job || !company) {
+      console.error('[PUBLIC-JOB] Job or Company data missing!');
+      return;
+    }
+    console.log('[PUBLIC-JOB] Job and Company data OK:', {
+      jobId: job.id,
+      companyId: company.id,
+      enableInstantAssessment: job.enableInstantAssessment
+    });
 
     try {
       setIsSubmitting(true);
-      console.log('[PUBLIC-JOB] Submitting application...');
+      console.log('[PUBLIC-JOB] Submit button disabled, showing spinner');
 
       const tempApplicationId = crypto.randomUUID();
+      console.log('[PUBLIC-JOB] Generated temp application ID:', tempApplicationId);
 
-      console.log('[PUBLIC-JOB] Uploading CV...');
+      console.log('[PUBLIC-JOB] ===== STEP 1: UPLOADING CV =====');
+      console.log('[PUBLIC-JOB] Calling uploadCV function...');
       const cvUrl = await uploadCV(tempApplicationId, formData.cvFile);
-      console.log('[PUBLIC-JOB] CV uploaded:', cvUrl);
+      console.log('[PUBLIC-JOB] ✅ CV uploaded successfully!');
+      console.log('[PUBLIC-JOB] CV URL:', cvUrl);
 
       const assessmentToken = job.enableInstantAssessment ? crypto.randomUUID() : undefined;
+      if (assessmentToken) {
+        console.log('[PUBLIC-JOB] Generated assessment token:', assessmentToken);
+      }
 
       const applicationData = {
         jobId: job.id!,
@@ -108,18 +136,23 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
         appliedAt: new Date().toISOString()
       };
 
-      console.log('[PUBLIC-JOB] Creating application...');
+      console.log('[PUBLIC-JOB] ===== STEP 2: CREATING APPLICATION =====');
+      console.log('[PUBLIC-JOB] Application data:', applicationData);
       const applicationId = await createApplication(applicationData);
-      console.log('[PUBLIC-JOB] Application created:', applicationId);
+      console.log('[PUBLIC-JOB] ✅ Application created with ID:', applicationId);
 
       if (job.enableInstantAssessment && assessmentToken) {
-        console.log('[PUBLIC-JOB] Instant Assessment enabled, redirecting...');
+        console.log('[PUBLIC-JOB] ===== STEP 3: REDIRECTING TO ASSESSMENT =====');
         const redirectUrl = `${window.location.origin}/assessment/start?token=${assessmentToken}&job_id=${job.id}&app_id=${applicationId}`;
         console.log('[PUBLIC-JOB] Redirect URL:', redirectUrl);
+        console.log('[PUBLIC-JOB] Redirecting in 2 seconds...');
 
-        window.location.href = redirectUrl;
+        setTimeout(() => {
+          console.log('[PUBLIC-JOB] Executing redirect NOW!');
+          window.location.href = redirectUrl;
+        }, 2000);
       } else {
-        console.log('[PUBLIC-JOB] Manual application, showing success');
+        console.log('[PUBLIC-JOB] ===== STEP 3: SHOWING SUCCESS MESSAGE =====');
         setShowSuccess(true);
         setFormData({
           fullName: '',
@@ -127,11 +160,20 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
           whatsapp: '',
           cvFile: null
         });
+        console.log('[PUBLIC-JOB] Form cleared, success modal shown');
       }
+
+      console.log('[PUBLIC-JOB] ========== FORM SUBMIT SUCCESS ==========');
     } catch (error: any) {
-      console.error('[PUBLIC-JOB] Error submitting application:', error);
+      console.error('[PUBLIC-JOB] ========== FORM SUBMIT FAILED ==========');
+      console.error('[PUBLIC-JOB] Error:', error);
+      console.error('[PUBLIC-JOB] Error name:', error.name);
+      console.error('[PUBLIC-JOB] Error message:', error.message);
+      console.error('[PUBLIC-JOB] Error stack:', error.stack);
+
       alert(`Gagal mengirim aplikasi: ${error.message}`);
     } finally {
+      console.log('[PUBLIC-JOB] Cleanup: Re-enabling submit button');
       setIsSubmitting(false);
     }
   };
