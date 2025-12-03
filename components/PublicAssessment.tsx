@@ -7,13 +7,56 @@ import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentIn
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
 
 const AVAILABLE_ROLES = [
-  "Manajer Keuangan", "Staff Pengadaan (Procurement)", "Kepala Gudang / Logistik", 
+  "Manajer Keuangan", "Staff Pengadaan (Procurement)", "Kepala Gudang / Logistik",
   "Sales Manager / Tim Sales", "Kasir Senior", "Internal Auditor", "Staff Administrasi", "IT / System Admin"
 ];
 
 type AssessmentStep = 'login' | 'loading' | 'welcome' | 'profile' | 'survey_ft' | 'survey_fin' | 'survey_sjt' | 'analyzing_profile' | 'intro_chat' | 'chat' | 'analyzing' | 'done';
 
-const CHAT_TIME_LIMIT_SECONDS = 600; 
+const CHAT_TIME_LIMIT_SECONDS = 600;
+
+const sendAssessmentCompleteEmail = async (candidateName: string, candidateEmail: string, companyName: string) => {
+  try {
+    console.log('[EMAIL] Sending assessment complete notification to:', candidateEmail);
+
+    const emailBody = `
+Halo ${candidateName},
+
+Terima kasih telah menyelesaikan Integrity Assessment untuk ${companyName}.
+
+Hasil assessment Anda telah tersimpan dengan aman dan saat ini sedang dalam proses review oleh tim HR kami.
+
+Kami akan segera menghubungi Anda melalui email ini untuk tahapan selanjutnya dalam proses rekrutmen.
+
+Terima kasih atas kesabaran Anda.
+
+Salam,
+Tim HR ${companyName}
+    `.trim();
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer re_123456789',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'noreply@fraudguard.id',
+        to: candidateEmail,
+        subject: `Assessment Complete - ${companyName}`,
+        text: emailBody,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[EMAIL] Failed to send email, but continuing...', response.status);
+    } else {
+      console.log('[EMAIL] Email sent successfully');
+    }
+  } catch (error) {
+    console.error('[EMAIL] Error sending email, but continuing:', error);
+  }
+}; 
 
 interface PublicAssessmentProps {
   companyId: string | null;
@@ -250,6 +293,9 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       if (inviteData?.access_code) {
           await markAccessCodeUsed(inviteData.access_code, 'COMPLETED', sessionId);
       }
+
+      // Send email notification
+      await sendAssessmentCompleteEmail(candidateName, candidateEmail, company?.name || 'Perusahaan');
 
       setStep('done');
     } catch (dbError) {
