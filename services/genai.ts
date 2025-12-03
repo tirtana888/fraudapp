@@ -27,42 +27,6 @@ try {
 }
 
 /**
- * Generate AI Response untuk interview
- * Calls Firebase Cloud Function: generateAIResponse
- */
-export const generateAIResponse = async (
-  role: string,
-  history: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>,
-  lastUserMessage: string
-): Promise<string> => {
-  try {
-    if (!functions) {
-      throw new Error("Firebase Functions not initialized");
-    }
-
-    const generateResponse = httpsCallable(functions, "generateAIResponse");
-    const result = await generateResponse({
-      role,
-      history,
-      lastUserMessage
-    });
-
-    const response = result.data as { success: boolean; response: string };
-
-    if (response.success && response.response) {
-      return response.response;
-    }
-
-    throw new Error("Invalid response from Cloud Function");
-
-  } catch (error) {
-    console.error("AI Response generation failed:", error);
-    // Fallback response
-    return "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?";
-  }
-};
-
-/**
  * Analyze Fraud Risk
  * Calls Firebase Cloud Function: analyzeFraudRisk
  */
@@ -123,8 +87,8 @@ export const analyzeFraudRisk = async (
 };
 
 /**
- * Generate Next Question (dummy function - not using AI for this)
- * Just returns a generic message since this is assessment related
+ * Generate Next Question during Chat Interview
+ * Calls Firebase Cloud Function: generateAIResponse
  */
 export const generateNextQuestion = async (
   role: string,
@@ -132,7 +96,35 @@ export const generateNextQuestion = async (
   tier: 'Basic' | 'Premium' | 'Enterprise' = 'Basic',
   assessmentData?: any
 ): Promise<string> => {
-  return "Silakan lanjutkan dengan pertanyaan berikutnya.";
+  try {
+    if (!functions) {
+      throw new Error("Firebase Functions not initialized");
+    }
+
+    // Get last candidate message
+    const lastUserMessage = [...history].reverse().find(h => h.speaker === 'candidate' || h.speaker === 'user')?.text || "";
+
+    // Call Firebase Cloud Function
+    const generateResponse = httpsCallable(functions, "generateAIResponse");
+    const result = await generateResponse({
+      role,
+      history,
+      lastUserMessage
+    });
+
+    const response = result.data as { success: boolean; response: string };
+
+    if (response.success && response.response) {
+      return response.response;
+    }
+
+    throw new Error("Invalid response from Cloud Function");
+
+  } catch (error) {
+    console.error("AI Next Question generation failed:", error);
+    // Fallback response
+    return "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?";
+  }
 };
 
 // Helper functions yang mungkin masih dibutuhkan di frontend
