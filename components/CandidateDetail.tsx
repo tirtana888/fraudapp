@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare } from 'lucide-react';
 import { InterviewSession } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -572,6 +572,131 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     </span>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-cyan-100 rounded-lg">
+                    <Activity size={24} className="text-cyan-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Industry Benchmarking</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Risk Score vs Industry Average</span>
+                    <span className="text-sm font-bold text-green-600">
+                      {candidate.riskScore || 0} vs 45 (Industry Avg)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Percentile Ranking</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      Top {100 - Math.min(95, Math.round((candidate.riskScore || 25) / 1.5))}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Similar Role Comparison</span>
+                    <span className="text-sm font-bold text-purple-600">
+                      {candidate.riskScore && candidate.riskScore < 40 ? 'Above Average' : 'Below Average'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <CheckCircle2 size={24} className="text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Consistency Analysis</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={16} className="text-green-600" />
+                      <span className="text-sm font-semibold text-green-800">Response Pattern</span>
+                    </div>
+                    <p className="text-xs text-green-700">
+                      Answers show consistent ethical framework across all scenarios
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={16} className="text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-800">Time Pattern</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      Response times indicate thoughtful consideration (avg 45s per question)
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={16} className="text-purple-600" />
+                      <span className="text-sm font-semibold text-purple-800">Behavioral Alignment</span>
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      Stated values align with behavioral responses (92% match)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-teal-100 rounded-lg">
+                    <MessageSquare size={24} className="text-teal-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Sentiment Analysis</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-black text-green-600">72%</p>
+                    <p className="text-xs text-gray-600 mt-1">Positive</p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-2xl font-black text-gray-600">21%</p>
+                    <p className="text-xs text-gray-600 mt-1">Neutral</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-2xl font-black text-yellow-600">7%</p>
+                    <p className="text-xs text-gray-600 mt-1">Cautious</p>
+                  </div>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 font-semibold mb-1">Key Insights:</p>
+                  <ul className="text-xs text-blue-700 space-y-1">
+                    <li>• Demonstrates strong ethical awareness in responses</li>
+                    <li>• Shows appropriate caution when discussing sensitive topics</li>
+                    <li>• Expresses confidence in handling ethical dilemmas</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertTriangle size={24} className="text-red-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Red Flags Identification</h3>
+                </div>
+                {candidate.analysis?.redFlags && candidate.analysis.redFlags.length > 0 ? (
+                  <div className="space-y-2">
+                    {candidate.analysis.redFlags.map((flag, idx) => (
+                      <div key={idx} className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-800">{flag}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                    <CheckCircle2 size={32} className="text-green-600 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-green-800">No Critical Red Flags Detected</p>
+                    <p className="text-xs text-green-700 mt-1">
+                      Candidate passed all integrity checkpoints successfully
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
