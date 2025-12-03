@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User } from 'lucide-react';
+import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User, Shield, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { createBackgroundCheckSession, openBackgroundCheckWindow } from '../services/didit';
 
 interface CandidatesAutoViewProps {
   companyId: string;
@@ -24,6 +25,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [bgCheckLoading, setBgCheckLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -161,6 +163,89 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const handleBackgroundCheck = async (candidate: AutoCandidate) => {
+    try {
+      setBgCheckLoading(candidate.id);
+      console.log('[BG-CHECK] Initiating background check for:', candidate.candidate.name);
+
+      const verificationSession = await createBackgroundCheckSession(
+        candidate.id,
+        candidate.candidate.name,
+        candidate.candidate.email
+      );
+
+      openBackgroundCheckWindow(verificationSession.verification_url);
+
+      await loadData();
+    } catch (error) {
+      console.error('[BG-CHECK] Error:', error);
+      alert('Failed to initiate background check. Please try again.');
+    } finally {
+      setBgCheckLoading(null);
+    }
+  };
+
+  const getBackgroundCheckBadge = (candidate: AutoCandidate) => {
+    const bgCheck = (candidate as any).backgroundCheck;
+    const status = (candidate as any).backgroundCheckStatus;
+
+    if (!bgCheck && !status) {
+      return (
+        <button
+          onClick={() => handleBackgroundCheck(candidate)}
+          disabled={bgCheckLoading === candidate.id}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
+        >
+          {bgCheckLoading === candidate.id ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              Starting...
+            </>
+          ) : (
+            <>
+              <Shield size={12} />
+              Start Check
+            </>
+          )}
+        </button>
+      );
+    }
+
+    if (status === 'approved') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+          <ShieldCheck size={12} />
+          Verified
+        </span>
+      );
+    }
+
+    if (status === 'declined') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+          <ShieldAlert size={12} />
+          Failed
+        </span>
+      );
+    }
+
+    if (status === 'pending' || status === 'in_review') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800">
+          <Loader2 size={12} className="animate-spin" />
+          {status === 'pending' ? 'Pending' : 'In Review'}
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400">
+        <Shield size={12} />
+        Unknown
+      </span>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
@@ -244,6 +329,9 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Risk Score
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Background Check
+                  </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Action
                   </th>
@@ -291,6 +379,11 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
                     {/* Risk Score Column */}
                     <td className="px-6 py-4">
                       {getRiskScoreBadge(candidate.testScore || 0)}
+                    </td>
+
+                    {/* Background Check Column */}
+                    <td className="px-6 py-4">
+                      {getBackgroundCheckBadge(candidate)}
                     </td>
 
                     {/* Action Column */}

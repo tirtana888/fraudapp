@@ -18,6 +18,7 @@ import JobManager from './components/JobManager';
 import PublicJobPage from './components/PublicJobPage';
 import CandidateList from './components/CandidateList';
 import CandidateDetail from './components/CandidateDetail';
+import BackgroundCheckCallback from './components/BackgroundCheckCallback';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 
@@ -29,7 +30,13 @@ const App: React.FC = () => {
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const pathname = window.location.pathname;
-    return params.get('mode') === 'assess' || pathname.startsWith('/careers/');
+    return params.get('mode') === 'assess' || pathname.startsWith('/careers/') || pathname === '/background-check-callback';
+  });
+
+  const [isBackgroundCheckCallback, setIsBackgroundCheckCallback] = useState(() => {
+    const pathname = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    return pathname === '/background-check-callback' && params.has('verificationSessionId');
   });
 
   const [publicCompanyId, setPublicCompanyId] = useState<string | null>(() => {
@@ -218,6 +225,9 @@ const App: React.FC = () => {
 
   // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode) {
+    if (isBackgroundCheckCallback) {
+      return <BackgroundCheckCallback />;
+    }
     if (publicJobRoute) {
       return <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />;
     }
