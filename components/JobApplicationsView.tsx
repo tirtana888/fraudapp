@@ -47,8 +47,7 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
       const sessionsQuery = query(
         collection(db, COLLECTIONS.SESSIONS),
         where('companyId', '==', companyId),
-        where('source', '==', 'job_application'),
-        orderBy('date', 'desc')
+        where('source', '==', 'job_application')
       );
       const sessionsSnapshot = await getDocs(sessionsQuery);
       console.log('[JOB-APPLICATIONS] Found sessions:', sessionsSnapshot.docs.length);
@@ -89,6 +88,10 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
             appliedAt
           } as ApplicationWithDetails;
         })
+      );
+
+      applicationsWithDetails.sort((a, b) =>
+        new Date(b.appliedAt || b.date).getTime() - new Date(a.appliedAt || a.date).getTime()
       );
 
       setApplications(applicationsWithDetails);
