@@ -88,7 +88,7 @@ const sendEmailDirectly = async (
 };
 
 // Helper function untuk kirim email via Firebase Cloud Function (Production)
-const sendEmailViaCloudFunction = async (
+export const sendEmailViaCloudFunction = async (
   type: "business" | "candidate" | "reset",
   to_email: string,
   to_name: string,
@@ -161,26 +161,23 @@ export const sendAssessmentInvitation = async (
   assessmentToken: string,
   companyId: string
 ): Promise<boolean> => {
-  if (!functions) {
-    console.error("[ASSESSMENT-INVITE] Firebase Functions not initialized");
-    return false;
-  }
-
   try {
-    console.log("[ASSESSMENT-INVITE] Calling Firebase Function...");
-    const sendAssessmentInvitationFn = httpsCallable(functions, "sendAssessmentInvitation");
+    console.log("[ASSESSMENT-INVITE] Sending invitation email...");
 
-    const result = await sendAssessmentInvitationFn({
-      candidateName,
+    const assessmentUrl = `${window.location.origin}/?mode=assess&cid=${companyId}`;
+
+    return await sendEmailViaCloudFunction(
+      "candidate",
       candidateEmail,
-      jobTitle,
-      companyName,
-      assessmentToken,
-      companyId
-    });
-
-    console.log("[ASSESSMENT-INVITE] Function response:", result.data);
-    return true;
+      candidateName,
+      {
+        company_name: companyName,
+        job_title: jobTitle,
+        access_code: assessmentToken,
+        assessment_url: assessmentUrl,
+        message: `Terima kasih telah melamar ke posisi ${jobTitle} di ${companyName}. Silakan gunakan kode akses berikut untuk mengikuti AI Integrity Assessment. Assessment ini membutuhkan waktu sekitar 10-15 menit.`
+      }
+    );
   } catch (error: any) {
     console.error("[ASSESSMENT-INVITE] Failed to send invitation:", error);
     return false;
