@@ -18,9 +18,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   
   const menuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
-    { id: 'candidates', label: 'Candidate Management', icon: Users },
+    { id: 'candidates', label: 'Candidate', icon: Users },
     { id: 'jobs', label: 'Kelola Lowongan', icon: Briefcase },
-    { id: 'job-applications', label: 'Aplikasi Lowongan', icon: ShieldAlert },
     { id: 'candidate-blast', label: 'Undang Kandidat', icon: Mail },
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
     { id: 'history', label: 'Riwayat Audit', icon: History },
