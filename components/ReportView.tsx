@@ -3,7 +3,7 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend
 } from 'recharts';
-import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText } from 'lucide-react';
+import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText, MessageSquare } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile } from '../types';
 import { getCompanyById } from '../services/firebase';
 
@@ -354,31 +354,42 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
             </ul>
           </div>
 
-          {/* AI Interview Transcript */}
-          {session.transcript && session.transcript.length > 0 && (
+          {/* AI Interview Chat Transcript - RECORDED CONVERSATION */}
+          {session.transcript && session.transcript.length > 0 ? (
             <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors">
               <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                <FileText className="text-brand-blue" size={24} />
-                Transkrip Interview AI
+                <MessageSquare className="text-brand-blue" size={24} />
+                AI Interview Chat - Recorded Conversation
               </h3>
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 max-h-96 overflow-y-auto space-y-3">
-                {session.transcript.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
-                      msg.speaker === 'ai'
-                        ? 'bg-white dark:bg-slate-700 text-gray-800 dark:text-white border border-gray-200 dark:border-slate-600'
-                        : 'bg-brand-blue text-white'
-                    }`}>
-                      <p className="text-[10px] uppercase font-bold mb-1 opacity-60">
-                        {msg.speaker === 'ai' ? 'AI Interviewer' : 'Kandidat'}
-                      </p>
-                      <p className="leading-relaxed">{safeText(msg.text)}</p>
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 max-h-[500px] overflow-y-auto space-y-3">
+                {session.transcript.map((msg, idx) => {
+                  const isAI = msg.speaker === 'ai';
+                  const isCandidate = msg.speaker === 'candidate' || msg.speaker === 'user';
+
+                  return (
+                    <div key={idx} className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
+                        isAI
+                          ? 'bg-white dark:bg-slate-700 text-gray-800 dark:text-white border border-gray-200 dark:border-slate-600'
+                          : 'bg-brand-orange text-white'
+                      }`}>
+                        <p className="text-[10px] uppercase font-bold mb-1 opacity-70">
+                          {isAI ? '🤖 AI Interviewer' : `👤 ${candidate.name}`}
+                        </p>
+                        <p className="leading-relaxed whitespace-pre-wrap">{safeText(msg.text)}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-                Total {session.transcript.length} pesan dalam percakapan
+                ✅ Percakapan terekam: {session.transcript.length} pesan | Tanggal: {new Date(session.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-2xl border border-yellow-200 dark:border-yellow-800">
+              <p className="text-yellow-800 dark:text-yellow-200 text-center">
+                ⚠️ Transkrip interview tidak tersedia atau kandidat belum menyelesaikan chat interview
               </p>
             </div>
           )}

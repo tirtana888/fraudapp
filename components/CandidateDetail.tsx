@@ -858,29 +858,44 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
         {activeTab === 'interview' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-6">AI Interview Transcript</h3>
+            <h3 className="font-bold text-gray-800 text-lg mb-6 flex items-center gap-2">
+              <MessageSquare className="text-[#0066CC]" size={24} />
+              AI Interview Chat - Recorded Conversation
+            </h3>
             {candidate.transcript && candidate.transcript.length > 0 ? (
-              <div className="space-y-4">
-                {candidate.transcript.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex gap-3 ${msg.speaker === 'candidate' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-2xl rounded-lg p-4 ${
-                      msg.speaker === 'candidate'
-                        ? 'bg-[#D95D00]/10 text-gray-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      <div className="text-xs font-semibold mb-1 text-gray-500">
-                        {msg.speaker === 'candidate' ? candidate.candidate.name : 'AI Interviewer'}
+              <>
+                <div className="space-y-4 max-h-[600px] overflow-y-auto bg-gray-50 rounded-xl p-4">
+                  {candidate.transcript.map((msg, idx) => {
+                    const isAI = msg.speaker === 'ai';
+                    const isCandidate = msg.speaker === 'candidate' || msg.speaker === 'user';
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}
+                      >
+                        <div className={`max-w-2xl rounded-lg p-4 ${
+                          isAI
+                            ? 'bg-white text-gray-800 border border-gray-200'
+                            : 'bg-[#D95D00] text-white'
+                        }`}>
+                          <div className="text-xs font-semibold mb-1 opacity-70">
+                            {isAI ? '🤖 AI Interviewer' : `👤 ${candidate.candidate.name}`}
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                        </div>
                       </div>
-                      <p className="text-sm">{msg.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  ✅ Percakapan terekam: {candidate.transcript.length} pesan | Tanggal: {new Date(candidate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
             ) : (
-              <p className="text-gray-500 text-center py-20">No interview transcript available</p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
+                <p className="text-yellow-800">⚠️ Transkrip interview tidak tersedia atau kandidat belum menyelesaikan chat interview</p>
+              </div>
             )}
           </div>
         )}
