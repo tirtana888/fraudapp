@@ -18,6 +18,19 @@ service firebase.storage {
       allow delete: if true;
     }
 
+    // CV Files - Public read, restricted write
+    match /cvs/{applicationId}/{fileName} {
+      // Anyone can read CVs (HR needs to access)
+      allow read: if true;
+
+      // Only allow PDF uploads up to 5MB
+      allow write: if request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType == 'application/pdf';
+
+      // Allow delete for cleanup
+      allow delete: if true;
+    }
+
     // Deny everything else
     match /{allPaths=**} {
       allow read, write: if false;

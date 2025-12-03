@@ -1014,15 +1014,53 @@ export const deleteJob = async (jobId: string): Promise<void> => {
 
 export const getJobsByCompany = async (companyId: string): Promise<Job[]> => {
   try {
+    console.log('[FIREBASE] Fetching jobs for companyId:', companyId);
+
     const q = query(
       collection(db, COLLECTIONS.JOBS),
       where('companyId', '==', companyId),
       orderBy('datePosted', 'desc')
     );
+
+    console.log('[FIREBASE] Executing query...');
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-  } catch (error) {
+    console.log('[FIREBASE] Query result - documents count:', snapshot.docs.length);
+
+    const jobs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('[FIREBASE] Job document:', { id: doc.id, ...data });
+      return { id: doc.id, ...data } as Job;
+    });
+
+    return jobs;
+  } catch (error: any) {
     console.error('[JOBS] Error fetching jobs:', error);
+    console.error('[JOBS] Error code:', error.code);
+    console.error('[JOBS] Error message:', error.message);
+
+    if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+      console.error('[JOBS] ⚠️ FIRESTORE INDEX REQUIRED!');
+      console.error('[JOBS] You need to create a composite index for:');
+      console.error('[JOBS] Collection: jobs');
+      console.error('[JOBS] Fields: companyId (asc), datePosted (desc)');
+      console.error('[JOBS] Go to Firebase Console → Firestore → Indexes');
+
+      console.log('[JOBS] Trying fallback query without orderBy...');
+      try {
+        const fallbackQ = query(
+          collection(db, COLLECTIONS.JOBS),
+          where('companyId', '==', companyId)
+        );
+        const fallbackSnapshot = await getDocs(fallbackQ);
+        const fallbackJobs = fallbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+        console.log('[JOBS] Fallback query succeeded, found', fallbackJobs.length, 'jobs');
+        return fallbackJobs.sort((a, b) => new Date(b.datePosted).getTime() - new Date(a.datePosted).getTime());
+      } catch (fallbackError) {
+        console.error('[JOBS] Fallback query also failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
+
     throw error;
   }
 };
