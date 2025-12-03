@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Chatbot - Firebase Functions</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .status.loading {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #fbbf24;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        .test-section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .test-section h3 {
+            color: #1f2937;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #10b981;
+            padding-left: 10px;
+        }
+        .log-entry.error {
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+        .log-entry.warn {
+            border-left-color: #fbbf24;
+            color: #fbbf24;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            margin: 8px 0;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        label {
+            display: block;
+            color: #4b5563;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        .response-box {
+            background: white;
+            border: 2px solid #10b981;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        .response-box h4 {
+            color: #065f46;
+            margin-bottom: 10px;
+        }
+        .response-text {
+            color: #1f2937;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Test AI Chatbot</h1>
+        <p style="color: #6b7280; margin-bottom: 20px;">Test Firebase Cloud Functions untuk AI Interview</p>
+
+        <div id="status" class="status loading">
+            ⏳ Menginisialisasi Firebase...
+        </div>
+
+        <!-- TEST 1: Generate AI Response -->
+        <div class="test-section">
+            <h3>📝 Test 1: Generate AI Response</h3>
+            <p style="color: #6b7280; margin-bottom: 15px;">Test fungsi generateAIResponse dari Firebase Functions</p>
+
+            <label>Role / Posisi:</label>
+            <input type="text" id="role" value="Manajer Keuangan" placeholder="Contoh: Manajer Keuangan">
+
+            <label>Pesan Kandidat Terakhir:</label>
+            <textarea id="message" placeholder="Contoh: Ya, saya pernah bekerja di divisi keuangan selama 5 tahun">Ya, saya pernah bekerja di divisi keuangan selama 5 tahun dan menangani transaksi besar.</textarea>
+
+            <button onclick="testGenerateAI()" id="btn-generate" style="margin-top: 15px;">
+                🚀 Test Generate AI
+            </button>
+
+            <div id="ai-response" style="display: none;"></div>
+        </div>
+
+        <!-- TEST 2: Analyze Fraud Risk -->
+        <div class="test-section">
+            <h3>🔍 Test 2: Analyze Fraud Risk</h3>
+            <p style="color: #6b7280; margin-bottom: 15px;">Test fungsi analyzeFraudRisk dari Firebase Functions</p>
+
+            <button onclick="testAnalyzeFraud()" id="btn-analyze" style="margin-top: 15px;">
+                🔬 Test Fraud Analysis
+            </button>
+
+            <div id="fraud-response" style="display: none;"></div>
+        </div>
+
+        <!-- LOGS -->
+        <div class="test-section">
+            <h3>📊 Console Logs</h3>
+            <div id="logs" class="log">
+                <div class="log-entry">Waiting for test...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js';
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
+            authDomain: "gen-lang-client-0226679970.firebaseapp.com",
+            projectId: "gen-lang-client-0226679970",
+            storageBucket: "gen-lang-client-0226679970.firebasestorage.app",
+            messagingSenderId: "422224153226",
+            appId: "1:422224153226:web:4598cd213b6275436a3b73"
+        };
+
+        // Initialize Firebase
+        let functions;
+        try {
+            const app = initializeApp(firebaseConfig);
+            functions = getFunctions(app, "europe-west1");
+
+            addLog("✅ Firebase initialized successfully", "success");
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').textContent = '✅ Firebase Connected - Ready to Test';
+        } catch (error) {
+            addLog("❌ Firebase initialization failed: " + error.message, "error");
+            document.getElementById('status').className = 'status error';
+            document.getElementById('status').textContent = '❌ Firebase Connection Failed';
+        }
+
+        // Expose functions globally
+        window.functions = functions;
+        window.httpsCallable = httpsCallable;
+        window.addLog = addLog;
+
+        function addLog(message, type = "info") {
+            const logsDiv = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString('id-ID');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Test Generate AI
+        window.testGenerateAI = async function() {
+            const btn = document.getElementById('btn-generate');
+            const responseDiv = document.getElementById('ai-response');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Testing...';
+            responseDiv.style.display = 'none';
+
+            const role = document.getElementById('role').value;
+            const message = document.getElementById('message').value;
+
+            addLog(`Testing generateAIResponse for role: ${role}`, "info");
+
+            try {
+                const generateAIResponse = httpsCallable(functions, 'generateAIResponse');
+
+                const history = [
+                    { speaker: 'ai', text: 'Halo! Saya akan melakukan wawancara singkat. Bisa ceritakan pengalaman kerja Anda?' },
+                    { speaker: 'candidate', text: message }
+                ];
+
+                addLog("Calling Firebase Function...", "info");
+
+                const result = await generateAIResponse({
+                    role: role,
+                    history: history,
+                    lastUserMessage: message
+                });
+
+                addLog("✅ Response received from Firebase", "success");
+
+                const data = result.data;
+
+                if (data.success && data.response) {
+                    responseDiv.style.display = 'block';
+                    responseDiv.className = 'response-box';
+                    responseDiv.innerHTML = `
+                        <h4>✅ AI Response:</h4>
+                        <p class="response-text">${data.response}</p>
+                    `;
+                    addLog(`AI Response: "${data.response.substring(0, 100)}..."`, "success");
+                } else {
+                    throw new Error("Invalid response format");
+                }
+
+            } catch (error) {
+                addLog("❌ Error: " + error.message, "error");
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'status error';
+                responseDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+
+                // Log detailed error
+                if (error.code) {
+                    addLog(`Error Code: ${error.code}`, "error");
+                }
+                if (error.details) {
+                    addLog(`Details: ${JSON.stringify(error.details)}`, "error");
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Test Generate AI';
+            }
+        };
+
+        // Test Analyze Fraud
+        window.testAnalyzeFraud = async function() {
+            const btn = document.getElementById('btn-analyze');
+            const responseDiv = document.getElementById('fraud-response');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Analyzing...';
+            responseDiv.style.display = 'none';
+
+            addLog("Testing analyzeFraudRisk...", "info");
+
+            try {
+                const analyzeFraudRisk = httpsCallable(functions, 'analyzeFraudRisk');
+
+                // Sample data
+                const history = [
+                    { speaker: 'ai', text: 'Ceritakan tentang tekanan finansial yang pernah Anda alami?' },
+                    { speaker: 'candidate', text: 'Saya tidak pernah mengalami tekanan finansial yang berarti.' },
+                    { speaker: 'ai', text: 'Bagaimana Anda melihat peluang untuk keuntungan pribadi di pekerjaan?' },
+                    { speaker: 'candidate', text: 'Saya selalu mengutamakan integritas perusahaan.' }
+                ];
+
+                const structuredAssessment = [
+                    { id: '1', question: 'Tekanan finansial', category: 'pressure', response: 2 },
+                    { id: '2', question: 'Akses ke aset', category: 'opportunity', response: 3 },
+                    { id: '3', question: 'Rasionalisasi', category: 'rationalization', response: 2 }
+                ];
+
+                const sjtResults = [];
+
+                addLog("Calling Firebase Function...", "info");
+
+                const result = await analyzeFraudRisk({
+                    role: 'Manajer Keuangan',
+                    history: history,
+                    structuredAssessment: structuredAssessment,
+                    sjtResults: sjtResults
+                });
+
+                addLog("✅ Analysis received from Firebase", "success");
+
+                const data = result.data;
+
+                if (data.success && data.analysis) {
+                    const analysis = data.analysis;
+                    responseDiv.style.display = 'block';
+                    responseDiv.className = 'response-box';
+                    responseDiv.innerHTML = `
+                        <h4>✅ Fraud Analysis Result:</h4>
+                        <p><strong>Risk Level:</strong> ${analysis.riskLevel}</p>
+                        <p><strong>Pressure Score:</strong> ${analysis.scores.pressure}</p>
+                        <p><strong>Opportunity Score:</strong> ${analysis.scores.opportunity}</p>
+                        <p><strong>Rationalization Score:</strong> ${analysis.scores.rationalization}</p>
+                        <p><strong>Summary:</strong> ${analysis.summary.substring(0, 200)}...</p>
+                    `;
+                    addLog(`Risk Level: ${analysis.riskLevel}`, "success");
+                } else {
+                    throw new Error("Invalid response format");
+                }
+
+            } catch (error) {
+                addLog("❌ Error: " + error.message, "error");
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'status error';
+                responseDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔬 Test Fraud Analysis';
+            }
+        };
+    </script>
+</body>
+</html>
