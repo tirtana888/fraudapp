@@ -3,11 +3,12 @@
  * Lokasi: functions/index.js
  */
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { getFirestore } = require("firebase-admin/firestore");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 const https = require("https");
+const crypto = require("crypto");
 
 admin.initializeApp();
 const db = getFirestore();
@@ -27,6 +28,9 @@ const EMAILJS_CONFIG = {
   templateBusiness: "template_gfg2qr4",
   templateCandidate: "template_dvgrjda"
 };
+
+// KONFIGURASI DIDIT WEBHOOK
+const DIDIT_WEBHOOK_SECRET = "wU3IKNEZeXakCk1uYidDcEXlaob5mFPQOWSL1vdTl6I";
 // ==========================================
 
 const transporter = nodemailer.createTransport({
@@ -533,4 +537,173 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
       benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
     }
   };
+});
+
+/**
+ * Fungsi: diditWebhook
+ * Trigger: Didit.me (POST webhook)
+ * Deskripsi: Menerima real-time update status verifikasi dari Didit
+ * Region: europe-west1
+ */
+exports.diditWebhook = onRequest({ region: "europe-west1", cors: true }, async (req, res) => {
+  console.log('[DIDIT-WEBHOOK] Received webhook request');
+  console.log('[DIDIT-WEBHOOK] Method:', req.method);
+  console.log('[DIDIT-WEBHOOK] Headers:', JSON.stringify(req.headers));
+
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    console.log('[DIDIT-WEBHOOK] Invalid method, only POST allowed');
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  try {
+    // Get raw body for signature verification
+    const rawBody = JSON.stringify(req.body);
+    const signature = req.headers['x-signature'] || req.headers['X-Signature'];
+    const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
+
+    console.log('[DIDIT-WEBHOOK] Signature:', signature);
+    console.log('[DIDIT-WEBHOOK] Timestamp:', timestamp);
+    console.log('[DIDIT-WEBHOOK] Body:', rawBody.substring(0, 200));
+
+    // Verify signature
+    if (!signature || !timestamp) {
+      console.error('[DIDIT-WEBHOOK] Missing signature or timestamp');
+      res.status(401).send('Missing signature or timestamp');
+      return;
+    }
+
+    // Verify timestamp is within 5 minutes
+    const currentTime = Math.floor(Date.now() / 1000);
+    const webhookTime = parseInt(timestamp);
+    const timeDiff = Math.abs(currentTime - webhookTime);
+
+    if (timeDiff > 300) {
+      console.error('[DIDIT-WEBHOOK] Timestamp too old:', timeDiff, 'seconds');
+      res.status(401).send('Timestamp too old');
+      return;
+    }
+
+    // Calculate expected signature using HMAC-SHA256
+    const expectedSignature = crypto
+      .createHmac('sha256', DIDIT_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest('hex');
+
+    console.log('[DIDIT-WEBHOOK] Expected signature:', expectedSignature);
+
+    // Constant-time comparison to prevent timing attacks
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+      console.error('[DIDIT-WEBHOOK] Invalid signature');
+      res.status(401).send('Invalid signature');
+      return;
+    }
+
+    console.log('[DIDIT-WEBHOOK] Signature verified successfully');
+
+    // Parse webhook payload
+    const payload = req.body;
+    console.log('[DIDIT-WEBHOOK] Payload:', JSON.stringify(payload));
+
+    const {
+      session_id,
+      status,
+      webhook_type,
+      vendor_data,
+      decision,
+      created_at,
+      timestamp: eventTimestamp
+    } = payload;
+
+    console.log('[DIDIT-WEBHOOK] Event:', {
+      session_id,
+      status,
+      webhook_type,
+      vendor_data
+    });
+
+    // Handle different webhook types
+    if (webhook_type === 'status.updated') {
+      console.log('[DIDIT-WEBHOOK] Processing status update');
+
+      // Map Didit status to our internal status
+      let mappedStatus = 'pending';
+      if (status === 'Approved') {
+        mappedStatus = 'approved';
+      } else if (status === 'Declined') {
+        mappedStatus = 'declined';
+      } else if (status === 'In Review') {
+        mappedStatus = 'in_review';
+      } else if (status === 'In Progress') {
+        mappedStatus = 'in_progress';
+      } else if (status === 'Abandoned') {
+        mappedStatus = 'declined';
+      }
+
+      console.log('[DIDIT-WEBHOOK] Mapped status:', status, '->', mappedStatus);
+
+      // Update session in Firestore
+      // vendor_data contains the session ID we passed during creation
+      if (vendor_data) {
+        console.log('[DIDIT-WEBHOOK] Updating session:', vendor_data);
+
+        const updateData = {
+          'backgroundCheck.status': mappedStatus,
+          'backgroundCheck.lastUpdated': new Date().toISOString(),
+          'backgroundCheck.diditSessionId': session_id,
+          'backgroundCheckStatus': mappedStatus
+        };
+
+        // Add decision data if available
+        if (decision) {
+          updateData['backgroundCheck.decision'] = decision;
+        }
+
+        // Mark as completed if final status
+        if (['approved', 'declined'].includes(mappedStatus)) {
+          updateData['backgroundCheckCompletedAt'] = new Date().toISOString();
+        }
+
+        await db.collection('sessions').doc(vendor_data).update(updateData);
+
+        console.log('[DIDIT-WEBHOOK] Session updated successfully');
+      } else {
+        console.warn('[DIDIT-WEBHOOK] No vendor_data provided, cannot update session');
+      }
+    } else if (webhook_type === 'data.updated') {
+      console.log('[DIDIT-WEBHOOK] Processing data update');
+
+      if (vendor_data) {
+        await db.collection('sessions').doc(vendor_data).update({
+          'backgroundCheck.dataUpdated': true,
+          'backgroundCheck.lastDataUpdate': new Date().toISOString(),
+          'backgroundCheck.decision': decision || null
+        });
+
+        console.log('[DIDIT-WEBHOOK] Data update recorded');
+      }
+    } else {
+      console.log('[DIDIT-WEBHOOK] Unknown webhook type:', webhook_type);
+    }
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: 'Webhook processed successfully'
+    });
+
+    console.log('[DIDIT-WEBHOOK] Webhook processed successfully');
+
+  } catch (error) {
+    console.error('[DIDIT-WEBHOOK] Error processing webhook:', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
 });
