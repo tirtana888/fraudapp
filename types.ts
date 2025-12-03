@@ -42,13 +42,17 @@ export interface InterviewSession {
   candidate: Candidate;
   date: string;
   status: 'active' | 'completed' | 'pending_review';
-  structuredAssessment?: AssessmentItem[]; 
+  structuredAssessment?: AssessmentItem[];
   sjtResults?: SJTItem[];
-  financialStrainResults?: AssessmentItem[]; // New
-  transcript: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>; 
+  financialStrainResults?: AssessmentItem[];
+  transcript: Array<{ speaker: 'ai' | 'user' | 'candidate'; text: string }>;
   analysis?: FraudAnalysis;
   companyId: string;
-  source?: string; // 'public_link' or undefined
+  source?: string;
+  jobId?: string;
+  applicationId?: string;
+  cvUrl?: string;
+  whatsapp?: string;
 }
 
 export interface FraudAnalysis {
