@@ -154,7 +154,19 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               Risiko {safeText(analysis.riskLevel)}
             </span>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium text-sm md:text-base">{safeText(candidate.role)} • {new Date(session.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium text-sm md:text-base mb-2">{safeText(candidate.role)} • {new Date(session.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+
+          {session.cvUrl && (
+            <a
+              href={session.cvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-semibold transition-colors mt-2"
+            >
+              <FileText size={16} />
+              Download CV
+            </a>
+          )}
         </div>
         <div className="w-full md:w-auto text-right bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 flex flex-row md:flex-col items-center justify-between md:items-end z-10">
           <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold md:mb-1">Skor Fraud</p>

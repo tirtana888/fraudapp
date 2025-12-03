@@ -283,19 +283,21 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => downloadCV(candidate.cvUrl, candidate.candidate.name)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-semibold transition-colors"
-                >
-                  <FileText size={16} />
-                  CV
-                </button>
+                {candidate.cvUrl && (
+                  <button
+                    onClick={() => downloadCV(candidate.cvUrl, candidate.candidate.name)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    <FileText size={16} />
+                    CV
+                  </button>
+                )}
                 <button
                   onClick={() => onViewSession(candidate.id)}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-lg text-sm font-semibold transition-colors"
                 >
                   <Eye size={16} />
-                  Detail
+                  {candidate.status === 'completed' ? 'Lihat Report Lengkap' : 'Lihat Progress'}
                 </button>
               </div>
             </div>

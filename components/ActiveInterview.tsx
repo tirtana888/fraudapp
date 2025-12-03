@@ -3,6 +3,7 @@ import { ArrowLeft, User, MessageSquare, AlertTriangle, ShieldCheck } from 'luci
 import { InterviewSession, Candidate, AssessmentItem, SJTItem } from '../types';
 import { updateSessionInDB, getCompanyById } from '../services/firebase';
 import { analyzeFraudRisk } from '../services/genai';
+import ReportView from './ReportView';
 
 interface ActiveInterviewProps {
   onComplete: () => void;
@@ -50,6 +51,12 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
 
   if (!session) return <div>Data sesi tidak ditemukan.</div>;
 
+  // If session is completed and has analysis, show full ReportView
+  if (session.status === 'completed' && session.analysis) {
+    return <ReportView session={session} onBack={onComplete} onReReview={handleReAnalyze} />;
+  }
+
+  // Otherwise show review interface for incomplete sessions
   return (
       <div className="max-w-5xl mx-auto space-y-6 pb-20">
           <div className="flex items-center justify-between mb-4">
