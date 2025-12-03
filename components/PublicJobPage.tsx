@@ -119,12 +119,12 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
       console.log('[PUBLIC-JOB] ✅ CV uploaded successfully!');
       console.log('[PUBLIC-JOB] CV URL:', cvUrl);
 
-      const assessmentToken = job.enableInstantAssessment ? crypto.randomUUID() : undefined;
+      const assessmentToken = job.enableInstantAssessment ? crypto.randomUUID() : null;
       if (assessmentToken) {
         console.log('[PUBLIC-JOB] Generated assessment token:', assessmentToken);
       }
 
-      const applicationData = {
+      const applicationData: any = {
         jobId: job.id!,
         companyId: company.id,
         fullName: formData.fullName,
@@ -132,9 +132,12 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
         whatsapp: formData.whatsapp,
         cvUrl,
         status: 'Pending' as const,
-        assessmentToken,
         appliedAt: new Date().toISOString()
       };
+
+      if (assessmentToken) {
+        applicationData.assessmentToken = assessmentToken;
+      }
 
       console.log('[PUBLIC-JOB] ===== STEP 2: CREATING APPLICATION =====');
       console.log('[PUBLIC-JOB] Application data:', applicationData);
