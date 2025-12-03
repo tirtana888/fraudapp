@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Users, Download, Eye, CheckCircle, XCircle, Clock, FileText, Phone, Mail, MapPin, Calendar, Filter } from 'lucide-react';
+import { Briefcase, Users, Download, Eye, CheckCircle, XCircle, Clock, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw } from 'lucide-react';
 import { InterviewSession, Job, JobApplication } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
@@ -30,6 +30,7 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
   const loadData = async () => {
     try {
       setIsLoading(true);
+      console.log('[JOB-APPLICATIONS] Loading data for company:', companyId);
 
       const jobsQuery = query(
         collection(db, COLLECTIONS.JOBS),
@@ -41,6 +42,7 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
         ...doc.data()
       } as Job));
       setJobs(jobsData);
+      console.log('[JOB-APPLICATIONS] Loaded jobs:', jobsData.length);
 
       const sessionsQuery = query(
         collection(db, COLLECTIONS.SESSIONS),
@@ -49,10 +51,12 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
         orderBy('date', 'desc')
       );
       const sessionsSnapshot = await getDocs(sessionsQuery);
+      console.log('[JOB-APPLICATIONS] Found sessions:', sessionsSnapshot.docs.length);
 
       const applicationsWithDetails: ApplicationWithDetails[] = await Promise.all(
         sessionsSnapshot.docs.map(async (docSnap) => {
           const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
+          console.log('[JOB-APPLICATIONS] Processing session:', docSnap.id, sessionData);
 
           let jobTitle = 'Unknown Position';
           let jobLocation = 'Unknown Location';
@@ -88,6 +92,8 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
       );
 
       setApplications(applicationsWithDetails);
+      console.log('[JOB-APPLICATIONS] ✅ Total applications loaded:', applicationsWithDetails.length);
+      console.log('[JOB-APPLICATIONS] Applications:', applicationsWithDetails);
     } catch (error) {
       console.error('[JOB-APPLICATIONS] Error loading data:', error);
     } finally {
@@ -142,11 +148,21 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
               <p className="text-sm text-gray-500">Kelola kandidat dari job portal</p>
             </div>
           </div>
-          <div className="bg-[#D95D00]/10 border border-[#D95D00]/20 rounded-xl px-4 py-2">
-            <div className="flex items-center gap-2">
-              <Users size={20} className="text-[#D95D00]" />
-              <span className="font-bold text-[#D95D00]">{filteredApplications.length}</span>
-              <span className="text-sm text-gray-600">Aplikasi</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadData}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+            <div className="bg-[#D95D00]/10 border border-[#D95D00]/20 rounded-xl px-4 py-2">
+              <div className="flex items-center gap-2">
+                <Users size={20} className="text-[#D95D00]" />
+                <span className="font-bold text-[#D95D00]">{filteredApplications.length}</span>
+                <span className="text-sm text-gray-600">Aplikasi</span>
+              </div>
             </div>
           </div>
         </div>
