@@ -152,6 +152,41 @@ export const sendAssessmentCompleteEmail = async (candidateName: string, candida
   );
 };
 
+// Send assessment invitation with access code
+export const sendAssessmentInvitation = async (
+  candidateName: string,
+  candidateEmail: string,
+  jobTitle: string,
+  companyName: string,
+  assessmentToken: string,
+  companyId: string
+): Promise<boolean> => {
+  if (!functions) {
+    console.error("[ASSESSMENT-INVITE] Firebase Functions not initialized");
+    return false;
+  }
+
+  try {
+    console.log("[ASSESSMENT-INVITE] Calling Firebase Function...");
+    const sendAssessmentInvitationFn = httpsCallable(functions, "sendAssessmentInvitation");
+
+    const result = await sendAssessmentInvitationFn({
+      candidateName,
+      candidateEmail,
+      jobTitle,
+      companyName,
+      assessmentToken,
+      companyId
+    });
+
+    console.log("[ASSESSMENT-INVITE] Function response:", result.data);
+    return true;
+  } catch (error: any) {
+    console.error("[ASSESSMENT-INVITE] Failed to send invitation:", error);
+    return false;
+  }
+};
+
 // --- REAL AUTHENTICATION SERVICE ---
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
   if (!db) throw new Error("Koneksi Database terputus.");

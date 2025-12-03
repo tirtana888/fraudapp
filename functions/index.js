@@ -340,6 +340,74 @@ PENTING: Response Anda hanya berisi pertanyaan follow-up, tidak ada embel-embel 
 });
 
 /**
+ * Fungsi: sendAssessmentInvitation
+ * Trigger: Frontend (PublicJobPage - setelah aplikasi dikirim dengan instant assessment)
+ * Deskripsi: Kirim email dengan kode akses ke assessment
+ * Region: europe-west1
+ */
+exports.sendAssessmentInvitation = onCall({ region: "europe-west1" }, async (request) => {
+  const { candidateName, candidateEmail, jobTitle, companyName, assessmentToken, companyId } = request.data;
+
+  if (!candidateName || !candidateEmail || !assessmentToken) {
+    throw new HttpsError('invalid-argument', 'Parameter candidateName, candidateEmail, dan assessmentToken wajib diisi.');
+  }
+
+  try {
+    console.log(`[ASSESSMENT-INVITE] Sending to: ${candidateEmail} (${candidateName})`);
+
+    const assessmentUrl = `https://fraudguard.id/?mode=assess&cid=${companyId}`;
+
+    // Send email via EmailJS
+    const emailPayload = {
+      service_id: EMAILJS_CONFIG.serviceId,
+      template_id: EMAILJS_CONFIG.templateCandidate,
+      user_id: EMAILJS_CONFIG.publicKey,
+      template_params: {
+        to_email: candidateEmail,
+        to_name: candidateName,
+        reply_to: candidateEmail,
+        company_name: companyName || 'FraudGuard',
+        job_title: jobTitle || 'Position',
+        access_code: assessmentToken,
+        assessment_url: assessmentUrl,
+        message: `Terima kasih telah melamar ke posisi ${jobTitle}. Silakan gunakan kode akses berikut untuk mengakses AI Integrity Assessment.`
+      }
+    };
+
+    console.log(`[ASSESSMENT-INVITE] Payload:`, JSON.stringify(emailPayload.template_params));
+
+    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(emailPayload),
+    });
+
+    console.log(`[ASSESSMENT-INVITE] Response: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ASSESSMENT-INVITE] EmailJS Error: ${errorText}`);
+      throw new Error(`EmailJS API Error (${response.status}): ${errorText}`);
+    }
+
+    const responseData = await response.text();
+    console.log(`[ASSESSMENT-INVITE] Success: ${responseData}`);
+
+    return {
+      success: true,
+      message: "Email undangan assessment berhasil dikirim",
+      recipient: candidateEmail
+    };
+
+  } catch (error) {
+    console.error("[ASSESSMENT-INVITE] Failed:", error);
+    throw new HttpsError('internal', `Gagal mengirim email undangan: ${error.message}`);
+  }
+});
+
+/**
  * Fungsi: analyzeFraudRisk
  * Trigger: Frontend (ActiveInterview - saat interview selesai)
  * Deskripsi: Analisis risiko fraud menggunakan Gemini API

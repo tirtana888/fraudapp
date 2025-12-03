@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile } from '../types';
-import { getJobBySlug, createApplication, uploadCV, db } from '../services/firebase';
+import { getJobBySlug, createApplication, uploadCV, db, sendAssessmentInvitation } from '../services/firebase';
 import { collection, getDocs, query } from 'firebase/firestore';
 
 interface PublicJobPageProps {
@@ -145,26 +145,36 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
       console.log('[PUBLIC-JOB] ✅ Application created with ID:', applicationId);
 
       if (job.enableInstantAssessment && assessmentToken) {
-        console.log('[PUBLIC-JOB] ===== STEP 3: REDIRECTING TO ASSESSMENT =====');
-        const assessmentUrl = `/?mode=assess&cid=${company.id}&token=${assessmentToken}&job_id=${job.id}&app_id=${applicationId}`;
-        console.log('[PUBLIC-JOB] Assessment URL:', assessmentUrl);
-        console.log('[PUBLIC-JOB] Redirecting in 2 seconds...');
+        console.log('[PUBLIC-JOB] ===== STEP 3: SENDING ASSESSMENT INVITATION EMAIL =====');
+        try {
+          const emailSent = await sendAssessmentInvitation(
+            formData.fullName,
+            formData.email,
+            job.title,
+            company.name,
+            assessmentToken,
+            company.id
+          );
 
-        setTimeout(() => {
-          console.log('[PUBLIC-JOB] Executing redirect NOW!');
-          window.location.href = assessmentUrl;
-        }, 2000);
-      } else {
-        console.log('[PUBLIC-JOB] ===== STEP 3: SHOWING SUCCESS MESSAGE =====');
-        setShowSuccess(true);
-        setFormData({
-          fullName: '',
-          email: '',
-          whatsapp: '',
-          cvFile: null
-        });
-        console.log('[PUBLIC-JOB] Form cleared, success modal shown');
+          if (emailSent) {
+            console.log('[PUBLIC-JOB] ✅ Assessment invitation email sent successfully');
+          } else {
+            console.warn('[PUBLIC-JOB] ⚠️ Assessment invitation email failed to send');
+          }
+        } catch (emailError) {
+          console.error('[PUBLIC-JOB] ❌ Error sending assessment invitation:', emailError);
+        }
       }
+
+      console.log('[PUBLIC-JOB] ===== STEP 4: SHOWING SUCCESS MESSAGE =====');
+      setShowSuccess(true);
+      setFormData({
+        fullName: '',
+        email: '',
+        whatsapp: '',
+        cvFile: null
+      });
+      console.log('[PUBLIC-JOB] Form cleared, success modal shown');
 
       console.log('[PUBLIC-JOB] ========== FORM SUBMIT SUCCESS ==========');
     } catch (error: any) {
@@ -269,12 +279,55 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
               <h2 className="text-2xl font-bold text-[#0F172A] mb-6">Lamar Sekarang</h2>
 
               {showSuccess ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Aplikasi Terkirim!</h3>
-                  <p className="text-gray-600">
-                    Terima kasih telah melamar. Tim kami akan menghubungi Anda segera.
-                  </p>
+                <div className="py-8">
+                  <div className="text-center mb-6">
+                    <CheckCircle className="w-20 h-20 mx-auto mb-4 text-green-600" />
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Aplikasi Terkirim!</h3>
+                    <p className="text-gray-600 mb-4">
+                      Terima kasih telah melamar ke posisi <strong>{job.title}</strong>
+                    </p>
+                  </div>
+
+                  {job.enableInstantAssessment ? (
+                    <div className="bg-gradient-to-br from-orange-50 to-blue-50 border-2 border-[#D95D00] rounded-xl p-6">
+                      <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-[#D95D00]" />
+                        Langkah Selanjutnya: AI Integrity Assessment
+                      </h4>
+                      <div className="space-y-3 text-sm text-gray-700">
+                        <p>
+                          <strong>Cek Email Anda</strong> untuk mendapatkan link dan kode akses ke assessment.
+                        </p>
+                        <p>
+                          Assessment ini akan membantu kami memahami integritas dan kesesuaian Anda dengan posisi yang dilamar.
+                        </p>
+                        <div className="bg-white rounded-lg p-4 mt-4">
+                          <p className="font-semibold text-gray-800 mb-2">Durasi: 10-15 menit</p>
+                          <ul className="list-disc list-inside space-y-1 text-gray-600">
+                            <li>Pertanyaan self-assessment</li>
+                            <li>Scenario-based questions</li>
+                            <li>AI interview chat</li>
+                          </ul>
+                        </div>
+                        <p className="text-xs text-gray-500 italic mt-3">
+                          📧 Email akan dikirim dalam beberapa menit. Periksa folder spam jika tidak ditemukan di inbox.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        Tim kami akan meninjau aplikasi Anda dan menghubungi Anda melalui email atau WhatsApp untuk langkah selanjutnya.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="w-full mt-6 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-semibold transition-colors"
+                  >
+                    Kembali ke Beranda
+                  </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
