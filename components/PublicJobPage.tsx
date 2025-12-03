@@ -450,6 +450,23 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
           </div>
         </div>
       </div>
+
+      {/* Footer - Powered by HireGood */}
+      <footer className="bg-white border-t border-gray-200 mt-16 py-6">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <p className="text-sm text-gray-600">
+            Powered by{' '}
+            <a
+              href="https://hiregood.one"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#D95D00] hover:text-[#B14D00] transition-colors"
+            >
+              HireGood
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
