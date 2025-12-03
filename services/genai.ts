@@ -123,8 +123,8 @@ export const analyzeFraudRisk = async (
 };
 
 /**
- * Generate Next Question using AI
- * Calls Firebase Cloud Function: generateAIResponse
+ * Generate Next Question (dummy function - not using AI for this)
+ * Just returns a generic message since this is assessment related
  */
 export const generateNextQuestion = async (
   role: string,
@@ -132,85 +132,7 @@ export const generateNextQuestion = async (
   tier: 'Basic' | 'Premium' | 'Enterprise' = 'Basic',
   assessmentData?: any
 ): Promise<string> => {
-  try {
-    if (!functions) {
-      console.warn("Firebase Functions not initialized, using fallback");
-      return "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai pengalaman Anda dalam menangani situasi yang menantang di pekerjaan?";
-    }
-
-    // Get last user message
-    const lastUserMessage = history.length > 0
-      ? history[history.length - 1].text
-      : "";
-
-    if (!lastUserMessage) {
-      return "Bisa Anda ceritakan lebih lanjut tentang pengalaman kerja Anda?";
-    }
-
-    // Call Firebase Function to generate AI response
-    // Try the new dynamic question function first, fallback to generateAIResponse
-    console.log(`Generating AI follow-up question for role: ${role}`);
-
-    let generateResponse;
-    try {
-      generateResponse = httpsCallable(functions, "generateNextQuestionDynamic");
-      const result = await generateResponse({
-        role,
-        history,
-        assessmentData
-      });
-
-      const response = result.data as { success: boolean; response: string };
-
-      if (response.success && response.response) {
-        console.log("AI dynamic question generated successfully");
-        return response.response;
-      }
-    } catch (dynamicError) {
-      console.log("Dynamic question function not available, trying generateAIResponse");
-    }
-
-    // Fallback to generateAIResponse
-    generateResponse = httpsCallable(functions, "generateAIResponse");
-    const result = await generateResponse({
-      role,
-      history,
-      lastUserMessage
-    });
-
-    const response = result.data as { success: boolean; response: string };
-
-    if (response.success && response.response) {
-      console.log("AI response generated successfully");
-      return response.response;
-    }
-
-    throw new Error("Invalid response from Cloud Function");
-
-  } catch (error) {
-    console.error("AI question generation failed:", error);
-
-    // Fallback: Generate contextual question based on history length
-    const questionCount = history.filter(h => h.speaker === 'ai').length;
-
-    if (questionCount >= 8) {
-      return "Terima kasih atas semua jawaban Anda. Sesi wawancara telah selesai. Kami akan segera memproses hasil assessment Anda.";
-    }
-
-    // Contextual fallback questions
-    const fallbackQuestions = [
-      "Bisa Anda ceritakan lebih detail tentang situasi tersebut?",
-      "Bagaimana Anda menangani tekanan dalam pekerjaan sebelumnya?",
-      "Ceritakan pengalaman Anda dalam menghadapi dilema etika di tempat kerja.",
-      "Apa yang akan Anda lakukan jika menemukan ketidaksesuaian dalam laporan keuangan?",
-      "Bagaimana Anda membangun kepercayaan dengan tim dan atasan Anda?",
-      "Ceritakan tentang keputusan sulit yang pernah Anda ambil di tempat kerja.",
-      "Bagaimana Anda memprioritaskan tugas ketika menghadapi deadline yang ketat?"
-    ];
-
-    return fallbackQuestions[questionCount % fallbackQuestions.length] ||
-           "Terima kasih. Bisa Anda jelaskan lebih lanjut?";
-  }
+  return "Silakan lanjutkan dengan pertanyaan berikutnya.";
 };
 
 // Helper functions yang mungkin masih dibutuhkan di frontend
