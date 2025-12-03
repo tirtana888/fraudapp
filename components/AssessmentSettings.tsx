@@ -46,6 +46,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isProcessingImg, setIsProcessingImg] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const assessmentLink = `${window.location.origin}?mode=assess&cid=${currentCompany.id}`;
@@ -58,7 +59,19 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
         headerTitle: currentCompany.headerTitle || currentCompany.name,
         welcomeMessage: currentCompany.welcomeMessage || 'Silakan lengkapi data berikut untuk melanjutkan proses seleksi.'
     });
+    setHasUnsavedChanges(false);
   }, [currentCompany]);
+
+  useEffect(() => {
+    // Detect changes
+    const hasChanges =
+      formData.logoUrl !== (currentCompany.logoUrl || '') ||
+      formData.brandColor !== (currentCompany.brandColor || '#CC5500') ||
+      formData.headerTitle !== (currentCompany.headerTitle || currentCompany.name) ||
+      formData.welcomeMessage !== (currentCompany.welcomeMessage || 'Silakan lengkapi data berikut untuk melanjutkan proses seleksi.');
+
+    setHasUnsavedChanges(hasChanges);
+  }, [formData, currentCompany]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(assessmentLink);
@@ -105,26 +118,43 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log("Starting logo upload:", {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+
     if (file.size > 5 * 1024 * 1024) {
-        alert("Ukuran file terlalu besar! Maksimal 5MB.");
+        alert("❌ Ukuran file terlalu besar! Maksimal 5MB.");
         return;
     }
 
     setIsProcessingImg(true);
 
     try {
+        console.log("Compressing image...");
         const optimizedLogo = await compressAndResizeImage(file);
         const sizeInBytes = 4 * Math.ceil((optimizedLogo.length / 3)) * 0.5624896334383812;
+        const sizeInKB = Math.round(sizeInBytes / 1024);
+
+        console.log("Image compressed:", {
+          originalSize: file.size,
+          optimizedLength: optimizedLogo.length,
+          estimatedSizeKB: sizeInKB
+        });
+
         if (sizeInBytes > 900 * 1024) {
-            alert("Gambar terlalu kompleks. Mohon gunakan logo yang lebih sederhana.");
+            alert("❌ Gambar terlalu kompleks setelah dioptimasi. Mohon gunakan logo yang lebih sederhana.");
             setIsProcessingImg(false);
             return;
         }
 
+        console.log("✅ Logo ready to save. Remember to click 'Simpan Perubahan' button!");
         setFormData({ ...formData, logoUrl: optimizedLogo });
+        alert(`✅ Logo berhasil di-upload (${sizeInKB}KB). Jangan lupa klik tombol "Simpan Perubahan" untuk menyimpan!`);
     } catch (error) {
         console.error("Image processing failed", error);
-        alert("Gagal memproses gambar. Coba file lain.");
+        alert("❌ Gagal memproses gambar. Coba file lain atau gunakan format PNG/JPG yang sederhana.");
     } finally {
         setIsProcessingImg(false);
     }
@@ -138,15 +168,31 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      console.log("Saving company settings:", {
+        companyId: currentCompany.id,
+        logoLength: formData.logoUrl.length,
+        brandColor: formData.brandColor,
+        headerTitle: formData.headerTitle
+      });
+
       await updateCompany(currentCompany.id, formData);
-      onUpdate(); 
+
+      console.log("Save successful!");
+      setHasUnsavedChanges(false);
+      onUpdate();
       alert("✅ Pengaturan Link Asesmen berhasil disimpan!");
     } catch (error: any) {
       console.error("Gagal menyimpan:", error);
-      if (error.message && error.message.includes("larger than 1 MB")) {
-          alert("Gagal menyimpan: Ukuran Logo terlalu besar.");
+
+      // Check specific error types
+      if (error.code === 'invalid-argument') {
+        alert("❌ Gagal menyimpan: Data tidak valid. Logo mungkin terlalu besar.");
+      } else if (error.message && error.message.includes("larger than 1 MB")) {
+        alert("❌ Gagal menyimpan: Ukuran Logo terlalu besar (maksimal 1MB di Firestore).");
+      } else if (error.message && error.message.toLowerCase().includes("permission")) {
+        alert("❌ Gagal menyimpan: Izin akses ditolak. Pastikan Anda login sebagai admin perusahaan ini.");
       } else {
-          alert("Terjadi kesalahan saat menyimpan pengaturan.");
+        alert(`❌ Terjadi kesalahan saat menyimpan: ${error.message || 'Unknown error'}`);
       }
     } finally {
       setIsSaving(false);
@@ -164,13 +210,17 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">Kustomisasi Tampilan</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Atur branding halaman asesmen mandiri kandidat.</p>
              </div>
-             <button 
+             <button
                 onClick={handleSave}
-                disabled={isSaving || isProcessingImg}
-                className="bg-brand-dark dark:bg-white text-white dark:text-brand-dark px-4 py-2 rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-70"
+                disabled={isSaving || isProcessingImg || !hasUnsavedChanges}
+                className={`px-4 py-2 rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  hasUnsavedChanges
+                    ? 'bg-orange-600 text-white animate-pulse'
+                    : 'bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                }`}
              >
                 {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Simpan Perubahan
+                {hasUnsavedChanges ? '⚠️ Simpan Perubahan' : '✓ Tersimpan'}
              </button>
           </div>
 
