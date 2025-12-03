@@ -274,12 +274,11 @@ const App: React.FC = () => {
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
       case 'candidates-auto':
+        if (viewingCandidateId) {
+          return <CandidateDetail sessionId={viewingCandidateId} onBack={() => setViewingCandidateId(null)} />;
+        }
         return <CandidatesAutoView companyId={currentCompany!.id} onViewSession={(sessionId) => {
-          const session = sessions.find(s => s.id === sessionId);
-          if (session) {
-            setReviewingSession(session);
-            setActiveTab('new-interview');
-          }
+          setViewingCandidateId(sessionId);
         }} />;
       case 'candidates-manual':
         return <CandidatesManualInvite currentCompany={currentCompany!} />;
