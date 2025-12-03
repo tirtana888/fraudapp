@@ -3,7 +3,7 @@
 ## Status Update: Model Dikembalikan ke Setup Awal
 
 ✅ **Model TELAH DIKEMBALIKAN ke konfigurasi yang benar:**
-- **Gemini 2.0 Flash Experimental** (`gemini-2.0-flash-exp`) untuk chat & analysis
+- **Gemini 2.0 Flash Thinking Experimental** (`gemini-2.0-flash-thinking-exp-1219`) - Gemini "3" Preview untuk chat & analysis
 - **GPT-4o** sebagai fallback
 
 ---
@@ -80,17 +80,18 @@ firebase deploy --only functions
 ### Problem 2: Gemini API Error (Model Not Found)
 **Symptom:**
 ```
-[ERROR] Gemini failed: { message: "models/gemini-2.0-flash-exp is not found" }
+[ERROR] Gemini failed: { message: "models/gemini-2.0-flash-thinking-exp-1219 is not found" }
 ```
 
 **Possible Causes:**
 1. Model ID salah atau tidak tersedia di region Anda
-2. Gemini API Key tidak memiliki akses ke model experimental
+2. Gemini API Key tidak memiliki akses ke model experimental/preview
 
 **Solution:**
-- Cek apakah API key Anda memiliki akses ke `gemini-2.0-flash-exp`
+- Cek apakah API key Anda memiliki akses ke `gemini-2.0-flash-thinking-exp-1219` (Gemini "3" Preview)
 - Jika tidak, model akan otomatis fallback ke OpenAI GPT-4o
 - Atau bisa ganti model di `functions/index.js` ke model yang tersedia:
+  - `gemini-2.0-flash-exp`
   - `gemini-1.5-flash-latest`
   - `gemini-1.5-pro-latest`
 
@@ -161,8 +162,8 @@ testAI({
 
 ### generateAIResponse Function (Chat)
 ```javascript
-// Primary: Gemini 2.0 Flash Experimental
-model: "gemini-2.0-flash-exp"
+// Primary: Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview)
+model: "gemini-2.0-flash-thinking-exp-1219"
 
 // Fallback: OpenAI GPT-4o
 model: "gpt-4o"
@@ -170,8 +171,8 @@ model: "gpt-4o"
 
 ### analyzeFraudRisk Function (Analysis)
 ```javascript
-// Primary: Gemini 2.0 Flash Experimental
-model: "gemini-2.0-flash-exp"
+// Primary: Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview)
+model: "gemini-2.0-flash-thinking-exp-1219"
 
 // Fallback: OpenAI GPT-4o
 model: "gpt-4o"
@@ -218,7 +219,7 @@ firebase functions:log
 
 ## Summary
 
-- ✅ Model sudah dikembalikan ke: **Gemini 2.0 Flash Exp + GPT-4o**
+- ✅ Model sudah dikembalikan ke: **Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview) + GPT-4o**
 - ✅ Logging diperbaiki untuk debugging yang lebih baik
 - ✅ Error handling lebih detail
 - ✅ Prompt AI sudah lebih natural dan conversational
@@ -227,4 +228,4 @@ firebase functions:log
 **Chatbot akan bekerja dengan baik jika:**
 1. API Keys terkonfigurasi dengan benar
 2. API Keys memiliki quota yang cukup
-3. Model ID yang digunakan tersedia di region Anda
+3. Model ID `gemini-2.0-flash-thinking-exp-1219` tersedia/accessible untuk API key Anda
