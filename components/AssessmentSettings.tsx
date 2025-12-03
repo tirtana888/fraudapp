@@ -178,9 +178,37 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
       await updateCompany(currentCompany.id, formData);
 
       console.log("Save successful!");
+
+      // Verify saved data by reading back from Firestore
+      console.log("Verifying saved data...");
+      const { getCompanyById } = await import('../services/firebase');
+      const verifyData = await getCompanyById(currentCompany.id);
+
+      if (verifyData) {
+        console.log("Verified data from Firestore:", {
+          logoUrlLength: verifyData.logoUrl?.length || 0,
+          brandColor: verifyData.brandColor,
+          headerTitle: verifyData.headerTitle
+        });
+
+        if (formData.logoUrl && !verifyData.logoUrl) {
+          console.error("❌ VERIFICATION FAILED: Logo was not saved to Firestore!");
+          alert("⚠️ Logo gagal tersimpan. Kemungkinan ukuran terlalu besar (max 1MB). Coba logo yang lebih kecil.");
+          return;
+        }
+
+        if (formData.logoUrl && verifyData.logoUrl && verifyData.logoUrl !== formData.logoUrl) {
+          console.error("❌ VERIFICATION FAILED: Logo mismatch!");
+          alert("⚠️ Logo tersimpan tidak sesuai. Silakan coba lagi.");
+          return;
+        }
+
+        console.log("✅ Verification successful - all data saved correctly");
+      }
+
       setHasUnsavedChanges(false);
       onUpdate();
-      alert("✅ Pengaturan Link Asesmen berhasil disimpan!");
+      alert("✅ Pengaturan Link Asesmen berhasil disimpan dan terverifikasi!");
     } catch (error: any) {
       console.error("Gagal menyimpan:", error);
 

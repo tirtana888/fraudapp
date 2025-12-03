@@ -48,21 +48,37 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
   const fetchCompany = async (id: string): Promise<boolean> => {
       try {
+        console.log(`[PUBLIC-ASSESSMENT] Fetching company data for ID: ${id}`);
         const data = await getCompanyById(id);
+
         if (data) {
+          console.log(`[PUBLIC-ASSESSMENT] Company data loaded:`, {
+            name: data.name,
+            tier: data.tier,
+            hasLogo: !!data.logoUrl,
+            logoLength: data.logoUrl?.length || 0,
+            brandColor: data.brandColor,
+            headerTitle: data.headerTitle
+          });
+
           if (data.tier === 'Basic') {
+              console.warn(`[PUBLIC-ASSESSMENT] Access denied - Basic tier`);
               setIsAccessDenied(true);
               setStep('welcome'); // Show access denied message on welcome screen
               return false;
           }
+
           setCompany(data);
           setCompanyId(id);
+          console.log(`[PUBLIC-ASSESSMENT] ✅ Company data set successfully`);
           return true;
         } else {
+          console.error(`[PUBLIC-ASSESSMENT] Company not found for ID: ${id}`);
           setErrorMsg("Data perusahaan untuk kode ini tidak valid.");
           return false;
         }
       } catch (err) {
+        console.error(`[PUBLIC-ASSESSMENT] Error fetching company:`, err);
         setErrorMsg("Gagal memuat data perusahaan.");
         return false;
       }
@@ -298,14 +314,33 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       );
   }
 
-  const Header = () => (
-    <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-center sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 object-contain" /> : <ShieldCheck size={24} style={{ color: brandColor }} />}
-           <span className="font-bold text-xl text-gray-900 tracking-tight">{company?.headerTitle || company?.name}</span>
-        </div>
-    </div>
-  );
+  const Header = () => {
+    console.log(`[HEADER] Rendering header with logoUrl:`, {
+      hasLogoUrl: !!logoUrl,
+      logoLength: logoUrl?.length || 0,
+      companyName: company?.name,
+      headerTitle: company?.headerTitle
+    });
+
+    return (
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-center sticky top-0 z-20 shadow-sm">
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-8 object-contain"
+                onLoad={() => console.log(`[HEADER] ✅ Logo image loaded successfully`)}
+                onError={(e) => console.error(`[HEADER] ❌ Logo image failed to load`, e)}
+              />
+            ) : (
+              <ShieldCheck size={24} style={{ color: brandColor }} />
+            )}
+            <span className="font-bold text-xl text-gray-900 tracking-tight">{company?.headerTitle || company?.name}</span>
+          </div>
+      </div>
+    );
+  };
   
   if (step === 'done') {
       return (
