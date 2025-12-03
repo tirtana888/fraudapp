@@ -172,11 +172,14 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
       template_params: {
         to_email: to_email,
         to_name: to_name,
+        reply_to: to_email,  // Explicitly set reply_to
         ...data
       }
     };
 
-    console.log(`[EMAIL-PAYLOAD] Prepared payload for EmailJS`);
+    console.log(`[EMAIL-PAYLOAD] Service: ${EMAILJS_CONFIG.serviceId}, Template: ${templateId}`);
+    console.log(`[EMAIL-PAYLOAD] Recipient: ${to_email}, Name: ${to_name}`);
+    console.log(`[EMAIL-PAYLOAD] Full params:`, JSON.stringify(emailPayload.template_params));
 
     // Kirim via EmailJS REST API
     const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
