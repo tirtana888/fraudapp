@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -14,6 +14,8 @@ interface AutoCandidate extends InterviewSession {
   jobLocation?: string;
   testScore?: number;
   completedAt?: string;
+  currentQuestionIndex?: number;
+  totalQuestions?: number;
 }
 
 const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onViewSession }) => {
@@ -46,11 +48,10 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       const sessionsQuery = query(
         collection(db, COLLECTIONS.SESSIONS),
         where('companyId', '==', companyId),
-        where('source', '==', 'job_application'),
-        where('status', '==', 'completed')
+        where('source', '==', 'job_application')
       );
       const sessionsSnapshot = await getDocs(sessionsQuery);
-      console.log('[CANDIDATES-AUTO] Found completed sessions:', sessionsSnapshot.docs.length);
+      console.log('[CANDIDATES-AUTO] Found all job application sessions:', sessionsSnapshot.docs.length);
 
       const candidatesWithDetails: AutoCandidate[] = await Promise.all(
         sessionsSnapshot.docs.map(async (docSnap) => {
@@ -223,20 +224,41 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 mb-4 py-3 border-y border-gray-100 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={16} className="text-brand-orange" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Score:</span>
-                  <span className="text-lg font-bold text-brand-orange">{candidate.testScore || 0}/100</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Calendar size={14} />
-                  {new Date(candidate.completedAt || candidate.date).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </div>
+              <div className="mb-4 py-3 border-y border-gray-100 dark:border-slate-700 space-y-3">
+                {candidate.status === 'completed' ? (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-brand-orange" />
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Score:</span>
+                      <span className="text-lg font-bold text-brand-orange">{candidate.testScore || 0}/100</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <Calendar size={14} />
+                      {new Date(candidate.completedAt || candidate.date).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Progress:</span>
+                      <span className="text-brand-orange font-bold">{Math.round((candidate.currentQuestionIndex || 0) / (candidate.totalQuestions || 10) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5">
+                      <div
+                        className="bg-brand-orange h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.round((candidate.currentQuestionIndex || 0) / (candidate.totalQuestions || 10) * 100)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <Clock size={12} />
+                      <span>Sedang mengerjakan: {candidate.currentQuestionIndex || 0} / {candidate.totalQuestions || 10} pertanyaan</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 mb-4">

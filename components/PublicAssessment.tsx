@@ -345,11 +345,31 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   
   if (step === 'done') {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans">
-          <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
-            <CheckCircle2 size={40} className="text-green-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Tes Selesai</h2>
-            <p className="text-gray-600 mb-6">Terima kasih {candidateName}. Hasil tes telah disimpan.</p>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50 p-4 font-sans">
+          <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center space-y-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 size={48} className="text-green-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-800">Terima Kasih!</h2>
+            <p className="text-lg text-gray-700">
+              Halo <span className="font-bold text-brand-orange">{candidateName}</span>,
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              Asesmen Anda telah berhasil diselesaikan dan hasil telah tersimpan dengan aman.
+              Tim HR akan meninjau hasil Anda dan menghubungi melalui email untuk tahap selanjutnya.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                <Mail className="text-blue-600" size={16} />
+                Cek Email Anda
+              </p>
+              <p className="text-xs text-blue-700">
+                Kami akan mengirimkan undangan untuk tahap selanjutnya ke <span className="font-semibold">{candidateEmail}</span>
+              </p>
+            </div>
+            <p className="text-sm text-gray-500 italic">
+              Semoga berhasil! 🎉
+            </p>
           </div>
         </div>
       );

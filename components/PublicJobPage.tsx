@@ -146,13 +146,13 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
 
       if (job.enableInstantAssessment && assessmentToken) {
         console.log('[PUBLIC-JOB] ===== STEP 3: REDIRECTING TO ASSESSMENT =====');
-        const redirectUrl = `${window.location.origin}/assessment/start?token=${assessmentToken}&job_id=${job.id}&app_id=${applicationId}`;
-        console.log('[PUBLIC-JOB] Redirect URL:', redirectUrl);
+        const assessmentUrl = `/?mode=assess&cid=${company.id}&token=${assessmentToken}&job_id=${job.id}&app_id=${applicationId}`;
+        console.log('[PUBLIC-JOB] Assessment URL:', assessmentUrl);
         console.log('[PUBLIC-JOB] Redirecting in 2 seconds...');
 
         setTimeout(() => {
           console.log('[PUBLIC-JOB] Executing redirect NOW!');
-          window.location.href = redirectUrl;
+          window.location.href = assessmentUrl;
         }, 2000);
       } else {
         console.log('[PUBLIC-JOB] ===== STEP 3: SHOWING SUCCESS MESSAGE =====');
