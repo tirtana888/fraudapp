@@ -26,7 +26,7 @@ export const COLLECTIONS = {
 };
 
 export let db: Firestore;
-let functions: any;
+export let functions: any;
 let storage: any;
 
 // EmailJS Configuration (Client-side fallback)

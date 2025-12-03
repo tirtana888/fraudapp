@@ -707,3 +707,103 @@ exports.diditWebhook = onRequest({ region: "europe-west1", cors: true }, async (
     });
   }
 });
+
+/**
+ * Fungsi: createDiditSession
+ * Trigger: Frontend (CandidateList.tsx)
+ * Deskripsi: Proxy untuk membuat Didit verification session
+ * Region: europe-west1
+ */
+exports.createDiditSession = onCall({ region: "europe-west1" }, async (request) => {
+  const { sessionId, candidateName, candidateEmail } = request.data;
+
+  console.log('[DIDIT] Creating session for:', { sessionId, candidateName, candidateEmail });
+
+  // Validasi Input
+  if (!sessionId || !candidateName || !candidateEmail) {
+    throw new HttpsError('invalid-argument', 'sessionId, candidateName, dan candidateEmail wajib diisi.');
+  }
+
+  const DIDIT_API_KEY = 'D4zB7mddYLCa_4gCnifsFg3iU3BoMzVQBg3k2_Te910';
+  const DIDIT_FLOW_ID = 'f6eb1a67-47c4-4668-960a-1baab821f388';
+
+  try {
+    const payload = JSON.stringify({
+      workflow_id: DIDIT_FLOW_ID,
+      vendor_data: sessionId,
+      callback: 'https://tirtana888-fraudguar-68hf.bolt.host/background-check-callback',
+      metadata: {
+        candidate_name: candidateName,
+        candidate_email: candidateEmail,
+        session_id: sessionId
+      }
+    });
+
+    console.log('[DIDIT] Request payload:', payload);
+
+    // Call Didit API
+    const response = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'verification.didit.me',
+        path: '/v2/session/',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DIDIT_API_KEY}`,
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          console.log('[DIDIT] Response status:', res.statusCode);
+          console.log('[DIDIT] Response body:', data);
+
+          if (res.statusCode === 201 || res.statusCode === 200) {
+            try {
+              const parsed = JSON.parse(data);
+              resolve(parsed);
+            } catch (e) {
+              reject(new Error('Invalid JSON response from Didit'));
+            }
+          } else {
+            reject(new Error(`Didit API error: ${res.statusCode} - ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        console.error('[DIDIT] Request error:', error);
+        reject(error);
+      });
+
+      req.write(payload);
+      req.end();
+    });
+
+    console.log('[DIDIT] Session created successfully:', response.session_id);
+
+    // Update Firestore dengan session info
+    await db.collection('interview-sessions').doc(sessionId).update({
+      'backgroundCheck.diditSessionId': response.session_id,
+      'backgroundCheck.status': 'pending',
+      'backgroundCheck.createdAt': new Date().toISOString()
+    });
+
+    return {
+      success: true,
+      sessionUrl: response.url,
+      sessionId: response.session_id
+    };
+
+  } catch (error) {
+    console.error('[DIDIT] Error:', error);
+    throw new HttpsError('internal', `Failed to create Didit session: ${error.message}`);
+  }
+});

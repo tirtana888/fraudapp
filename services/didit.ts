@@ -1,5 +1,6 @@
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, COLLECTIONS } from './firebase';
+import { db, COLLECTIONS, functions } from './firebase';
+import { httpsCallable } from 'firebase/functions';
 
 const DIDIT_API_BASE = 'https://verification.didit.me/v2';
 const DIDIT_FLOW_ID = import.meta.env.VITE_DIDIT_FLOW_ID;
@@ -26,48 +27,26 @@ export const createBackgroundCheckSession = async (
   candidateName: string,
   candidateEmail: string
 ): Promise<DiditVerificationSession> => {
-  console.log('[DIDIT] Creating background check session for:', { sessionId, candidateName, candidateEmail });
+  console.log('[DIDIT] Creating background check session via Firebase Function for:', { sessionId, candidateName, candidateEmail });
 
   try {
-    const callbackUrl = `${window.location.origin}/background-check-callback`;
+    const createDiditSession = httpsCallable(functions, 'createDiditSession');
 
-    const requestBody = {
-      workflow_id: DIDIT_FLOW_ID,
-      vendor_data: sessionId,
-      callback: callbackUrl,
-      metadata: {
-        candidateName,
-        candidateEmail,
-        sessionId
-      }
-    };
-
-    console.log('[DIDIT] Request body:', requestBody);
-
-    const response = await fetch(`${DIDIT_API_BASE}/session/`, {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-        'x-api-key': DIDIT_API_KEY
-      },
-      body: JSON.stringify(requestBody)
+    const result = await createDiditSession({
+      sessionId,
+      candidateName,
+      candidateEmail
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[DIDIT] API Error:', response.status, errorText);
-      throw new Error(`Didit API error: ${response.status} ${errorText}`);
-    }
+    const data = result.data as { success: boolean; sessionUrl: string; sessionId: string };
 
-    const data: DiditSessionResponse = await response.json();
-    console.log('[DIDIT] Session created successfully:', data);
+    console.log('[DIDIT] Session created successfully via Firebase:', data);
 
     const verificationSession: DiditVerificationSession = {
-      verificationSessionId: data.id,
-      verification_url: data.url,
+      verificationSessionId: data.sessionId,
+      verification_url: data.sessionUrl,
       status: 'pending',
-      createdAt: data.created_at || new Date().toISOString()
+      createdAt: new Date().toISOString()
     };
 
     await updateDoc(doc(db, COLLECTIONS.SESSIONS, sessionId), {
