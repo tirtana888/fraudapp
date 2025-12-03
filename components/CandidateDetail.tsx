@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info } from 'lucide-react';
 import { InterviewSession } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -29,7 +29,7 @@ interface CandidateData extends InterviewSession {
 const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) => {
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background'>('overview');
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -304,6 +304,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               }`}
             >
               AI Interview Chat
+            </button>
+            <button
+              onClick={() => setActiveTab('background')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'background'
+                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Background Check
             </button>
           </div>
         </div>
@@ -856,6 +866,285 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             ) : (
               <p className="text-gray-500 text-center py-20">No interview transcript available</p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'background' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl shadow-sm border border-blue-200 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Background Check Report</h2>
+                  <p className="text-sm text-gray-600 mb-3">Identity Verification & KYC powered by Didit</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                    <Clock size={14} />
+                    COMING SOON
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500 uppercase mb-1">Verification Status</div>
+                  <div className="text-3xl font-black text-gray-400">--</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Shield size={20} className="text-blue-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Overview of Background Check</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Status</span>
+                    <span className="text-sm font-semibold text-gray-400">Pending Integration</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Verification Date</span>
+                    <span className="text-sm font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Provider</span>
+                    <span className="text-sm font-semibold text-blue-600">Didit KYC</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle2 size={20} className="text-green-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">ID Verification Image</h3>
+                </div>
+                <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center">
+                  <div className="text-center">
+                    <FileText size={48} className="text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">ID Image Preview</p>
+                    <p className="text-xs text-gray-400">Coming Soon</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <FileText size={20} className="text-purple-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Extracted Data from ID</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Full Name</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">ID Number</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Date of Birth</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Address</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Nationality</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-teal-100 rounded-lg">
+                    <User size={20} className="text-teal-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Liveness Detection</h3>
+                </div>
+                <div className="text-center mb-4">
+                  <div className="w-32 h-32 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <User size={48} className="text-gray-300" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-400">Liveness Check Pending</p>
+                  <p className="text-xs text-gray-400 mt-1">Verifies user is physically present</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Scan size={20} className="text-orange-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Face Match</h3>
+                </div>
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-3">
+                    <span className="text-4xl font-black text-gray-300">--%</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-400">Match Score</p>
+                  <p className="text-xs text-gray-400 mt-1">Compares selfie with ID photo</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertTriangle size={20} className="text-red-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">AML Screening</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Sanctions List</span>
+                    <span className="text-sm font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">PEP Check</span>
+                    <span className="text-sm font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">Watchlist</span>
+                    <span className="text-sm font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-cyan-100 rounded-lg">
+                    <Globe size={20} className="text-cyan-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">IP Analysis</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">IP Address</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Location</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">ISP</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">VPN/Proxy</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <Wifi size={20} className="text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Network Details</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Connection Type</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Speed</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Provider</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Risk Score</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <MapPin size={20} className="text-yellow-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">ID Verification Document Location</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Country</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">City</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Coordinates</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Timezone</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-pink-100 rounded-lg">
+                    <Smartphone size={20} className="text-pink-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-800">Device Information</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Device Type</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">OS</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Browser</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Device ID</span>
+                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <div className="flex items-start gap-3">
+                <Info size={24} className="text-blue-600 flex-shrink-0 mt-1" />
+                <div>
+                  <h4 className="font-bold text-blue-900 mb-2">Integration Coming Soon</h4>
+                  <p className="text-sm text-blue-800 leading-relaxed">
+                    This Background Check feature will be powered by <span className="font-semibold">Didit KYC</span>,
+                    a comprehensive identity verification and Know Your Customer (KYC) solution. Once integrated,
+                    it will provide real-time identity verification, document authentication, liveness detection,
+                    AML screening, and comprehensive risk assessment for all candidates.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
