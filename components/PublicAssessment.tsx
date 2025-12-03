@@ -397,19 +397,50 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         {step === 'profile' && (
            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-6">
                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><User /> Identitas Diri</h2>
+               {inviteData && (
+                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                   <Lock size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                   <div className="text-sm">
+                     <p className="font-semibold text-blue-900 mb-1">Data Terisi Otomatis dari Undangan</p>
+                     <p className="text-blue-700">Nama, email, dan posisi telah diisi sesuai dengan undangan yang Anda terima dan tidak dapat diubah.</p>
+                   </div>
+                 </div>
+               )}
                <form onSubmit={handleProfileSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Nama Lengkap</label>
-                    <input required type="text" value={candidateName} onChange={e => setCandidateName(e.target.value)} className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData} />
+                    <input
+                      required
+                      type="text"
+                      value={candidateName}
+                      onChange={e => setCandidateName(e.target.value)}
+                      className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      disabled={!!inviteData}
+                      readOnly={!!inviteData}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
-                    <input required type="email" value={candidateEmail} onChange={e => setCandidateEmail(e.target.value)} className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData} />
+                    <input
+                      required
+                      type="email"
+                      value={candidateEmail}
+                      onChange={e => setCandidateEmail(e.target.value)}
+                      className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      disabled={!!inviteData}
+                      readOnly={!!inviteData}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Posisi</label>
                     <div className="relative">
-                        <select required value={candidateRole} onChange={e => setCandidateRole(e.target.value)} className="w-full p-3 border rounded-xl bg-white appearance-none disabled:bg-gray-100 disabled:opacity-70" disabled={!!inviteData?.role}>
+                        <select
+                          required
+                          value={candidateRole}
+                          onChange={e => setCandidateRole(e.target.value)}
+                          className="w-full p-3 border rounded-xl bg-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          disabled={!!inviteData?.role}
+                        >
                             <option value="" disabled>-- Pilih Posisi --</option>
                             {AVAILABLE_ROLES.map((role, idx) => <option key={idx} value={role}>{role}</option>)}
                         </select>

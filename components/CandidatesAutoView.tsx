@@ -147,11 +147,13 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
   const getStageBadge = (status: string, hasAnalysis: boolean) => {
     if (status === 'completed' && hasAnalysis) {
-      return <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold text-xs">Integrity Check</span>;
+      return <span className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-semibold text-xs">✅ Completed</span>;
     } else if (status === 'completed') {
-      return <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold text-xs">Awaiting Review</span>;
+      return <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold text-xs">Review Pending</span>;
+    } else if (status === 'in-progress') {
+      return <span className="px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs">⏳ In Progress</span>;
     } else {
-      return <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs">In Progress</span>;
+      return <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs">Invited</span>;
     }
   };
 

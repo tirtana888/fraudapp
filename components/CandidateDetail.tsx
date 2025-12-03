@@ -320,7 +320,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {activeTab === 'overview' && (
+        {activeTab === 'overview' && candidate.status !== 'completed' && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
+            <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
+            <p className="text-gray-600">Kandidat masih dalam proses mengerjakan assessment. Report akan tersedia setelah assessment selesai.</p>
+          </div>
+        )}
+
+        {activeTab === 'overview' && candidate.status === 'completed' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -628,7 +636,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           </div>
         )}
 
-        {activeTab === 'integrity' && (
+        {activeTab === 'integrity' && candidate.status !== 'completed' && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
+            <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
+            <p className="text-gray-600">Integrity Report akan tersedia setelah kandidat menyelesaikan assessment.</p>
+          </div>
+        )}
+
+        {activeTab === 'integrity' && candidate.status === 'completed' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-sm border border-orange-200 p-6">
               <div className="flex items-start justify-between">
@@ -869,7 +885,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           </div>
         )}
 
-        {activeTab === 'background' && (
+        {activeTab === 'background' && candidate.status !== 'completed' && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
+            <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
+            <p className="text-gray-600">Background Check akan tersedia setelah kandidat menyelesaikan assessment.</p>
+          </div>
+        )}
+
+        {activeTab === 'background' && candidate.status === 'completed' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl shadow-sm border border-blue-200 p-6">
               <div className="flex items-start justify-between">
