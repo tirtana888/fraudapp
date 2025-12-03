@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Copy, Check, Lock, Smartphone, RefreshCw, Loader2, Image as ImageIcon, Palette, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { updateCompany } from '../services/firebase';
+import { updateCompany, uploadCompanyLogo, deleteCompanyLogo } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
 
 interface AssessmentSettingsProps {
@@ -118,51 +118,58 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log("Starting logo upload:", {
+    console.log("[LOGO-UPLOAD] Starting logo upload:", {
       fileName: file.name,
-      fileSize: file.size,
+      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
       fileType: file.type
     });
 
+    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-        alert("❌ Ukuran file terlalu besar! Maksimal 5MB.");
+        alert(`❌ Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB)! Maksimal 5MB.`);
         return;
     }
 
     setIsProcessingImg(true);
 
     try {
-        console.log("Compressing image...");
-        const optimizedLogo = await compressAndResizeImage(file);
-        const sizeInBytes = 4 * Math.ceil((optimizedLogo.length / 3)) * 0.5624896334383812;
-        const sizeInKB = Math.round(sizeInBytes / 1024);
+        console.log("[LOGO-UPLOAD] Uploading to Firebase Storage...");
 
-        console.log("Image compressed:", {
-          originalSize: file.size,
-          optimizedLength: optimizedLogo.length,
-          estimatedSizeKB: sizeInKB
-        });
+        // Upload to Firebase Storage (supports up to 5MB)
+        const downloadURL = await uploadCompanyLogo(currentCompany.id, file);
 
-        if (sizeInBytes > 900 * 1024) {
-            alert("❌ Gambar terlalu kompleks setelah dioptimasi. Mohon gunakan logo yang lebih sederhana.");
-            setIsProcessingImg(false);
-            return;
-        }
+        console.log("[LOGO-UPLOAD] ✅ Upload successful, URL:", downloadURL);
 
-        console.log("✅ Logo ready to save. Remember to click 'Simpan Perubahan' button!");
-        setFormData({ ...formData, logoUrl: optimizedLogo });
-        alert(`✅ Logo berhasil di-upload (${sizeInKB}KB). Jangan lupa klik tombol "Simpan Perubahan" untuk menyimpan!`);
-    } catch (error) {
-        console.error("Image processing failed", error);
-        alert("❌ Gagal memproses gambar. Coba file lain atau gunakan format PNG/JPG yang sederhana.");
+        // Update form data with download URL
+        setFormData({ ...formData, logoUrl: downloadURL });
+
+        alert(`✅ Logo berhasil di-upload (${(file.size / 1024 / 1024).toFixed(2)}MB)! Klik "Simpan Perubahan" untuk menyimpan.`);
+    } catch (error: any) {
+        console.error("[LOGO-UPLOAD] ❌ Upload failed:", error);
+        alert(`❌ Gagal upload logo: ${error.message}`);
     } finally {
         setIsProcessingImg(false);
     }
   };
 
-  const handleRemoveLogo = () => {
-      setFormData({ ...formData, logoUrl: '' });
-      if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleRemoveLogo = async () => {
+      try {
+        console.log("[LOGO-REMOVE] Removing logo...");
+
+        // Delete from Firebase Storage
+        await deleteCompanyLogo(currentCompany.id);
+
+        // Clear form data
+        setFormData({ ...formData, logoUrl: '' });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        console.log("[LOGO-REMOVE] ✅ Logo removed");
+      } catch (error: any) {
+        console.error("[LOGO-REMOVE] Error:", error);
+        // Still clear the form even if delete fails (file might not exist)
+        setFormData({ ...formData, logoUrl: '' });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
   };
 
   const handleSave = async () => {
@@ -298,7 +305,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                             className="hidden" 
                         />
                         <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                            <AlertCircle size={10} /> Maksimal ukuran file 5MB (PNG/JPG). Otomatis dioptimasi.
+                            <AlertCircle size={10} /> Maksimal 5MB (PNG/JPG). Upload langsung ke Firebase Storage.
                         </p>
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc, limit } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { CompanyProfile, UserProfile, AssessmentInvite } from "../types";
 
 // --- KONFIGURASI FIREBASE REAL (PRODUCTION) ---
@@ -24,6 +25,7 @@ export const COLLECTIONS = {
 
 export let db: Firestore;
 let functions: any;
+let storage: any;
 
 // EmailJS Configuration (Client-side fallback)
 const EMAILJS_CONFIG = {
@@ -128,7 +130,8 @@ try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   functions = getFunctions(app, "europe-west1"); // Set region sesuai dengan Cloud Function
-  console.log("[FraudGuard System] Connected to Firebase (Firestore + Functions).");
+  storage = getStorage(app); // Initialize Firebase Storage
+  console.log("[FraudGuard System] Connected to Firebase (Firestore + Functions + Storage).");
 } catch (error) {
   console.error("CRITICAL: Gagal menghubungkan ke Firebase.", error);
 }
@@ -849,4 +852,80 @@ export const subscribeToInvites = (companyId: string, onUpdate: (data: Assessmen
         executeSimpleQuery();
         return () => {};
     }
+};
+
+// --- FIREBASE STORAGE: LOGO UPLOAD (Up to 5MB) ---
+
+/**
+ * Upload logo file ke Firebase Storage
+ * @param companyId - ID company
+ * @param file - File object (PNG/JPG/JPEG)
+ * @returns Download URL for the uploaded logo
+ */
+export const uploadCompanyLogo = async (companyId: string, file: File): Promise<string> => {
+  if (!storage) throw new Error("Firebase Storage tidak tersedia");
+
+  // Validate file type
+  const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error("Format file tidak valid. Gunakan PNG atau JPG.");
+  }
+
+  // Validate file size (5MB max)
+  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+  if (file.size > maxSize) {
+    throw new Error(`Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB). Maksimal 5MB.`);
+  }
+
+  console.log(`[STORAGE] Uploading logo for company: ${companyId}, size: ${(file.size / 1024).toFixed(2)}KB`);
+
+  try {
+    // Create storage reference: logos/companyId/logo.ext
+    const fileExtension = file.name.split('.').pop() || 'png';
+    const storagePath = `logos/${companyId}/logo.${fileExtension}`;
+    const storageRef = ref(storage, storagePath);
+
+    // Upload file
+    console.log(`[STORAGE] Uploading to path: ${storagePath}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    console.log(`[STORAGE] Upload complete, getting download URL...`);
+
+    // Get download URL
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log(`[STORAGE] ✅ Logo uploaded successfully: ${downloadURL}`);
+
+    return downloadURL;
+  } catch (error: any) {
+    console.error(`[STORAGE] ❌ Upload failed:`, error);
+    throw new Error(`Gagal upload logo: ${error.message}`);
+  }
+};
+
+/**
+ * Delete logo from Firebase Storage
+ * @param companyId - ID company
+ */
+export const deleteCompanyLogo = async (companyId: string): Promise<void> => {
+  if (!storage) return;
+
+  try {
+    // Try to delete both PNG and JPG versions
+    const extensions = ['png', 'jpg', 'jpeg'];
+
+    for (const ext of extensions) {
+      try {
+        const storagePath = `logos/${companyId}/logo.${ext}`;
+        const storageRef = ref(storage, storagePath);
+        await deleteObject(storageRef);
+        console.log(`[STORAGE] Deleted logo: ${storagePath}`);
+      } catch (e: any) {
+        // File might not exist, that's ok
+        if (e.code !== 'storage/object-not-found') {
+          console.warn(`[STORAGE] Error deleting ${ext}:`, e);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`[STORAGE] Error during logo deletion:`, error);
+  }
 };

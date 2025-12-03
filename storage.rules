@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for FraudGuard SaaS
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Company Logos - Public read, restricted write
+    match /logos/{companyId}/{fileName} {
+      // Anyone can read logos (for public assessment pages)
+      allow read: if true;
+
+      // Only allow uploads up to 5MB
+      // Only allow PNG/JPG/JPEG files
+      allow write: if request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/(png|jpeg|jpg)');
+
+      // Allow delete for cleanup
+      allow delete: if true;
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
