@@ -609,13 +609,19 @@ export const blastAssessmentInvites = async (
 
   const results = { success: 0, failed: 0 };
   const errors: string[] = [];
+  const emailsSent: string[] = [];
+  const emailsFailed: string[] = [];
 
-  for (const candidate of candidates) {
+  console.log(`[BLAST-START] Processing ${candidates.length} candidates for company: ${companyName}`);
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    console.log(`[BLAST ${i + 1}/${candidates.length}] Processing: ${candidate.name} (${candidate.email})`);
+
     try {
-      console.log(`Processing candidate: ${candidate.name} (${candidate.email})`);
-
       // A. Generate Access Code (6 Alphanumeric)
       const accessCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+      console.log(`[BLAST] Generated access code for ${candidate.email}: ${accessCode}`);
 
       // B. Save to Database
       const inviteData: AssessmentInvite = {
@@ -629,12 +635,14 @@ export const blastAssessmentInvites = async (
       };
 
       await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
-      console.log(`Database saved for ${candidate.email}`);
+      console.log(`[BLAST] ✅ Database saved for ${candidate.email}`);
 
       // C. Send Email via Firebase Cloud Function
       const assessmentLink = `${window.location.origin}?mode=assess`;
 
       try {
+        console.log(`[BLAST] Attempting to send email to ${candidate.email}...`);
+
         const emailSent = await sendEmailViaCloudFunction(
           "candidate",
           candidate.email,
@@ -651,24 +659,35 @@ export const blastAssessmentInvites = async (
           throw new Error("Email function returned false");
         }
 
-        console.log(`Email sent successfully to ${candidate.email}`);
+        console.log(`[BLAST] ✅ Email sent successfully to ${candidate.email}`);
         results.success++;
+        emailsSent.push(candidate.email);
 
       } catch (emailError: any) {
-        console.error(`Email error for ${candidate.email}:`, emailError);
+        console.error(`[BLAST] ❌ Email error for ${candidate.email}:`, emailError);
         errors.push(`${candidate.email}: ${emailError.message}`);
+        emailsFailed.push(candidate.email);
         results.failed++;
       }
 
     } catch (error: any) {
-      console.error(`Failed to process invite for ${candidate.email}`, error);
+      console.error(`[BLAST] ❌ Failed to process invite for ${candidate.email}:`, error);
       errors.push(`${candidate.email}: ${error.message}`);
       results.failed++;
     }
+
+    // Add small delay between emails to avoid rate limiting
+    if (i < candidates.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
 
+  console.log(`[BLAST-COMPLETE] Success: ${results.success}, Failed: ${results.failed}`);
+  console.log(`[BLAST-EMAILS-SENT]`, emailsSent);
+  console.log(`[BLAST-EMAILS-FAILED]`, emailsFailed);
+
   if (errors.length > 0) {
-    console.error("Errors during blast:", errors);
+    console.error("[BLAST-ERRORS]", errors);
   }
 
   return results;

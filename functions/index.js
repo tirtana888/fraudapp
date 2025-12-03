@@ -151,13 +151,18 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
   }
 
   try {
-    console.log(`[EMAIL] Sending ${type} email to ${to_email}`);
+    console.log(`[EMAIL-START] Type: ${type}, To: ${to_email}, Name: ${to_name}`);
+    console.log(`[EMAIL-DATA]`, JSON.stringify(data));
 
     // Pilih template berdasarkan type
     let templateId = EMAILJS_CONFIG.templateBusiness;
     if (type === "candidate") {
       templateId = EMAILJS_CONFIG.templateCandidate;
+    } else if (type === "reset") {
+      templateId = EMAILJS_CONFIG.templateBusiness; // Reset uses business template
     }
+
+    console.log(`[EMAIL-TEMPLATE] Using template: ${templateId}`);
 
     // Prepare EmailJS payload
     const emailPayload = {
@@ -171,6 +176,8 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
       }
     };
 
+    console.log(`[EMAIL-PAYLOAD] Prepared payload for EmailJS`);
+
     // Kirim via EmailJS REST API
     const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
@@ -180,21 +187,30 @@ exports.sendEmailViaEmailJS = onCall({ region: "europe-west1" }, async (request)
       body: JSON.stringify(emailPayload),
     });
 
+    console.log(`[EMAIL-RESPONSE] Status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`EmailJS API Error: ${errorText}`);
+      console.error(`[EMAIL-ERROR] EmailJS API Error: ${errorText}`);
+      throw new Error(`EmailJS API Error (${response.status}): ${errorText}`);
     }
 
-    console.log(`[EMAIL] Successfully sent to ${to_email}`);
+    const responseData = await response.text();
+    console.log(`[EMAIL-SUCCESS] Response: ${responseData}`);
+    console.log(`[EMAIL-DONE] Successfully sent to ${to_email}`);
 
     return {
       success: true,
-      message: "Email berhasil dikirim"
+      message: "Email berhasil dikirim",
+      recipient: to_email
     };
 
   } catch (error) {
-    console.error("[ERROR] Email sending failed:", error);
-    throw new HttpsError('internal', `Gagal mengirim email: ${error.message}`);
+    console.error("[EMAIL-FAIL] Email sending failed:", error);
+    console.error("[EMAIL-FAIL] Stack:", error.stack);
+
+    // Return error dengan detail untuk debugging
+    throw new HttpsError('internal', `Gagal mengirim email ke ${to_email}: ${error.message}`);
   }
 });
 
