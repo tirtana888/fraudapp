@@ -160,7 +160,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       setStep('loading');
 
       const initialHistory: Array<{ speaker: 'ai' | 'candidate'; text: string }> = [
-          { speaker: 'ai', text: `Halo ${candidateName}. Profil Anda sedang kami proses. Saya ingin mengklarifikasi beberapa poin dari survei Anda. Kita punya waktu 10 menit. Bisa kita mulai?` }
+          { speaker: 'ai', text: `Halo ${candidateName}, saya Alex. Terima kasih sudah mengisi survei awal. Saya ingin menggali lebih dalam tentang beberapa aspek dari jawaban Anda. Kita punya waktu sekitar 10 menit untuk berbincang. Siap untuk mulai?` }
       ];
 
       const sessionData = {

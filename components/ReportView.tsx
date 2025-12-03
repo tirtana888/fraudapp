@@ -353,6 +353,35 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               )}
             </ul>
           </div>
+
+          {/* AI Interview Transcript */}
+          {session.transcript && session.transcript.length > 0 && (
+            <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors">
+              <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                <FileText className="text-brand-blue" size={24} />
+                Transkrip Interview AI
+              </h3>
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 max-h-96 overflow-y-auto space-y-3">
+                {session.transcript.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
+                      msg.speaker === 'ai'
+                        ? 'bg-white dark:bg-slate-700 text-gray-800 dark:text-white border border-gray-200 dark:border-slate-600'
+                        : 'bg-brand-blue text-white'
+                    }`}>
+                      <p className="text-[10px] uppercase font-bold mb-1 opacity-60">
+                        {msg.speaker === 'ai' ? 'AI Interviewer' : 'Kandidat'}
+                      </p>
+                      <p className="leading-relaxed">{safeText(msg.text)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                Total {session.transcript.length} pesan dalam percakapan
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
