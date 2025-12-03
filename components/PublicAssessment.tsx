@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail } from '../services/firebase';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, db, COLLECTIONS } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -163,7 +164,11 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           { speaker: 'ai', text: `Halo ${candidateName}, saya Alex. Terima kasih sudah mengisi survei awal. Saya ingin menggali lebih dalam tentang beberapa aspek dari jawaban Anda. Kita punya waktu sekitar 10 menit untuk berbincang. Siap untuk mulai?` }
       ];
 
-      const sessionData = {
+      // Determine source based on invite data
+      const isJobApplication = !!(inviteData?.jobId || inviteData?.applicationId);
+      const sessionSource = isJobApplication ? 'job_application' : 'public_link';
+
+      const sessionData: any = {
           candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
           date: new Date().toISOString(),
           status: 'active',
@@ -172,8 +177,34 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           sjtResults: sjtAnswers,
           transcript: initialHistory,
           companyId: companyId || 'unknown',
-          source: 'public_link'
+          source: sessionSource
       };
+
+      // Add job-related fields if this is a job application
+      if (inviteData?.jobId) {
+          sessionData.jobId = inviteData.jobId;
+      }
+      if (inviteData?.applicationId) {
+          sessionData.applicationId = inviteData.applicationId;
+
+          // Fetch application data to get cvUrl and whatsapp
+          try {
+              const appDoc = await getDoc(doc(db, COLLECTIONS.APPLICATIONS, inviteData.applicationId));
+              if (appDoc.exists()) {
+                  const appData = appDoc.data();
+                  if (appData.cvUrl) sessionData.cvUrl = appData.cvUrl;
+                  if (appData.whatsapp) sessionData.whatsapp = appData.whatsapp;
+                  console.log('[PUBLIC-ASSESSMENT] Added CV and WhatsApp from application:', {
+                      cvUrl: appData.cvUrl,
+                      whatsapp: appData.whatsapp
+                  });
+              }
+          } catch (error) {
+              console.error('[PUBLIC-ASSESSMENT] Error fetching application data:', error);
+          }
+      }
+
+      console.log('[PUBLIC-ASSESSMENT] Creating session with source:', sessionSource, 'jobId:', inviteData?.jobId);
 
       const realSessionId = await saveSessionToDB(sessionData);
       setSessionId(realSessionId);
@@ -244,8 +275,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       await updateSessionInDB(sessionId, {
         status: 'completed',
         analysis: finalAnalysis,
-        transcript: chatHistory,
-        source: 'public_link'
+        transcript: chatHistory
+        // source field is NOT updated here to preserve original source set during session creation
       });
 
       // Update invite status to COMPLETED

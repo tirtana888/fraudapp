@@ -132,6 +132,8 @@ export interface AssessmentInvite {
   startedAt?: string;
   completedAt?: string;
   sessionId?: string;
+  jobId?: string;
+  applicationId?: string;
 }
 
 export interface TimelineEvent {
