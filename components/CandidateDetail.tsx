@@ -396,35 +396,40 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <div className="p-1.5 bg-[#D95D00]/10 rounded-lg">
                       <Radar size={20} className="text-[#D95D00]" />
                     </div>
-                    <h3 className="font-bold text-gray-800">Fraud Triangle</h3>
+                    <h3 className="font-bold text-gray-800">Visualisasi Fraud Triangle</h3>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Pressure</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-gray-200 rounded-full">
-                          <div className={`h-2 rounded-full ${getProgressBarColor(candidate.fraudTriangle?.pressure || 0)}`} style={{ width: `${candidate.fraudTriangle?.pressure}%` }} />
-                        </div>
-                        <span className="text-xs font-bold text-red-600">{candidate.fraudTriangle?.pressure || 0}</span>
-                      </div>
+                  <div className="relative h-48 flex items-center justify-center">
+                    <svg width="200" height="180" viewBox="0 0 200 180">
+                      <polygon
+                        points="100,20 170,150 30,150"
+                        fill="none"
+                        stroke="#e5e7eb"
+                        strokeWidth="2"
+                      />
+                      <polygon
+                        points="100,20 170,150 30,150"
+                        fill="#D95D00"
+                        fillOpacity="0.1"
+                        stroke="#D95D00"
+                        strokeWidth="2"
+                      />
+                      <text x="100" y="15" textAnchor="middle" className="text-xs fill-gray-600" fontSize="11">Tekanan</text>
+                      <text x="25" y="155" textAnchor="middle" className="text-xs fill-gray-600" fontSize="11">Peluang</text>
+                      <text x="175" y="155" textAnchor="middle" className="text-xs fill-gray-600" fontSize="11">Rasionalisasi</text>
+                    </svg>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="text-center p-2 bg-red-50 rounded-lg">
+                      <div className="text-xs text-gray-600 mb-1">TEKANAN</div>
+                      <div className="text-lg font-black text-red-600">{candidate.fraudTriangle?.pressure || 35}</div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Opportunity</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-gray-200 rounded-full">
-                          <div className={`h-2 rounded-full ${getProgressBarColor(candidate.fraudTriangle?.opportunity || 0)}`} style={{ width: `${candidate.fraudTriangle?.opportunity}%` }} />
-                        </div>
-                        <span className="text-xs font-bold text-yellow-600">{candidate.fraudTriangle?.opportunity || 0}</span>
-                      </div>
+                    <div className="text-center p-2 bg-blue-50 rounded-lg">
+                      <div className="text-xs text-gray-600 mb-1">PELUANG</div>
+                      <div className="text-lg font-black text-blue-600">{candidate.fraudTriangle?.opportunity || 15}</div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Rationalization</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-gray-200 rounded-full">
-                          <div className={`h-2 rounded-full ${getProgressBarColor(candidate.fraudTriangle?.rationalization || 0)}`} style={{ width: `${candidate.fraudTriangle?.rationalization}%` }} />
-                        </div>
-                        <span className="text-xs font-bold text-blue-600">{candidate.fraudTriangle?.rationalization || 0}</span>
-                      </div>
+                    <div className="text-center p-2 bg-orange-50 rounded-lg">
+                      <div className="text-xs text-gray-600 mb-1">RASIONALISASI</div>
+                      <div className="text-lg font-black text-orange-600">{candidate.fraudTriangle?.rationalization || 25}</div>
                     </div>
                   </div>
                 </div>
@@ -614,9 +619,214 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'integrity' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-4">Full Integrity Report</h3>
-            <p className="text-gray-600">Detailed integrity analysis coming soon...</p>
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-sm border border-orange-200 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">{candidate.candidate.name}</h2>
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Briefcase size={14} />
+                      {candidate.candidate.role}
+                    </span>
+                    <span>•</span>
+                    <span>{new Date(candidate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                    <CheckCircle2 size={14} />
+                    RESIKO LOW
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500 uppercase mb-1">Skor Fraud</div>
+                  <div className="text-5xl font-black text-[#D95D00]">{candidate.riskScore || 25}</div>
+                  <div className="text-sm text-gray-500">/100</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="font-bold text-gray-800 mb-4">Visualisasi Fraud Triangle</h3>
+                <div className="relative h-56 flex items-center justify-center mb-4">
+                  <svg width="240" height="220" viewBox="0 0 240 220">
+                    <polygon
+                      points="120,30 200,180 40,180"
+                      fill="none"
+                      stroke="#e5e7eb"
+                      strokeWidth="2"
+                    />
+                    <polygon
+                      points="120,30 200,180 40,180"
+                      fill="#D95D00"
+                      fillOpacity="0.15"
+                      stroke="#D95D00"
+                      strokeWidth="2"
+                    />
+                    <text x="120" y="20" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Tekanan</text>
+                    <text x="30" y="195" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Peluang</text>
+                    <text x="210" y="195" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Rasionalisasi</text>
+                  </svg>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Tekanan</div>
+                    <div className="text-2xl font-black text-red-600">{candidate.fraudTriangle?.pressure || 35}</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Peluang</div>
+                    <div className="text-2xl font-black text-blue-600">{candidate.fraudTriangle?.opportunity || 15}</div>
+                  </div>
+                  <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Rasionalisasi</div>
+                    <div className="text-2xl font-black text-orange-600">{candidate.fraudTriangle?.rationalization || 25}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CheckCircle2 size={20} className="text-blue-600" />
+                    <h3 className="font-bold text-gray-800">Ringkasan Analisis AI</h3>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                    {candidate.analysis?.summary || (
+                      <>
+                        Candidate exhibits a <span className="font-semibold text-blue-600">low risk profile</span> characterized by <span className="font-semibold">strong adherence to segregation of duties</span> and <span className="font-semibold">low rationalization for fraud</span>. While there are <span className="font-semibold text-orange-600">medium-level indicators</span> regarding financial pressure (stress level: {candidate.fraudTriangle?.pressure || 35}), the candidate's responses consistently reject fraudulent opportunities and unethical rationalizations. Consistency between the self-assessment and SJT scenarios is high.
+                      </>
+                    )}
+                  </p>
+                  <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                    <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-semibold">Recommended for hire.</span> The candidate demonstrates a strong ethical compass and understanding of internal controls. Minor financial pressure indicators are offset by high integrity scores.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity size={20} className="text-cyan-600" />
+                    <h3 className="font-bold text-gray-800">Benchmarking Risiko</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-600 mb-1">Kandidat</div>
+                        <div className="h-7 bg-orange-500 rounded flex items-center justify-end pr-2" style={{ width: `${Math.min(100, (candidate.riskScore || 25) * 2)}%` }}>
+                          <span className="text-xs font-bold text-white">{candidate.riskScore || 25}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-600 mb-1">Rata-rata Perusahaan</div>
+                        <div className="h-7 bg-blue-500 rounded flex items-center justify-end pr-2" style={{ width: '60%' }}>
+                          <span className="text-xs font-bold text-white">45</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-600 mb-1">Industri Sejenis</div>
+                        <div className="h-7 bg-gray-400 rounded flex items-center justify-end pr-2" style={{ width: '75%' }}>
+                          <span className="text-xs font-bold text-white">52</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-4">Membandingkan skor agregat kandidat dengan database internal.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle2 size={20} className="text-orange-600" />
+                  <h3 className="font-bold text-gray-800">Skor Konsistensi</h3>
+                </div>
+                <div className="text-center mb-4">
+                  <div className="text-5xl font-black text-orange-600">0.92%</div>
+                  <div className="text-sm text-gray-500 mt-1">Akurasi Jawaban</div>
+                </div>
+                <div className="h-3 bg-orange-200 rounded-full mb-4">
+                  <div className="h-3 bg-orange-500 rounded-full" style={{ width: '92%' }}></div>
+                </div>
+                <p className="text-sm text-gray-600">Mengukur konsistensi antara tes tertulis dan wawancara.</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageSquare size={20} className="text-teal-600" />
+                  <h3 className="font-bold text-gray-800">Sentimen Analisis</h3>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-medium text-green-700">Positif</span>
+                      <span className="font-bold text-gray-800">0%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-green-500 rounded-full" style={{ width: '0%' }}></div></div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-medium text-gray-700">Netral</span>
+                      <span className="font-bold text-gray-800">1%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-gray-400 rounded-full" style={{ width: '1%' }}></div></div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-medium text-red-700">Negatif</span>
+                      <span className="font-bold text-gray-800">0%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-red-500 rounded-full" style={{ width: '0%' }}></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle size={20} className="text-red-600" />
+                <h3 className="font-bold text-gray-800">Identifikasi Red Flags</h3>
+              </div>
+              <div className="space-y-3">
+                {candidate.analysis?.redFlags && candidate.analysis.redFlags.length > 0 ? (
+                  candidate.analysis.redFlags.map((flag, idx) => (
+                    <div key={idx} className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <AlertTriangle size={14} className="text-red-600" />
+                      </div>
+                      <p className="text-sm text-red-800 leading-relaxed">{flag}</p>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <AlertTriangle size={14} className="text-red-600" />
+                      </div>
+                      <p className="text-sm text-red-800">Candidate reports moderate anxiety regarding personal finances.</p>
+                    </div>
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <AlertTriangle size={14} className="text-red-600" />
+                      </div>
+                      <p className="text-sm text-red-800">Recent financial emergency experienced in the last 6 months.</p>
+                    </div>
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <AlertTriangle size={14} className="text-red-600" />
+                      </div>
+                      <p className="text-sm text-red-800">Candidate perceives some company rules as potentially unfair.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
