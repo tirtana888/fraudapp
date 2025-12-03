@@ -29,11 +29,18 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
 
   const loadJobs = async () => {
     try {
+      console.log('[JOBS] Loading jobs for company:', currentCompany.id);
       setIsLoading(true);
       const fetchedJobs = await getJobsByCompany(currentCompany.id);
+      console.log('[JOBS] Fetched jobs:', fetchedJobs);
+      console.log('[JOBS] Number of jobs:', fetchedJobs.length);
       setJobs(fetchedJobs);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[JOBS] Error loading jobs:', error);
+      console.error('[JOBS] Error details:', {
+        message: error.message,
+        code: error.code
+      });
     } finally {
       setIsLoading(false);
     }
@@ -71,32 +78,50 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
 
   const handleSave = async () => {
     try {
+      console.log('[JOBS] Starting save process...');
+      console.log('[JOBS] Form data:', formData);
+      console.log('[JOBS] Company ID:', currentCompany.id);
+
       if (!formData.title || !formData.location || !formData.description) {
         alert('Mohon lengkapi semua field yang wajib diisi');
         return;
       }
 
       const slug = generateSlug(formData.title);
+      console.log('[JOBS] Generated slug:', slug);
 
       if (editingJob) {
+        console.log('[JOBS] Updating existing job:', editingJob.id);
         await updateJob(editingJob.id!, {
           ...formData,
           slug
         });
         alert('Lowongan berhasil diupdate!');
       } else {
-        await createJob({
+        console.log('[JOBS] Creating new job...');
+        const jobData = {
           companyId: currentCompany.id,
           slug,
           ...formData
-        });
+        };
+        console.log('[JOBS] Job data to create:', jobData);
+
+        const jobId = await createJob(jobData);
+        console.log('[JOBS] Job created with ID:', jobId);
         alert('Lowongan berhasil dibuat!');
       }
 
       handleCloseModal();
-      loadJobs();
+      console.log('[JOBS] Reloading jobs list...');
+      await loadJobs();
+      console.log('[JOBS] Jobs list reloaded');
     } catch (error: any) {
       console.error('[JOBS] Error saving job:', error);
+      console.error('[JOBS] Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
       alert(`Gagal menyimpan lowongan: ${error.message}`);
     }
   };
