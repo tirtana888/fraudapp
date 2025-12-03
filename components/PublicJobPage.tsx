@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
-import { Job, CompanyProfile } from '../types';
-import { getJobBySlug, createApplication, uploadCV, db, sendAssessmentInvitation } from '../services/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { Job, CompanyProfile, AssessmentInvite } from '../types';
+import { getJobBySlug, createApplication, uploadCV, db, sendEmailViaCloudFunction, COLLECTIONS } from '../services/firebase';
+import { collection, getDocs, query, addDoc } from 'firebase/firestore';
 
 interface PublicJobPageProps {
   companySlug: string;
@@ -119,9 +119,13 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
       console.log('[PUBLIC-JOB] ✅ CV uploaded successfully!');
       console.log('[PUBLIC-JOB] CV URL:', cvUrl);
 
-      const assessmentToken = job.enableInstantAssessment ? crypto.randomUUID() : null;
-      if (assessmentToken) {
-        console.log('[PUBLIC-JOB] Generated assessment token:', assessmentToken);
+      // Generate 5-character access code (same as manual invite)
+      const accessCode = job.enableInstantAssessment
+        ? Math.random().toString(36).slice(2, 7).toUpperCase()
+        : null;
+
+      if (accessCode) {
+        console.log('[PUBLIC-JOB] Generated access code:', accessCode);
       }
 
       const applicationData: any = {
@@ -135,8 +139,8 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
         appliedAt: new Date().toISOString()
       };
 
-      if (assessmentToken) {
-        applicationData.assessmentToken = assessmentToken;
+      if (accessCode) {
+        applicationData.accessCode = accessCode;
       }
 
       console.log('[PUBLIC-JOB] ===== STEP 2: CREATING APPLICATION =====');
@@ -144,16 +148,38 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
       const applicationId = await createApplication(applicationData);
       console.log('[PUBLIC-JOB] ✅ Application created with ID:', applicationId);
 
-      if (job.enableInstantAssessment && assessmentToken) {
-        console.log('[PUBLIC-JOB] ===== STEP 3: SENDING ASSESSMENT INVITATION EMAIL =====');
+      if (job.enableInstantAssessment && accessCode) {
+        console.log('[PUBLIC-JOB] ===== STEP 3: CREATE INVITE & SEND EMAIL =====');
         try {
-          const emailSent = await sendAssessmentInvitation(
-            formData.fullName,
+          // Save to invites collection (same as manual invite)
+          const inviteData: any = {
+            access_code: accessCode,
+            name: formData.fullName,
+            email: formData.email,
+            role: job.title,
+            companyId: company.id,
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+            jobId: job.id,
+            applicationId: applicationId
+          };
+
+          await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
+          console.log('[PUBLIC-JOB] ✅ Invite saved to database');
+
+          // Send email (same format as manual invite)
+          const assessmentLink = `${window.location.origin}?mode=assess`;
+
+          const emailSent = await sendEmailViaCloudFunction(
+            "candidate",
             formData.email,
-            job.title,
-            company.name,
-            assessmentToken,
-            company.id
+            formData.fullName,
+            {
+              company_name: company.name,
+              access_code: accessCode,
+              assessment_link: assessmentLink,
+              message: `Terima kasih telah melamar ke posisi ${job.title}. Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
+            }
           );
 
           if (emailSent) {
@@ -162,7 +188,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
             console.warn('[PUBLIC-JOB] ⚠️ Assessment invitation email failed to send');
           }
         } catch (emailError) {
-          console.error('[PUBLIC-JOB] ❌ Error sending assessment invitation:', emailError);
+          console.error('[PUBLIC-JOB] ❌ Error in invite/email process:', emailError);
         }
       }
 

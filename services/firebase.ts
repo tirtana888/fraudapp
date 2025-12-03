@@ -152,38 +152,6 @@ export const sendAssessmentCompleteEmail = async (candidateName: string, candida
   );
 };
 
-// Send assessment invitation with access code
-export const sendAssessmentInvitation = async (
-  candidateName: string,
-  candidateEmail: string,
-  jobTitle: string,
-  companyName: string,
-  assessmentToken: string,
-  companyId: string
-): Promise<boolean> => {
-  try {
-    console.log("[ASSESSMENT-INVITE] Sending invitation email...");
-
-    const assessmentUrl = `${window.location.origin}/?mode=assess&cid=${companyId}`;
-
-    return await sendEmailViaCloudFunction(
-      "candidate",
-      candidateEmail,
-      candidateName,
-      {
-        company_name: companyName,
-        job_title: jobTitle,
-        access_code: assessmentToken,
-        assessment_url: assessmentUrl,
-        message: `Terima kasih telah melamar ke posisi ${jobTitle} di ${companyName}. Silakan gunakan kode akses berikut untuk mengikuti AI Integrity Assessment. Assessment ini membutuhkan waktu sekitar 10-15 menit.`
-      }
-    );
-  } catch (error: any) {
-    console.error("[ASSESSMENT-INVITE] Failed to send invitation:", error);
-    return false;
-  }
-};
-
 // --- REAL AUTHENTICATION SERVICE ---
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
   if (!db) throw new Error("Koneksi Database terputus.");
@@ -670,8 +638,8 @@ export const blastAssessmentInvites = async (
     console.log(`[BLAST ${i + 1}/${candidates.length}] Processing: ${candidate.name} (${candidate.email})`);
 
     try {
-      // A. Generate Access Code (6 Alphanumeric)
-      const accessCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+      // A. Generate Access Code (5 Alphanumeric)
+      const accessCode = Math.random().toString(36).slice(2, 7).toUpperCase();
       console.log(`[BLAST] Generated access code for ${candidate.email}: ${accessCode}`);
 
       // B. Save to Database
