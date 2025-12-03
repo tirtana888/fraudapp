@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed } from '../services/firebase';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail } from '../services/firebase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -15,48 +15,7 @@ type AssessmentStep = 'login' | 'loading' | 'welcome' | 'profile' | 'survey_ft' 
 
 const CHAT_TIME_LIMIT_SECONDS = 600;
 
-const sendAssessmentCompleteEmail = async (candidateName: string, candidateEmail: string, companyName: string) => {
-  try {
-    console.log('[EMAIL] Sending assessment complete notification to:', candidateEmail);
-
-    const emailBody = `
-Halo ${candidateName},
-
-Terima kasih telah menyelesaikan Integrity Assessment untuk ${companyName}.
-
-Hasil assessment Anda telah tersimpan dengan aman dan saat ini sedang dalam proses review oleh tim HR kami.
-
-Kami akan segera menghubungi Anda melalui email ini untuk tahapan selanjutnya dalam proses rekrutmen.
-
-Terima kasih atas kesabaran Anda.
-
-Salam,
-Tim HR ${companyName}
-    `.trim();
-
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer re_123456789',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'noreply@fraudguard.id',
-        to: candidateEmail,
-        subject: `Assessment Complete - ${companyName}`,
-        text: emailBody,
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('[EMAIL] Failed to send email, but continuing...', response.status);
-    } else {
-      console.log('[EMAIL] Email sent successfully');
-    }
-  } catch (error) {
-    console.error('[EMAIL] Error sending email, but continuing:', error);
-  }
-}; 
+ 
 
 interface PublicAssessmentProps {
   companyId: string | null;

@@ -138,6 +138,20 @@ try {
   console.error("CRITICAL: Gagal menghubungkan ke Firebase.", error);
 }
 
+// Export email function for external use
+export const sendAssessmentCompleteEmail = async (candidateName: string, candidateEmail: string, companyName: string): Promise<boolean> => {
+  return await sendEmailViaCloudFunction(
+    "candidate",
+    candidateEmail,
+    candidateName,
+    {
+      company_name: companyName,
+      message: `Terima kasih telah menyelesaikan Integrity Assessment untuk ${companyName}. Hasil assessment Anda telah tersimpan dengan aman dan saat ini sedang dalam proses review oleh tim HR kami. Kami akan segera menghubungi Anda melalui email untuk tahapan selanjutnya dalam proses rekrutmen.`,
+      assessment_link: window.location.origin
+    }
+  );
+};
+
 // --- REAL AUTHENTICATION SERVICE ---
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
   if (!db) throw new Error("Koneksi Database terputus.");
