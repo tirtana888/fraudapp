@@ -21,10 +21,12 @@ import CandidateDetail from './components/CandidateDetail';
 import BackgroundCheckCallback from './components/BackgroundCheckCallback';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
+import { getSession, clearSession, saveSession } from './services/auth';
 
 const App: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Public Link State (Lazy Initialization to prevent Login Flash)
   const [isPublicMode, setIsPublicMode] = useState(() => {
@@ -79,6 +81,25 @@ const App: React.FC = () => {
 
   useEffect(() => {
     seedRealDatabase();
+  }, []);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const savedUser = getSession();
+        if (savedUser) {
+          console.log('[APP] Restoring user session:', savedUser.email);
+          setCurrentUser(savedUser);
+        }
+      } catch (error) {
+        console.error('[APP] Error restoring session:', error);
+        clearSession();
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
   useEffect(() => {
@@ -171,11 +192,15 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: UserProfile) => {
+    console.log('[APP] User logged in:', user.email);
+    saveSession(user);
     setCurrentUser(user);
     setActiveTab('dashboard');
   };
 
   const handleLogout = () => {
+    console.log('[APP] User logged out');
+    clearSession();
     setCurrentUser(null);
     setSessions([]);
     setInvites([]);
@@ -232,6 +257,15 @@ const App: React.FC = () => {
       return <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />;
     }
     return <PublicAssessment companyId={publicCompanyId} />;
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-brand-slate-900">
+        <Loader2 className="w-12 h-12 text-brand-orange animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Memeriksa sesi login...</p>
+      </div>
+    );
   }
 
   if (!currentUser) {
