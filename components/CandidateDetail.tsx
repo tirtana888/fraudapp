@@ -141,25 +141,30 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const getStatusBadge = () => {
     if (!candidate) return null;
 
-    const stage = candidate.recruitmentStage || 'processing';
+    const stage = candidate.recruitmentStage || 'screening';
     const statusMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
-      'processing': {
-        label: 'Processing',
+      'screening': {
+        label: 'Screening 🤖',
         color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-        icon: <Clock size={12} />
+        icon: <Bot size={12} />
+      },
+      'review': {
+        label: 'Review 📋',
+        color: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800',
+        icon: <FileText size={12} />
       },
       'interview': {
-        label: 'Interview',
+        label: 'Interview 🤝',
         color: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
         icon: <User size={12} />
       },
-      'background_check': {
-        label: 'Background Check',
+      'bc_check': {
+        label: 'BC Check 🛡️',
         color: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
         icon: <Shield size={12} />
       },
-      'approved': {
-        label: 'Hired',
+      'hired': {
+        label: 'Hired 🎉',
         color: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
         icon: <CheckCircle2 size={12} />
       },
@@ -167,10 +172,25 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         label: 'Rejected',
         color: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
         icon: <XCircle size={12} />
+      },
+      'processing': {
+        label: 'Screening 🤖',
+        color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+        icon: <Bot size={12} />
+      },
+      'background_check': {
+        label: 'BC Check 🛡️',
+        color: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+        icon: <Shield size={12} />
+      },
+      'approved': {
+        label: 'Hired 🎉',
+        color: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+        icon: <CheckCircle2 size={12} />
       }
     };
 
-    return statusMap[stage] || statusMap['processing'];
+    return statusMap[stage] || statusMap['screening'];
   };
 
   const getRiskColor = (score: number) => {
@@ -265,7 +285,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   {statusBadge.label}
                 </span>
               )}
-              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && (
+              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleStatusUpdate('rejected')}
@@ -276,7 +296,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     Reject
                   </button>
 
-                  {candidate.recruitmentStage === 'processing' && (
+                  {(candidate.recruitmentStage === 'screening' || candidate.recruitmentStage === 'processing') && (
+                    <button
+                      onClick={() => handleStatusUpdate('review')}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FileText size={14} />
+                      Review
+                    </button>
+                  )}
+
+                  {candidate.recruitmentStage === 'review' && (
                     <button
                       onClick={() => handleStatusUpdate('interview')}
                       disabled={isUpdating}
@@ -289,18 +320,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
                   {candidate.recruitmentStage === 'interview' && (
                     <button
-                      onClick={() => handleStatusUpdate('background_check')}
+                      onClick={() => handleStatusUpdate('bc_check')}
                       disabled={isUpdating}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Shield size={14} />
-                      BG Check
+                      BC Check
                     </button>
                   )}
 
-                  {(candidate.recruitmentStage === 'background_check' || candidate.recruitmentStage === 'interview') && (
+                  {(candidate.recruitmentStage === 'bc_check' || candidate.recruitmentStage === 'background_check') && (
                     <button
-                      onClick={() => handleStatusUpdate('approved')}
+                      onClick={() => handleStatusUpdate('hired')}
                       disabled={isUpdating}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                     >

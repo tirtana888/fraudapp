@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User } from 'lucide-react';
+import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User, Bot, Shield } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -109,7 +109,10 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       if (riskFilter !== risk) return false;
     }
     if (stageFilter !== 'all') {
-      const stage = candidate.recruitmentStage || 'processing';
+      let stage = candidate.recruitmentStage || 'screening';
+      if (stage === 'processing') stage = 'screening';
+      if (stage === 'background_check') stage = 'bc_check';
+      if (stage === 'approved') stage = 'hired';
       if (stageFilter !== stage) return false;
     }
     return true;
@@ -199,27 +202,32 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   };
 
   const getStageBadge = (candidate: AutoCandidate) => {
-    const recruitmentStage = candidate.recruitmentStage || 'processing';
+    const recruitmentStage = candidate.recruitmentStage || 'screening';
     const hasAnalysis = !!candidate.analysis;
 
     const stageMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
-      'processing': {
-        label: 'Processing',
+      'screening': {
+        label: 'Screening 🤖',
         color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        icon: <Clock size={12} />
+        icon: <Bot size={12} />
+      },
+      'review': {
+        label: 'Review 📋',
+        color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+        icon: <FileText size={12} />
       },
       'interview': {
-        label: 'Interview',
+        label: 'Interview 🤝',
         color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
         icon: <User size={12} />
       },
-      'background_check': {
-        label: 'BG Check',
+      'bc_check': {
+        label: 'BC Check 🛡️',
         color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-        icon: <CheckCircle2 size={12} />
+        icon: <Shield size={12} />
       },
-      'approved': {
-        label: 'Hired',
+      'hired': {
+        label: 'Hired 🎉',
         color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
         icon: <CheckCircle2 size={12} />
       },
@@ -227,19 +235,34 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
         label: 'Rejected',
         color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
         icon: <AlertCircle size={12} />
+      },
+      'processing': {
+        label: 'Screening 🤖',
+        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+        icon: <Bot size={12} />
+      },
+      'background_check': {
+        label: 'BC Check 🛡️',
+        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+        icon: <Shield size={12} />
+      },
+      'approved': {
+        label: 'Hired 🎉',
+        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+        icon: <CheckCircle2 size={12} />
       }
     };
 
-    if (!hasAnalysis && recruitmentStage === 'processing') {
+    if (!hasAnalysis && (recruitmentStage === 'processing' || recruitmentStage === 'screening')) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs border border-yellow-200 dark:border-yellow-800">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-semibold text-xs border border-gray-200 dark:border-gray-600">
           <Loader2 size={12} className="animate-spin" />
           Analyzing
         </span>
       );
     }
 
-    const stage = stageMap[recruitmentStage] || stageMap['processing'];
+    const stage = stageMap[recruitmentStage] || stageMap['screening'];
 
     return (
       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border ${stage.color}`}>
@@ -303,10 +326,11 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
           className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
         >
           <option value="all">Semua Stage</option>
-          <option value="processing">Processing</option>
-          <option value="interview">Interview</option>
-          <option value="background_check">Background Check</option>
-          <option value="approved">Hired</option>
+          <option value="screening">Screening 🤖</option>
+          <option value="review">Review 📋</option>
+          <option value="interview">Interview 🤝</option>
+          <option value="bc_check">BC Check 🛡️</option>
+          <option value="hired">Hired 🎉</option>
           <option value="rejected">Rejected</option>
         </select>
         <select
