@@ -4,6 +4,7 @@ import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useToast } from './Toast';
+import { calculateAssessmentScores } from '../services/genai';
 
 interface CandidatesAutoViewProps {
   companyId: string;
@@ -143,23 +144,37 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   };
 
   const calculateRiskScore = (candidate: AutoCandidate): number => {
+    // Priority 1: Use analysis.scores if available
     if (candidate.analysis?.scores) {
       const { pressure = 0, opportunity = 0, rationalization = 0 } = candidate.analysis.scores;
       const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
-      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: P=${pressure}, O=${opportunity}, R=${rationalization}, Avg=${avgScore}`);
+      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using analysis.scores - P=${pressure}, O=${opportunity}, R=${rationalization}, Avg=${avgScore}`);
       return avgScore;
     }
 
+    // Priority 2: Calculate from structuredAssessment and sjtResults
+    if (candidate.structuredAssessment && candidate.structuredAssessment.length > 0) {
+      const scores = calculateAssessmentScores(
+        candidate.structuredAssessment,
+        candidate.sjtResults || [],
+        candidate.financialStrainResults || []
+      );
+      const avgScore = Math.round((scores.pressureScore + scores.opportunityScore + scores.rationalizationScore) / 3);
+      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Calculated from assessment - P=${scores.pressureScore}, O=${scores.opportunityScore}, R=${scores.rationalizationScore}, Avg=${avgScore}`);
+      return avgScore;
+    }
+
+    // Priority 3: Fallback to riskLevel estimation
     if (candidate.analysis?.riskLevel) {
       const riskLevel = candidate.analysis.riskLevel.toLowerCase();
-      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using riskLevel=${riskLevel} (no scores available)`);
+      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using riskLevel fallback=${riskLevel}`);
       if (riskLevel === 'critical') return 90;
       if (riskLevel === 'high') return 65;
       if (riskLevel === 'medium') return 35;
       if (riskLevel === 'low') return 10;
     }
 
-    console.log(`[RISK-SCORE] ${candidate.candidate?.name}: No analysis data, returning 0`);
+    console.log(`[RISK-SCORE] ${candidate.candidate?.name}: No data available, returning 0`);
     return 0;
   };
 

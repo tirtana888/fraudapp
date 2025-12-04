@@ -3,6 +3,7 @@ import { Users, Search, Filter, ChevronRight, AlertTriangle, CheckCircle2, Clock
 import { InterviewSession } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { calculateAssessmentScores } from '../services/genai';
 
 interface CandidateListProps {
   companyId: string;
@@ -87,17 +88,38 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
   };
 
   const calculateRiskScore = (session: any): number => {
-    if (!session.analysis?.scores) {
-      if (session.analysis?.riskLevel === 'CRITICAL') return 90;
-      if (session.analysis?.riskLevel === 'HIGH') return 65;
-      if (session.analysis?.riskLevel === 'MEDIUM') return 35;
-      if (session.analysis?.riskLevel === 'LOW') return 10;
-      return 0;
+    // Priority 1: Use analysis.scores if available
+    if (session.analysis?.scores) {
+      const { pressure = 0, opportunity = 0, rationalization = 0 } = session.analysis.scores;
+      const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
+      console.log(`[RISK-SCORE] ${session.candidate?.name}: Using analysis.scores - P=${pressure}, O=${opportunity}, R=${rationalization}, Avg=${avgScore}`);
+      return avgScore;
     }
 
-    const { pressure = 0, opportunity = 0, rationalization = 0 } = session.analysis.scores;
-    const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
-    return avgScore;
+    // Priority 2: Calculate from structuredAssessment and sjtResults
+    if (session.structuredAssessment && session.structuredAssessment.length > 0) {
+      const scores = calculateAssessmentScores(
+        session.structuredAssessment,
+        session.sjtResults || [],
+        session.financialStrainResults || []
+      );
+      const avgScore = Math.round((scores.pressureScore + scores.opportunityScore + scores.rationalizationScore) / 3);
+      console.log(`[RISK-SCORE] ${session.candidate?.name}: Calculated from assessment - P=${scores.pressureScore}, O=${scores.opportunityScore}, R=${scores.rationalizationScore}, Avg=${avgScore}`);
+      return avgScore;
+    }
+
+    // Priority 3: Fallback to riskLevel estimation
+    if (session.analysis?.riskLevel) {
+      const riskLevel = session.analysis.riskLevel.toUpperCase();
+      console.log(`[RISK-SCORE] ${session.candidate?.name}: Using riskLevel fallback=${riskLevel}`);
+      if (riskLevel === 'CRITICAL') return 90;
+      if (riskLevel === 'HIGH') return 65;
+      if (riskLevel === 'MEDIUM') return 35;
+      if (riskLevel === 'LOW') return 10;
+    }
+
+    console.log(`[RISK-SCORE] ${session.candidate?.name}: No data available, returning 0`);
+    return 0;
   };
 
   const determineStage = (session: any): string => {
