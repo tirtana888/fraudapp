@@ -231,7 +231,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D95D00] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading candidate details...</p>
+          <p className="text-gray-600">Memuat detail kandidat...</p>
         </div>
       </div>
     );
@@ -241,12 +241,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     return (
       <div className="text-center py-20">
         <AlertTriangle size={48} className="text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">Candidate Not Found</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Kandidat Tidak Ditemukan</h3>
         <button
           onClick={onBack}
           className="mt-4 px-6 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors"
         >
-          Back to List
+          Kembali ke Daftar
         </button>
       </div>
     );
@@ -264,7 +264,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
             >
               <ArrowLeft size={20} />
-              <span className="font-medium">Back to Candidates</span>
+              <span className="font-medium">Kembali ke Kandidat</span>
             </button>
           </div>
 
@@ -305,7 +305,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <User size={14} />
-                    Interview
+                    Wawancara
                   </button>
 
                   <button
@@ -314,7 +314,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Shield size={14} />
-                    BC Check
+                    Cek Latar
                   </button>
 
                   <button
@@ -323,7 +323,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <CheckCircle2 size={14} />
-                    Hire
+                    Rekrut
                   </button>
 
                   <button
@@ -332,7 +332,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <XCircle size={14} />
-                    Reject
+                    Tolak
                   </button>
                 </div>
               )}
@@ -348,7 +348,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Overview
+              Ringkasan
             </button>
             <button
               onClick={() => setActiveTab('documents')}
@@ -358,7 +358,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              CV & Documents
+              CV & Dokumen
             </button>
             <button
               onClick={() => setActiveTab('integrity')}
@@ -368,7 +368,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Integrity Report
+              Laporan Integritas
             </button>
             <button
               onClick={() => setActiveTab('interview')}
@@ -378,7 +378,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              AI Interview Chat
+              Wawancara AI
             </button>
             <button
               onClick={() => setActiveTab('background')}
@@ -388,7 +388,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Background Check
+              Pemeriksaan Latar Belakang
             </button>
           </div>
         </div>
@@ -410,7 +410,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                   <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                     <FileText size={18} className="text-[#D95D00]" />
-                    Original Resume
+                    Resume Asli
                   </h3>
                 </div>
                 <div className="p-4">
@@ -426,7 +426,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
                             <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600 mb-4">Preview not available</p>
+                            <p className="text-gray-600 mb-4">Pratinjau tidak tersedia</p>
                             <a
                               href={candidate.cvUrl}
                               target="_blank"
@@ -434,7 +434,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                               className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors"
                             >
                               <FileText size={16} />
-                              Open in New Tab
+                              Buka di Tab Baru
                             </a>
                           </div>
                         </div>
@@ -444,7 +444,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <div className="flex items-center justify-center h-[600px] bg-gray-100 rounded-lg">
                       <div className="text-center">
                         <FileText size={48} className="text-gray-400 mb-4" />
-                        <p className="text-gray-600">No CV uploaded</p>
+                        <p className="text-gray-600">CV belum diunggah</p>
                       </div>
                     </div>
                   )}
@@ -452,7 +452,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800 mb-4">Contact Information</h3>
+                <h3 className="font-semibold text-gray-800 mb-4">Informasi Kontak</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
                     <Mail size={16} className="text-gray-400" />
@@ -471,9 +471,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="flex items-center gap-3 text-sm">
                     <Calendar size={16} className="text-gray-400" />
                     <span className="text-gray-600">
-                      Applied on {new Date(candidate.date).toLocaleDateString('en-US', {
-                        month: 'long',
+                      Melamar pada {new Date(candidate.date).toLocaleDateString('id-ID', {
                         day: 'numeric',
+                        month: 'long',
                         year: 'numeric'
                       })}
                     </span>
@@ -629,19 +629,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                       <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                         <AlertTriangle size={12} className="text-red-600" />
                       </div>
-                      <p className="text-xs text-red-800">Candidate reports moderate anxiety regarding personal finances.</p>
+                      <p className="text-xs text-red-800">Kandidat melaporkan kecemasan sedang terkait keuangan pribadi.</p>
                     </div>
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                       <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                         <AlertTriangle size={12} className="text-red-600" />
                       </div>
-                      <p className="text-xs text-red-800">Recent financial emergency experienced in the last 6 months.</p>
+                      <p className="text-xs text-red-800">Mengalami darurat keuangan dalam 6 bulan terakhir.</p>
                     </div>
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                       <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                         <AlertTriangle size={12} className="text-red-600" />
                       </div>
-                      <p className="text-xs text-red-800">Candidate perceives some company rules as potentially unfair.</p>
+                      <p className="text-xs text-red-800">Kandidat menganggap beberapa aturan perusahaan berpotensi tidak adil.</p>
                     </div>
                   </div>
                 )}
@@ -653,8 +653,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <Bot size={24} className="text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800">AI Investigator Summary</h3>
-                    <p className="text-xs text-gray-500">Automated risk profiling</p>
+                    <h3 className="font-bold text-gray-800">Ringkasan AI</h3>
+                    <p className="text-xs text-gray-500">Profiling risiko otomatis</p>
                   </div>
                 </div>
 
@@ -663,12 +663,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <p className="text-gray-700 leading-relaxed text-sm">{candidate.analysis.summary}</p>
                   ) : (
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      Candidate shows <span className="font-semibold">high competence</span> in technical areas but flagged for{' '}
-                      <span className="font-semibold text-[#D95D00]">Potential Financial Strain</span>. During the profiling session,
-                      they mentioned having significant short-term debt obligations. Risk score indicates{' '}
-                      <span className="font-semibold">{candidate.riskScore && candidate.riskScore > 50 ? 'elevated' : 'moderate'} risk profile</span>.
+                      Kandidat menunjukkan <span className="font-semibold">kompetensi tinggi</span> di bidang teknis namun ditandai untuk{' '}
+                      <span className="font-semibold text-[#D95D00]">Potensi Tekanan Finansial</span>. Selama sesi profiling,
+                      kandidat menyebutkan memiliki kewajiban utang jangka pendek yang signifikan. Skor risiko mengindikasikan{' '}
+                      <span className="font-semibold">profil risiko {candidate.riskScore && candidate.riskScore > 50 ? 'tinggi' : 'sedang'}</span>.
                       <br /><br />
-                      <span className="font-semibold">Recommendation:</span> Verify financial background through SLIK OJK check and conduct additional reference verification.
+                      <span className="font-semibold">Rekomendasi:</span> Verifikasi latar belakang finansial melalui pengecekan SLIK OJK dan lakukan verifikasi referensi tambahan.
                     </p>
                   )}
                 </div>
@@ -679,7 +679,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
         {activeTab === 'documents' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-4">Documents</h3>
+            <h3 className="font-bold text-gray-800 text-lg mb-4">Dokumen</h3>
             {candidate.cvUrl ? (
               <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '800px' }}>
                 {candidate.cvUrl.endsWith('.pdf') ? (
@@ -692,21 +692,21 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Preview not available</p>
+                      <p className="text-gray-600 mb-4">Pratinjau tidak tersedia</p>
                       <a
                         href={candidate.cvUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors"
                       >
-                        Open in New Tab
+                        Buka di Tab Baru
                       </a>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-20">No documents available</p>
+              <p className="text-gray-500 text-center py-20">Tidak ada dokumen tersedia</p>
             )}
           </div>
         )}
@@ -794,14 +794,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <p className="text-sm text-gray-700 leading-relaxed mb-4">
                     {candidate.analysis?.summary || (
                       <>
-                        Candidate exhibits a <span className="font-semibold text-blue-600">low risk profile</span> characterized by <span className="font-semibold">strong adherence to segregation of duties</span> and <span className="font-semibold">low rationalization for fraud</span>. While there are <span className="font-semibold text-orange-600">medium-level indicators</span> regarding financial pressure (stress level: {candidate.fraudTriangle?.pressure || 35}), the candidate's responses consistently reject fraudulent opportunities and unethical rationalizations. Consistency between the self-assessment and SJT scenarios is high.
+                        Kandidat menunjukkan <span className="font-semibold text-blue-600">profil risiko rendah</span> yang ditandai dengan <span className="font-semibold">kepatuhan kuat terhadap pemisahan tugas</span> dan <span className="font-semibold">rasionalisasi rendah untuk fraud</span>. Meskipun ada <span className="font-semibold text-orange-600">indikator tingkat menengah</span> terkait tekanan finansial (tingkat stres: {candidate.fraudTriangle?.pressure || 35}), jawaban kandidat secara konsisten menolak peluang fraudulen dan rasionalisasi tidak etis. Konsistensi antara penilaian diri dan skenario SJT tinggi.
                       </>
                     )}
                   </p>
                   <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
                     <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
                     <p className="text-sm text-blue-800">
-                      <span className="font-semibold">Recommended for hire.</span> The candidate demonstrates a strong ethical compass and understanding of internal controls. Minor financial pressure indicators are offset by high integrity scores.
+                      <span className="font-semibold">Direkomendasikan untuk direkrut.</span> Kandidat menunjukkan kompas etika yang kuat dan pemahaman kontrol internal. Indikator tekanan finansial minor diimbangi oleh skor integritas tinggi.
                     </p>
                   </div>
                 </div>
@@ -910,19 +910,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                       <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <AlertTriangle size={14} className="text-red-600" />
                       </div>
-                      <p className="text-sm text-red-800">Candidate reports moderate anxiety regarding personal finances.</p>
+                      <p className="text-sm text-red-800">Kandidat melaporkan kecemasan sedang terkait keuangan pribadi.</p>
                     </div>
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <AlertTriangle size={14} className="text-red-600" />
                       </div>
-                      <p className="text-sm text-red-800">Recent financial emergency experienced in the last 6 months.</p>
+                      <p className="text-sm text-red-800">Mengalami darurat keuangan dalam 6 bulan terakhir.</p>
                     </div>
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <AlertTriangle size={14} className="text-red-600" />
                       </div>
-                      <p className="text-sm text-red-800">Candidate perceives some company rules as potentially unfair.</p>
+                      <p className="text-sm text-red-800">Kandidat menganggap beberapa aturan perusahaan berpotensi tidak adil.</p>
                     </div>
                   </>
                 )}
@@ -935,7 +935,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="font-bold text-gray-800 text-lg mb-6 flex items-center gap-2">
               <MessageSquare className="text-[#0066CC]" size={24} />
-              AI Interview Chat - Recorded Conversation
+              Transkrip Wawancara AI
             </h3>
             {candidate.transcript && candidate.transcript.length > 0 ? (
               <>
@@ -955,7 +955,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                             : 'bg-[#D95D00] text-white'
                         }`}>
                           <div className="text-xs font-semibold mb-1 opacity-70">
-                            {isAI ? '🤖 AI Interviewer' : `👤 ${candidate.candidate.name}`}
+                            {isAI ? '🤖 Pewawancara AI' : `👤 ${candidate.candidate.name}`}
                           </div>
                           <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                         </div>
@@ -969,7 +969,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </>
             ) : (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
-                <p className="text-yellow-800">⚠️ Transkrip interview tidak tersedia atau kandidat belum menyelesaikan chat interview</p>
+                <p className="text-yellow-800">⚠️ Transkrip wawancara tidak tersedia atau kandidat belum menyelesaikan wawancara</p>
               </div>
             )}
           </div>
@@ -979,7 +979,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
             <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
-            <p className="text-gray-600">Background Check akan tersedia setelah kandidat menyelesaikan assessment.</p>
+            <p className="text-gray-600">Pemeriksaan Latar Belakang akan tersedia setelah kandidat menyelesaikan assessment.</p>
           </div>
         )}
 
@@ -988,15 +988,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl shadow-sm border border-blue-200 p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">Background Check Report</h2>
-                  <p className="text-sm text-gray-600 mb-3">Identity Verification & KYC powered by Didit</p>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Laporan Pemeriksaan Latar Belakang</h2>
+                  <p className="text-sm text-gray-600 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
                     <Clock size={14} />
-                    COMING SOON
+                    SEGERA HADIR
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">Verification Status</div>
+                  <div className="text-xs text-gray-500 uppercase mb-1">Status Verifikasi</div>
                   <div className="text-3xl font-black text-gray-400">--</div>
                 </div>
               </div>
@@ -1008,19 +1008,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Shield size={20} className="text-blue-600" />
                   </div>
-                  <h3 className="font-bold text-gray-800">Overview of Background Check</h3>
+                  <h3 className="font-bold text-gray-800">Ringkasan Pemeriksaan Latar Belakang</h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-700">Status</span>
-                    <span className="text-sm font-semibold text-gray-400">Pending Integration</span>
+                    <span className="text-sm font-semibold text-gray-400">Menunggu Integrasi</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Verification Date</span>
+                    <span className="text-sm text-gray-700">Tanggal Verifikasi</span>
                     <span className="text-sm font-semibold text-gray-400">--</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Provider</span>
+                    <span className="text-sm text-gray-700">Penyedia</span>
                     <span className="text-sm font-semibold text-blue-600">Didit KYC</span>
                   </div>
                 </div>
@@ -1031,13 +1031,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="p-2 bg-green-100 rounded-lg">
                     <CheckCircle2 size={20} className="text-green-600" />
                   </div>
-                  <h3 className="font-bold text-gray-800">ID Verification Image</h3>
+                  <h3 className="font-bold text-gray-800">Gambar Verifikasi ID</h3>
                 </div>
                 <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center">
                   <div className="text-center">
                     <FileText size={48} className="text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-400">ID Image Preview</p>
-                    <p className="text-xs text-gray-400">Coming Soon</p>
+                    <p className="text-sm text-gray-400">Pratinjau Gambar ID</p>
+                    <p className="text-xs text-gray-400">Segera Hadir</p>
                   </div>
                 </div>
               </div>
@@ -1249,12 +1249,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               <div className="flex items-start gap-3">
                 <Info size={24} className="text-blue-600 flex-shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-bold text-blue-900 mb-2">Integration Coming Soon</h4>
+                  <h4 className="font-bold text-blue-900 mb-2">Integrasi Segera Hadir</h4>
                   <p className="text-sm text-blue-800 leading-relaxed">
-                    This Background Check feature will be powered by <span className="font-semibold">Didit KYC</span>,
-                    a comprehensive identity verification and Know Your Customer (KYC) solution. Once integrated,
-                    it will provide real-time identity verification, document authentication, liveness detection,
-                    AML screening, and comprehensive risk assessment for all candidates.
+                    Fitur Pemeriksaan Latar Belakang ini akan didukung oleh <span className="font-semibold">Didit KYC</span>,
+                    solusi verifikasi identitas dan Know Your Customer (KYC) yang komprehensif. Setelah terintegrasi,
+                    fitur ini akan menyediakan verifikasi identitas real-time, autentikasi dokumen, deteksi kehadiran fisik,
+                    screening AML, dan penilaian risiko komprehensif untuk semua kandidat.
                   </p>
                 </div>
               </div>
