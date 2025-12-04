@@ -24,6 +24,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [stageFilter, setStageFilter] = useState<string>('all');
   const [bgCheckLoading, setBgCheckLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +109,10 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     if (riskFilter !== 'all') {
       const risk = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
       if (riskFilter !== risk) return false;
+    }
+    if (stageFilter !== 'all') {
+      const stage = candidate.recruitmentStage || 'processing';
+      if (stageFilter !== stage) return false;
     }
     return true;
   });
@@ -195,36 +200,50 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     }
   };
 
-  const getStageBadge = (status: string, hasAnalysis: boolean) => {
-    if (status === 'completed' && hasAnalysis) {
+  const getStageBadge = (candidate: AutoCandidate) => {
+    const recruitmentStage = candidate.recruitmentStage || 'processing';
+    const hasAnalysis = !!candidate.analysis;
+
+    const stageMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
+      'processing': {
+        label: 'Processing',
+        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+        icon: <Clock size={14} />
+      },
+      'interview': {
+        label: 'Interview Stage',
+        color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+        icon: <User size={14} />
+      },
+      'approved': {
+        label: 'Hired',
+        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+        icon: <CheckCircle2 size={14} />
+      },
+      'rejected': {
+        label: 'Rejected',
+        color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+        icon: <AlertCircle size={14} />
+      }
+    };
+
+    if (!hasAnalysis && recruitmentStage === 'processing') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-xs border border-green-200 dark:border-green-800">
-          <CheckCircle2 size={14} />
-          Assessment Complete
-        </span>
-      );
-    } else if (status === 'completed' && !hasAnalysis) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold text-xs border border-blue-200 dark:border-blue-800">
-          <Clock size={14} />
-          Awaiting Analysis
-        </span>
-      );
-    } else if (status === 'active') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-xs border border-yellow-200 dark:border-yellow-800">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-xs border border-purple-200 dark:border-purple-800">
           <Loader2 size={14} className="animate-spin" />
-          In Progress
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs border border-gray-200 dark:border-slate-600">
-          <User size={14} />
-          New Application
+          Analyzing
         </span>
       );
     }
+
+    const stage = stageMap[recruitmentStage] || stageMap['processing'];
+
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs border ${stage.color}`}>
+        {stage.icon}
+        {stage.label}
+      </span>
+    );
   };
 
   const getAvatarInitials = (name: string) => {
@@ -359,6 +378,17 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
           ))}
         </select>
         <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+        >
+          <option value="all">Semua Stage</option>
+          <option value="processing">Processing</option>
+          <option value="interview">Interview Stage</option>
+          <option value="approved">Hired</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select
           value={riskFilter}
           onChange={(e) => setRiskFilter(e.target.value)}
           className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
@@ -441,7 +471,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
                     {/* Stage Column */}
                     <td className="px-6 py-4">
-                      {getStageBadge(candidate.status, !!candidate.analysis)}
+                      {getStageBadge(candidate)}
                     </td>
 
                     {/* Risk Score Column */}

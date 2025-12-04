@@ -319,11 +319,19 @@ const App: React.FC = () => {
         return <JobManager currentCompany={currentCompany!} />;
       case 'candidates-auto':
         if (viewingCandidateId) {
-          return <CandidateDetail sessionId={viewingCandidateId} onBack={() => setViewingCandidateId(null)} />;
+          return <CandidateDetail
+            sessionId={viewingCandidateId}
+            onBack={() => {
+              setViewingCandidateId(null);
+            }}
+          />;
         }
-        return <CandidatesAutoView companyId={currentCompany!.id} onViewSession={(sessionId) => {
-          setViewingCandidateId(sessionId);
-        }} />;
+        return <CandidatesAutoView
+          companyId={currentCompany!.id}
+          onViewSession={(sessionId) => {
+            setViewingCandidateId(sessionId);
+          }}
+        />;
       case 'candidates-manual':
         return <CandidatesManualInvite currentCompany={currentCompany!} />;
       case 'candidates-review':

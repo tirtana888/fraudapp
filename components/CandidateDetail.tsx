@@ -124,10 +124,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
       await updateDoc(sessionRef, {
         recruitmentStage: newStage,
-        timeline
+        timeline,
+        updatedAt: new Date().toISOString()
       });
 
       await loadCandidateData();
+      alert(`Candidate status updated to: ${newStage}`);
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status');
@@ -139,17 +141,31 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const getStatusBadge = () => {
     if (!candidate) return null;
 
-    const stage = candidate.recruitmentStage || 'application';
-    const statusMap: { [key: string]: { label: string; color: string } } = {
-      'application': { label: 'Processing', color: 'bg-blue-100 text-blue-700 border-blue-300' },
-      'integrity_test': { label: 'Integrity Check', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-      'interview_office': { label: 'Interview Stage', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-      'kyc': { label: 'KYC Process', color: 'bg-cyan-100 text-cyan-700 border-cyan-300' },
-      'approved': { label: 'Approved', color: 'bg-green-100 text-green-700 border-green-300' },
-      'rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700 border-red-300' }
+    const stage = candidate.recruitmentStage || 'processing';
+    const statusMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
+      'processing': {
+        label: 'Processing',
+        color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+        icon: <Clock size={14} />
+      },
+      'interview': {
+        label: 'Interview Stage',
+        color: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
+        icon: <User size={14} />
+      },
+      'approved': {
+        label: 'Hired',
+        color: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+        icon: <CheckCircle2 size={14} />
+      },
+      'rejected': {
+        label: 'Rejected',
+        color: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
+        icon: <XCircle size={14} />
+      }
     };
 
-    return statusMap[stage] || statusMap['application'];
+    return statusMap[stage] || statusMap['processing'];
   };
 
   const getRiskColor = (score: number) => {
@@ -239,27 +255,30 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
             <div className="flex items-center gap-3">
               {statusBadge && (
-                <span className={`px-4 py-2 rounded-lg text-sm font-semibold border ${statusBadge.color}`}>
+                <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border ${statusBadge.color}`}>
+                  {statusBadge.icon}
                   {statusBadge.label}
                 </span>
               )}
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && (
-                <>
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
                   <button
                     onClick={() => handleStatusUpdate('rejected')}
                     disabled={isUpdating}
-                    className="px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <XCircle size={16} />
                     Reject
                   </button>
                   <button
-                    onClick={() => handleStatusUpdate('integrity_test')}
+                    onClick={() => handleStatusUpdate('interview')}
                     disabled={isUpdating}
-                    className="px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors font-medium disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#D95D00] to-[#FF6B00] text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <CheckCircle2 size={16} />
                     Advance to Interview
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
