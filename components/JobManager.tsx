@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check } from 'lucide-react';
 import { Job, CompanyProfile } from '../types';
 import { getJobsByCompany, createJob, updateJob, generateSlug } from '../services/firebase';
+import { useToast } from './Toast';
 
 interface JobManagerProps {
   currentCompany: CompanyProfile;
 }
 
 const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
+  const toast = useToast();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -83,7 +85,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
       console.log('[JOBS] Company ID:', currentCompany.id);
 
       if (!formData.title || !formData.location || !formData.description) {
-        alert('Mohon lengkapi semua field yang wajib diisi');
+        toast.warning('Mohon lengkapi semua field yang wajib diisi');
         return;
       }
 
@@ -96,7 +98,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
           ...formData,
           slug
         });
-        alert('Lowongan berhasil diupdate!');
+        toast.success('Lowongan berhasil diupdate!');
       } else {
         console.log('[JOBS] Creating new job...');
         const jobData = {
@@ -108,7 +110,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
 
         const jobId = await createJob(jobData);
         console.log('[JOBS] Job created with ID:', jobId);
-        alert('Lowongan berhasil dibuat!');
+        toast.success('Lowongan berhasil dibuat!');
       }
 
       handleCloseModal();
@@ -122,7 +124,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         code: error.code,
         stack: error.stack
       });
-      alert(`Gagal menyimpan lowongan: ${error.message}`);
+      toast.error(`Gagal menyimpan lowongan: ${error.message}`);
     }
   };
 

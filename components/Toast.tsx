@@ -9,12 +9,21 @@ interface Toast {
   type: ToastType;
 }
 
+interface ConfirmOptions {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'info';
+}
+
 interface ToastContextType {
   showToast: (message: string, type: ToastType) => void;
   success: (message: string) => void;
   error: (message: string) => void;
   warning: (message: string) => void;
   info: (message: string) => void;
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -29,6 +38,11 @@ export const useToast = () => {
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    options: ConfirmOptions;
+    resolve: (value: boolean) => void;
+  } | null>(null);
 
   const showToast = useCallback((message: string, type: ToastType) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -46,12 +60,25 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const warning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
   const info = useCallback((message: string) => showToast(message, 'info'), [showToast]);
 
+  const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmDialog({ isOpen: true, options, resolve });
+    });
+  }, []);
+
+  const handleConfirm = (result: boolean) => {
+    if (confirmDialog) {
+      confirmDialog.resolve(result);
+      setConfirmDialog(null);
+    }
+  };
+
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
   return (
-    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+    <ToastContext.Provider value={{ showToast, success, error, warning, info, confirm }}>
       {children}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
         {toasts.map(toast => (
@@ -62,6 +89,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           />
         ))}
       </div>
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          options={confirmDialog.options}
+          onConfirm={() => handleConfirm(true)}
+          onCancel={() => handleConfirm(false)}
+        />
+      )}
     </ToastContext.Provider>
   );
 };
@@ -116,6 +151,75 @@ const ToastNotification: React.FC<{ toast: Toast; onClose: () => void }> = ({ to
       >
         <X size={18} />
       </button>
+    </div>
+  );
+};
+
+const ConfirmDialog: React.FC<{
+  isOpen: boolean;
+  options: ConfirmOptions;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, options, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  const getDialogStyles = () => {
+    switch (options.type) {
+      case 'danger':
+        return {
+          icon: <XCircle size={24} className="text-red-600" />,
+          confirmBg: 'bg-red-600 hover:bg-red-700',
+          iconBg: 'bg-red-100'
+        };
+      case 'warning':
+        return {
+          icon: <AlertCircle size={24} className="text-yellow-600" />,
+          confirmBg: 'bg-yellow-600 hover:bg-yellow-700',
+          iconBg: 'bg-yellow-100'
+        };
+      default:
+        return {
+          icon: <Info size={24} className="text-blue-600" />,
+          confirmBg: 'bg-blue-600 hover:bg-blue-700',
+          iconBg: 'bg-blue-100'
+        };
+    }
+  };
+
+  const styles = getDialogStyles();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 animate-scale-in">
+        <div className="flex items-start gap-4">
+          <div className={`${styles.iconBg} rounded-full p-3 flex-shrink-0`}>
+            {styles.icon}
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {options.title}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+              {options.message}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            {options.cancelText || 'Batal'}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-2 text-sm font-medium text-white ${styles.confirmBg} rounded-lg transition-colors`}
+          >
+            {options.confirmText || 'Konfirmasi'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

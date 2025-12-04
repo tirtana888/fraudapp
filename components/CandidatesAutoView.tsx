@@ -3,6 +3,7 @@ import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle
 import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useToast } from './Toast';
 
 interface CandidatesAutoViewProps {
   companyId: string;
@@ -18,6 +19,7 @@ interface AutoCandidate extends InterviewSession {
 }
 
 const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onViewSession }) => {
+  const toast = useToast();
   const [candidates, setCandidates] = useState<AutoCandidate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,7 +145,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
   const downloadCV = (cvUrl?: string, candidateName?: string) => {
     if (!cvUrl) {
-      alert('CV tidak tersedia');
+      toast.error('CV tidak tersedia');
       return;
     }
     window.open(cvUrl, '_blank');

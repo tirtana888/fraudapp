@@ -3,6 +3,7 @@ import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCir
 import { InterviewSession } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useToast } from './Toast';
 
 interface CandidateDetailProps {
   sessionId: string;
@@ -27,6 +28,7 @@ interface CandidateData extends InterviewSession {
 }
 
 const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) => {
+  const toast = useToast();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background'>('overview');
@@ -129,10 +131,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       });
 
       await loadCandidateData();
-      alert(`Candidate status updated to: ${newStage}`);
+      toast.error(`Candidate status updated to: ${newStage}`);
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     } finally {
       setIsUpdating(false);
     }

@@ -5,8 +5,10 @@ import { CompanyProfile } from '../types';
 import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
+import { useToast } from './Toast';
 
 const AdminDashboard: React.FC = () => {
+  const toast = useToast();
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -69,13 +71,13 @@ const AdminDashboard: React.FC = () => {
       const result = await inviteCompanyReal(payload);
       await fetchCompanies();
       const message = (result as any)?.message || "Proses selesai.";
-      alert(`✅ STATUS UNDANGAN\n\n${message}`);
+      toast.success(`STATUS UNDANGAN\n\n${message}`);
       setNewCompany({ name: '', email: '', tier: 'Basic' });
       setIsModalOpen(false);
     } catch (error) {
       console.error("Gagal mengundang:", error);
       const errorMessage = (error as any)?.message || "Terjadi kesalahan.";
-      alert(`❌ ERROR\n\n${errorMessage}`);
+      toast.error(`ERROR\n\n${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -85,9 +87,9 @@ const AdminDashboard: React.FC = () => {
     setIsSubmitting(true);
     try {
         const result = await resendInviteEmail(companyId);
-        alert(`✅ SUKSES: ${result.message}`);
+        toast.success(`SUKSES: ${result.message}`);
     } catch (error) {
-        alert(`❌ GAGAL: ${(error as any).message}`);
+        toast.error(`GAGAL: ${(error as any).message}`);
     } finally {
         setIsSubmitting(false);
         setActiveMenuId(null);
@@ -129,29 +131,37 @@ const AdminDashboard: React.FC = () => {
         };
 
         await updateCompanySubscription(managingCompany.id, updatePayload);
-        
+
         await fetchCompanies();
         setIsManageModalOpen(false);
         setManagingCompany(null);
-        alert("✅ Data langganan berhasil diperbarui.");
+        toast.success("Data langganan berhasil diperbarui.");
     } catch (error) {
         const errorMessage = (error as any)?.message || "Gagal mengupdate langganan.";
-        alert(errorMessage);
+        toast.error(errorMessage);
     } finally {
         setIsSubmitting(false);
     }
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus perusahaan ini? Data tidak dapat dikembalikan.")) {
+    const confirmed = await toast.confirm({
+      title: "Hapus Perusahaan",
+      message: "Apakah Anda yakin ingin menghapus perusahaan ini? Data tidak dapat dikembalikan.",
+      confirmText: "Hapus",
+      cancelText: "Batal",
+      type: "danger"
+    });
+
+    if (confirmed) {
         setIsLoading(true);
         try {
             await deleteCompany(id);
             await fetchCompanies();
-            alert("✅ Perusahaan berhasil dihapus.");
+            toast.success("Perusahaan berhasil dihapus.");
         } catch (error) {
             console.error(error);
-            alert("Gagal menghapus data.");
+            toast.error("Gagal menghapus data.");
         }
         setIsLoading(false);
     }

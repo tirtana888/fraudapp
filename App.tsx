@@ -22,6 +22,7 @@ import BackgroundCheckCallback from './components/BackgroundCheckCallback';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
+import { ToastProvider } from './components/Toast';
 
 const App: React.FC = () => {
   // Auth State
@@ -251,12 +252,24 @@ const App: React.FC = () => {
   // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode) {
     if (isBackgroundCheckCallback) {
-      return <BackgroundCheckCallback />;
+      return (
+        <ToastProvider>
+          <BackgroundCheckCallback />
+        </ToastProvider>
+      );
     }
     if (publicJobRoute) {
-      return <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />;
+      return (
+        <ToastProvider>
+          <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />
+        </ToastProvider>
+      );
     }
-    return <PublicAssessment companyId={publicCompanyId} />;
+    return (
+      <ToastProvider>
+        <PublicAssessment companyId={publicCompanyId} />
+      </ToastProvider>
+    );
   }
 
   if (isCheckingAuth) {
@@ -269,7 +282,11 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <ToastProvider>
+        <LoginPage onLogin={handleLogin} />
+      </ToastProvider>
+    );
   }
 
   if (!currentCompany && !isPublicMode) {
@@ -480,6 +497,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <ToastProvider>
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-brand-slate-900' : 'bg-gray-50'}`}>
       {/* Mobile Header */}
       <div className="md:hidden bg-white dark:bg-brand-slate-850 p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center sticky top-0 z-20">
@@ -526,6 +544,7 @@ const App: React.FC = () => {
          </div>
       </main>
     </div>
+    </ToastProvider>
   );
 };
 

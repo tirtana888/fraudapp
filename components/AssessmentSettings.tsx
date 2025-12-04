@@ -4,6 +4,7 @@ import { Save, Copy, Check, Lock, Smartphone, RefreshCw, Loader2, Image as Image
 import { CompanyProfile } from '../types';
 import { updateCompany, uploadCompanyLogo, deleteCompanyLogo } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
+import { useToast } from './Toast';
 
 interface AssessmentSettingsProps {
   currentCompany: CompanyProfile;
@@ -36,6 +37,7 @@ const FIXED_QUESTIONS = [
 ];
 
 const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany, onUpdate }) => {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     logoUrl: currentCompany.logoUrl || '',
     brandColor: currentCompany.brandColor || '#CC5500',
@@ -136,7 +138,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-        alert(`❌ Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB)! Maksimal 5MB.`);
+        toast.error(` Ukuran file terlalu besar (${(file.size / 1024 / 1024).toFixed(2)}MB)! Maksimal 5MB.`);
         setIsProcessingImg(false);
         return;
     }
@@ -154,7 +156,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
         // Update form data with download URL
         setFormData({ ...formData, logoUrl: downloadURL });
 
-        alert(`✅ Logo berhasil di-upload (${(file.size / 1024 / 1024).toFixed(2)}MB)! Klik "Simpan Perubahan" untuk menyimpan.`);
+        toast.success(` Logo berhasil di-upload (${(file.size / 1024 / 1024).toFixed(2)}MB)! Klik "Simpan Perubahan" untuk menyimpan.`);
     } catch (error: any) {
         console.error("[LOGO-UPLOAD] ❌ Upload failed:", error);
         console.error("[LOGO-UPLOAD] Error details:", {
@@ -162,7 +164,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
           code: error.code,
           stack: error.stack
         });
-        alert(`❌ Gagal upload logo: ${error.message || 'Unknown error'}`);
+        toast.error(` Gagal upload logo: ${error.message || 'Unknown error'}`);
     } finally {
         console.log("[LOGO-UPLOAD] Cleaning up, setting isProcessingImg to false");
         setIsProcessingImg(false);
@@ -220,13 +222,13 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
 
         if (formData.logoUrl && !verifyData.logoUrl) {
           console.error("❌ VERIFICATION FAILED: Logo was not saved to Firestore!");
-          alert("⚠️ Logo gagal tersimpan. Silakan coba lagi atau gunakan logo yang lebih kecil.");
+          toast.warning(" Logo gagal tersimpan. Silakan coba lagi atau gunakan logo yang lebih kecil.");
           return;
         }
 
         if (formData.logoUrl && verifyData.logoUrl && verifyData.logoUrl !== formData.logoUrl) {
           console.error("❌ VERIFICATION FAILED: Logo mismatch!");
-          alert("⚠️ Logo tersimpan tidak sesuai. Silakan coba lagi.");
+          toast.warning(" Logo tersimpan tidak sesuai. Silakan coba lagi.");
           return;
         }
 
@@ -239,17 +241,17 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
       // Note: This will trigger useEffect but formData should match so no reset
       onUpdate();
 
-      alert("✅ Pengaturan Link Asesmen berhasil disimpan dan terverifikasi!");
+      toast.success(" Pengaturan Link Asesmen berhasil disimpan dan terverifikasi!");
     } catch (error: any) {
       console.error("Gagal menyimpan:", error);
 
       // Check specific error types
       if (error.code === 'invalid-argument') {
-        alert("❌ Gagal menyimpan: Data tidak valid.");
+        toast.error(" Gagal menyimpan: Data tidak valid.");
       } else if (error.message && error.message.toLowerCase().includes("permission")) {
-        alert("❌ Gagal menyimpan: Izin akses ditolak. Pastikan Anda login sebagai admin perusahaan ini.");
+        toast.error(" Gagal menyimpan: Izin akses ditolak. Pastikan Anda login sebagai admin perusahaan ini.");
       } else {
-        alert(`❌ Terjadi kesalahan saat menyimpan: ${error.message || 'Unknown error'}`);
+        toast.error(` Terjadi kesalahan saat menyimpan: ${error.message || 'Unknown error'}`);
       }
     } finally {
       setIsSaving(false);

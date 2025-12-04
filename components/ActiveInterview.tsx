@@ -4,6 +4,7 @@ import { InterviewSession, Candidate, AssessmentItem, SJTItem } from '../types';
 import { updateSessionInDB, getCompanyById } from '../services/firebase';
 import { analyzeFraudRisk } from '../services/genai';
 import ReportView from './ReportView';
+import { useToast } from './Toast';
 
 interface ActiveInterviewProps {
   onComplete: () => void;
@@ -23,6 +24,7 @@ const Watermark: React.FC = () => (
 );
 
 const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId, existingSession }) => {
+  const toast = useToast();
   // This component is now primarily a REVIEWER for sessions created via Public Link
   const [session, setSession] = useState<InterviewSession | undefined>(existingSession);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
@@ -54,7 +56,7 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
           });
           onComplete(); // Go back to history/report view
       } catch (error) {
-          alert("Gagal menganalisis ulang.");
+          toast.error("Gagal menganalisis ulang.");
       } finally {
           setIsReAnalyzing(false);
       }

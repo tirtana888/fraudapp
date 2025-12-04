@@ -3,6 +3,7 @@ import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile, AssessmentInvite } from '../types';
 import { getJobBySlug, createApplication, uploadCV, db, sendEmailViaCloudFunction, COLLECTIONS } from '../services/firebase';
 import { collection, getDocs, query, addDoc } from 'firebase/firestore';
+import { useToast } from './Toast';
 
 interface PublicJobPageProps {
   companySlug: string;
@@ -10,6 +11,7 @@ interface PublicJobPageProps {
 }
 
 const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) => {
+  const toast = useToast();
   const [job, setJob] = useState<Job | null>(null);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,11 +65,11 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
-        alert('Hanya file PDF yang diperbolehkan');
+        toast.warning('Hanya file PDF yang diperbolehkan');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB');
+        toast.warning('Ukuran file maksimal 5MB');
         return;
       }
       setFormData({ ...formData, cvFile: file });
@@ -91,7 +93,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
 
     if (!formData.fullName || !formData.email || !formData.whatsapp || !formData.cvFile) {
       console.error('[PUBLIC-JOB] Validation failed: missing required fields');
-      alert('Mohon lengkapi semua field');
+      toast.warning('Mohon lengkapi semua field');
       return;
     }
     console.log('[PUBLIC-JOB] Validation passed');
@@ -210,7 +212,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
       console.error('[PUBLIC-JOB] Error message:', error.message);
       console.error('[PUBLIC-JOB] Error stack:', error.stack);
 
-      alert(`Gagal mengirim aplikasi: ${error.message}`);
+      toast.error(`Gagal mengirim aplikasi: ${error.message}`);
     } finally {
       console.log('[PUBLIC-JOB] Cleanup: Re-enabling submit button');
       setIsSubmitting(false);

@@ -3,6 +3,7 @@ import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter,
 import { InterviewSession, Job } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useToast } from './Toast';
 
 interface CandidatesReviewInviteProps {
   companyId: string;
@@ -27,6 +28,7 @@ interface TimelineItem {
 }
 
 const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ companyId, onViewSession }) => {
+  const toast = useToast();
   const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,7 +156,7 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
       await loadData();
     } catch (error) {
       console.error('[JOB-APPLICATIONS] Error updating stage:', error);
-      alert('Gagal update status. Silakan coba lagi.');
+      toast.error('Gagal update status. Silakan coba lagi.');
     } finally {
       setUpdatingStatus(null);
     }

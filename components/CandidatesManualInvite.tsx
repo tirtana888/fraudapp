@@ -5,6 +5,7 @@ import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, dele
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
+import { useToast } from './Toast';
 
 interface CandidatesManualInviteProps {
   currentCompany: CompanyProfile;
@@ -16,6 +17,7 @@ const AVAILABLE_ROLES = [
 ];
 
 const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ currentCompany }) => {
+  const toast = useToast();
   const [candidates, setCandidates] = useState<{ name: string; email: string; role: string }[]>([
     { name: '', email: '', role: '' }
   ]);
@@ -62,12 +64,12 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
     try {
       const result = await resendCandidateInvite(inviteId, currentCompany.name);
       if (result.success) {
-        alert(`✅ ${result.message}`);
+        toast.success(` ${result.message}`);
       } else {
-        alert(`❌ ${result.message}`);
+        toast.error(` ${result.message}`);
       }
     } catch (error: any) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(` Error: ${error.message}`);
     } finally {
       setActionLoading(false);
       setActiveMenuId(null);
@@ -77,7 +79,15 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
   const handleDeleteInvite = async (inviteId: string) => {
     if (actionLoading) return;
 
-    if (!confirm("Apakah Anda yakin ingin menghapus kandidat ini? Data tidak dapat dikembalikan.")) {
+    const confirmed = await toast.confirm({
+      title: "Hapus Kandidat",
+      message: "Apakah Anda yakin ingin menghapus kandidat ini? Data tidak dapat dikembalikan.",
+      confirmText: "Hapus",
+      cancelText: "Batal",
+      type: "danger"
+    });
+
+    if (!confirmed) {
       setActiveMenuId(null);
       return;
     }
@@ -86,12 +96,12 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
     try {
       const result = await deleteCandidateInvite(inviteId);
       if (result.success) {
-        alert(`✅ ${result.message}`);
+        toast.success(` ${result.message}`);
       } else {
-        alert(`❌ ${result.message}`);
+        toast.error(` ${result.message}`);
       }
     } catch (error: any) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(` Error: ${error.message}`);
     } finally {
       setActionLoading(false);
       setActiveMenuId(null);
@@ -281,7 +291,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
                                       <button 
                                         onClick={() => {
                                             navigator.clipboard.writeText(inv.access_code);
-                                            alert("Kode disalin!");
+                                            toast.error("Kode disalin!");
                                         }}
                                         className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                                         title="Salin Kode"
