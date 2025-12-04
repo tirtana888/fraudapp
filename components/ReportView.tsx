@@ -249,7 +249,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-semibold transition-colors mt-2"
             >
               <FileText size={16} />
-              Download CV
+              Unduh CV
             </a>
           )}
         </div>
@@ -438,12 +438,12 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
             </ul>
           </div>
 
-          {/* AI Interview Chat Transcript - RECORDED CONVERSATION */}
+          {/* Transkrip Wawancara AI */}
           {session.transcript && session.transcript.length > 0 ? (
             <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors">
               <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <MessageSquare className="text-brand-blue" size={24} />
-                AI Interview Chat - Recorded Conversation
+                Transkrip Wawancara AI
               </h3>
               <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 max-h-[500px] overflow-y-auto space-y-3">
                 {session.transcript.map((msg, idx) => {
@@ -458,7 +458,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                           : 'bg-brand-orange text-white'
                       }`}>
                         <p className="text-[10px] uppercase font-bold mb-1 opacity-70">
-                          {isAI ? '🤖 AI Interviewer' : `👤 ${candidate.name}`}
+                          {isAI ? '🤖 Pewawancara AI' : `👤 ${candidate.name}`}
                         </p>
                         <p className="leading-relaxed whitespace-pre-wrap">{safeText(msg.text)}</p>
                       </div>
@@ -473,7 +473,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
           ) : (
             <div className="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-2xl border border-yellow-200 dark:border-yellow-800">
               <p className="text-yellow-800 dark:text-yellow-200 text-center">
-                ⚠️ Transkrip interview tidak tersedia atau kandidat belum menyelesaikan chat interview
+                ⚠️ Transkrip wawancara tidak tersedia atau kandidat belum menyelesaikan wawancara
               </p>
             </div>
           )}
