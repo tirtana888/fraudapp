@@ -220,8 +220,17 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   };
 
   const handleSendMessage = async () => {
-      if (!userInput.trim() || !sessionId) return;
-      const newHistory = [...chatHistory, { speaker: 'candidate', text: userInput } as const];
+      const trimmedInput = userInput.trim();
+
+      // Validate input
+      if (!trimmedInput || !sessionId) {
+          console.log('[SEND-MESSAGE] Validation failed:', { hasInput: !!trimmedInput, hasSession: !!sessionId });
+          return;
+      }
+
+      console.log('[SEND-MESSAGE] Sending message:', trimmedInput.substring(0, 50));
+
+      const newHistory = [...chatHistory, { speaker: 'candidate', text: trimmedInput } as const];
       setChatHistory(newHistory);
       setUserInput('');
       setIsAiThinking(true);
@@ -241,7 +250,14 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           if (nextQuestion.toLowerCase().includes("sesi wawancara telah selesai")) {
               setTimeout(handleFinishAssessment, 2000);
           }
-      } catch (error) { console.error(error); } 
+      } catch (error) {
+          console.error('[SEND-MESSAGE] Error generating AI response:', error);
+          // Add fallback message to history
+          const fallbackMessage = "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai pengalaman kerja Anda?";
+          const updatedHistory = [...newHistory, { speaker: 'ai', text: fallbackMessage } as const];
+          setChatHistory(updatedHistory);
+          await updateSessionInDB(sessionId, { transcript: updatedHistory });
+      }
       finally { setIsAiThinking(false); }
   };
 
@@ -568,7 +584,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                         <div className="w-10 h-10 rounded-full bg-brand-orange text-white flex items-center justify-center font-bold">AI</div>
                         <div>
                             <p className="font-bold text-gray-800">Interviewer</p>
-                            <p className="text-xs text-gray-500">FraudGuard Forensic</p>
+                            <p className="text-xs text-gray-500">HireGood.one Forensic</p>
                         </div>
                     </div>
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
@@ -587,7 +603,22 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                 </div>
                 <div className="p-4 bg-white border-t sticky bottom-0 z-10">
                     <div className="flex gap-2">
-                        <input type="text" value={userInput} onChange={e => setUserInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder="Ketik jawaban Anda..." className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue" disabled={isAiThinking || timeLeft === 0} />
+                        <input
+                          type="text"
+                          value={userInput}
+                          onChange={e => setUserInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (userInput.trim() && !isAiThinking && timeLeft > 0) {
+                                handleSendMessage();
+                              }
+                            }
+                          }}
+                          placeholder="Ketik jawaban Anda..."
+                          className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          disabled={isAiThinking || timeLeft === 0}
+                        />
                         <button onClick={handleSendMessage} disabled={!userInput.trim() || isAiThinking || timeLeft === 0} className="p-3 bg-brand-blue text-white rounded-xl hover:opacity-90 disabled:opacity-50"><Send size={20} /></button>
                     </div>
                 </div>

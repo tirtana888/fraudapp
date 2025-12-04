@@ -125,6 +125,12 @@ export const generateNextQuestion = async (
     const lastUserMessage = [...history].reverse().find(h => h.speaker === 'candidate' || h.speaker === 'user')?.text || "";
     console.log('[GENAI] Last user message:', lastUserMessage.substring(0, 50));
 
+    // Validate that we have a message to send
+    if (!lastUserMessage || !lastUserMessage.trim()) {
+      console.error('[GENAI] No valid user message found in history');
+      throw new Error("No user message to process");
+    }
+
     // Call Firebase Cloud Function
     console.log('[GENAI] Calling generateAIResponse function...');
     const generateResponse = httpsCallable(functions, "generateAIResponse");
@@ -132,7 +138,8 @@ export const generateNextQuestion = async (
     const result = await generateResponse({
       role,
       history,
-      lastUserMessage
+      lastUserMessage: lastUserMessage.trim(),
+      prompt: lastUserMessage.trim() // Send as both for backward compatibility
     });
 
     console.log('[GENAI] Function response received:', {
