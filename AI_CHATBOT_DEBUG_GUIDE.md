@@ -1,231 +1,268 @@
-# AI Chatbot Debug Guide
+# AI Chatbot Debug Guide - API Keys Deployed tapi Static
 
-## Status Update: Model Dikembalikan ke Setup Awal
+## Problem Statement
 
-✅ **Model TELAH DIKEMBALIKAN ke konfigurasi yang benar:**
-- **Gemini 2.0 Flash Thinking Experimental** (`gemini-2.0-flash-thinking-exp-1219`) - Gemini "3" Preview untuk chat & analysis
-- **GPT-4o** sebagai fallback
+Anda bilang:
+- ✅ API Gemini sudah dikonfigurasi
+- ✅ API OpenAI sudah dikonfigurasi
+- ✅ Sudah sukses deploy
+- ❌ **Tapi AI chatbot masih kasih static response**
 
----
-
-## Kenapa Chatbot Hanya Memberikan Response Static?
-
-Jika chatbot hanya memberikan response static seperti:
-> "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?"
-
-Artinya **KEDUA AI Provider (Gemini DAN OpenAI) GAGAL bekerja**.
+Mari kita debug step by step!
 
 ---
 
-## Cara Mengecek Masalahnya
+## What I Updated
 
-### 1. Cek Firebase Functions Logs
+### Enhanced Logging di `services/genai.ts`
 
+Sekarang code akan log SEMUA detail error ke browser console:
+
+```javascript
+// Initialization logs
+[GENAI-INIT] Initializing Firebase for Cloud Functions...
+[GENAI-INIT] ✅ Firebase Functions initialized for region: europe-west1
+
+// Function call logs
+[GENAI] generateNextQuestion called with: {...}
+[GENAI] Calling generateAIResponse function...
+[GENAI] ✅ AI Response generated successfully
+
+// OR if error:
+[GENAI] ❌ AI Next Question generation failed
+[GENAI] Error details: {
+  message: "...",
+  code: "permission-denied",  // ← This tells us what's wrong!
+  details: {...}
+}
+```
+
+---
+
+## Debug Steps
+
+### 1. Open Browser Console
+
+1. Buka chatbot di browser
+2. Press **F12**
+3. Go to **Console** tab
+4. Keep it open
+
+### 2. Reload Page (Hard Reload)
+
+**Windows/Linux**: Ctrl + F5
+**Mac**: Cmd + Shift + R
+
+### 3. Check Initialization
+
+Look for:
+```
+[GENAI-INIT] ✅ Firebase Functions initialized for region: europe-west1
+```
+
+✅ **If you see this**: Firebase OK, lanjut step 4
+❌ **If error**: Firebase gagal initialize, check config
+
+### 4. Start Chat & Send Message
+
+Complete assessment, start chat, kirim 1 message
+
+### 5. Check Error Code
+
+Look for `[GENAI] Error details:` dan note the **code**:
+
+| Error Code | Problem | Fix |
+|------------|---------|-----|
+| `permission-denied` | Function butuh auth | Remove auth check |
+| `not-found` | Function not found | Deploy ulang |
+| `internal` | Server error / API keys | Check function logs |
+| `unauthenticated` | Auth required | Remove auth |
+
+---
+
+## Common Issues
+
+### Issue A: Permission Denied
+
+**Console shows**:
+```
+[GENAI] Error code: permission-denied
+```
+
+**Problem**: Function di `functions/index.js` cek authentication
+
+**Fix**: Edit `functions/index.js` line ~230
+```javascript
+exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) => {
+  // HAPUS BARIS INI:
+  // if (!request.auth) throw new HttpsError('unauthenticated', '...');
+
+  // Langsung mulai:
+  const { role, history, lastUserMessage } = request.data;
+  // ...
+});
+```
+
+Deploy:
 ```bash
-firebase functions:log --limit 50
-```
-
-**Cari log berikut:**
-
-#### ✅ **Jika API Keys Terkonfigurasi dengan Benar:**
-```
-[AI-CONFIG] Gemini API Key present: true
-[AI-CONFIG] OpenAI API Key present: true
-[AI] Trying Gemini for role: ...
-```
-
-#### ❌ **Jika API Keys TIDAK Terkonfigurasi:**
-```
-[AI-CONFIG] Gemini API Key present: false
-[AI-CONFIG] OpenAI API Key present: false
-[AI-CONFIG] NO API KEYS CONFIGURED! Using static fallback.
-```
-
-#### ⚠️ **Jika AI Provider Gagal:**
-```
-[ERROR] Gemini failed: { message: "...", stack: "..." }
-[AI] Attempting OpenAI fallback...
-[ERROR] OpenAI also failed: { message: "...", stack: "..." }
-[AI] ⚠️ ALL AI PROVIDERS FAILED! Using static fallback response.
-```
-
----
-
-## Troubleshooting Steps
-
-### Problem 1: API Keys Tidak Terkonfigurasi
-**Symptom:**
-```
-[AI-CONFIG] Gemini API Key present: false
-[AI-CONFIG] OpenAI API Key present: false
-```
-
-**Solution:**
-```bash
-# Set Gemini API Key
-firebase functions:config:set gemini.key="YOUR_GEMINI_API_KEY"
-
-# Set OpenAI API Key
-firebase functions:config:set openai.key="YOUR_OPENAI_API_KEY"
-
-# Verify
-firebase functions:config:get
-
-# Deploy ulang
 firebase deploy --only functions
 ```
 
 ---
 
-### Problem 2: Gemini API Error (Model Not Found)
-**Symptom:**
+### Issue B: Function Not Found
+
+**Console shows**:
 ```
-[ERROR] Gemini failed: { message: "models/gemini-2.0-flash-thinking-exp-1219 is not found" }
-```
-
-**Possible Causes:**
-1. Model ID salah atau tidak tersedia di region Anda
-2. Gemini API Key tidak memiliki akses ke model experimental/preview
-
-**Solution:**
-- Cek apakah API key Anda memiliki akses ke `gemini-2.0-flash-thinking-exp-1219` (Gemini "3" Preview)
-- Jika tidak, model akan otomatis fallback ke OpenAI GPT-4o
-- Atau bisa ganti model di `functions/index.js` ke model yang tersedia:
-  - `gemini-2.0-flash-exp`
-  - `gemini-1.5-flash-latest`
-  - `gemini-1.5-pro-latest`
-
----
-
-### Problem 3: OpenAI API Error (Quota/Rate Limit)
-**Symptom:**
-```
-[ERROR] OpenAI also failed: { message: "Rate limit exceeded" }
-atau
-[ERROR] OpenAI also failed: { message: "Insufficient quota" }
+[GENAI] Error code: not-found
 ```
 
-**Solution:**
-1. Cek quota OpenAI di: https://platform.openai.com/usage
-2. Tambah credits ke account OpenAI Anda
-3. Atau gunakan API key yang berbeda
+**Problem**: Function tidak deployed atau region salah
 
----
-
-### Problem 4: CORS / Network Error
-**Symptom:**
-```
-[ERROR] Gemini failed: { message: "fetch failed" }
-[ERROR] OpenAI also failed: { message: "fetch failed" }
-```
-
-**Solution:**
-1. Pastikan Firebase Functions bisa akses internet (seharusnya otomatis)
-2. Cek apakah region `europe-west1` support untuk project Anda
-3. Coba deploy ke region lain jika perlu
-
----
-
-## Cara Test AI Chatbot
-
-### 1. Test dari Browser Console
-
-Buka halaman assessment, lalu jalankan di console:
-```javascript
-// Check if functions are reachable
-console.log(firebase.functions());
-
-// Test call (harus login dulu)
-const testAI = firebase.functions().httpsCallable('generateAIResponse');
-testAI({
-  role: 'Test Role',
-  history: [{ speaker: 'ai', text: 'Hello' }],
-  lastUserMessage: 'Test message'
-}).then(result => {
-  console.log('AI Response:', result.data);
-}).catch(err => {
-  console.error('Error:', err);
-});
-```
-
-### 2. Cek dari Firebase Console
-
-1. Buka **Firebase Console** > **Functions** > **Logs**
-2. Lakukan assessment dari browser
-3. Lihat real-time logs untuk error messages
-
----
-
-## Current Configuration
-
-**File:** `functions/index.js`
-
-### generateAIResponse Function (Chat)
-```javascript
-// Primary: Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview)
-model: "gemini-2.0-flash-thinking-exp-1219"
-
-// Fallback: OpenAI GPT-4o
-model: "gpt-4o"
-```
-
-### analyzeFraudRisk Function (Analysis)
-```javascript
-// Primary: Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview)
-model: "gemini-2.0-flash-thinking-exp-1219"
-
-// Fallback: OpenAI GPT-4o
-model: "gpt-4o"
-```
-
----
-
-## Improved Error Logging
-
-Sekarang Firebase Functions sudah memiliki logging lengkap:
-
-1. **Config Check**: Apakah API keys terkonfigurasi?
-2. **Gemini Attempt**: Detailed error jika Gemini gagal
-3. **OpenAI Fallback**: Detailed error jika OpenAI juga gagal
-4. **Final Warning**: Clear message jika semua provider gagal
-
-**Semua log** akan muncul di Firebase Functions logs dan bisa diakses dengan:
+**Fix**:
 ```bash
-firebase functions:log
+# Check deployed functions
+firebase functions:list
+
+# Should show:
+# generateAIResponse (europe-west1)
+
+# If not there, deploy:
+firebase deploy --only functions
 ```
 
 ---
 
-## Next Steps
+### Issue C: API Keys Not Accessible
 
-1. ✅ **Deploy Firebase Functions** dengan config yang sudah diperbaiki
-   ```bash
-   firebase deploy --only functions
-   ```
+**Console**: No obvious error
+**Function logs**: `NO API KEYS CONFIGURED!`
 
-2. ✅ **Cek Logs** setelah deployment
-   ```bash
-   firebase functions:log --limit 50
-   ```
+**Problem**: Config set tapi tidak loaded di runtime
 
-3. ✅ **Test Assessment** dari browser dan cek apakah AI response sudah dynamic
+**Check**:
+```bash
+firebase functions:log --only generateAIResponse
+```
 
-4. ✅ **Verify API Keys** terkonfigurasi dengan benar
-   ```bash
-   firebase functions:config:get
-   ```
+Look for:
+```
+[AI-CONFIG] Gemini API Key present: false  ← Problem!
+[AI-CONFIG] NO API KEYS CONFIGURED!
+```
+
+**Fix**:
+```bash
+# Force redeploy to reload config
+firebase deploy --only functions --force
+
+# Wait 2-3 minutes
+
+# Check logs again
+firebase functions:log --only generateAIResponse
+
+# Should now show:
+# [AI-CONFIG] Gemini API Key present: true
+```
 
 ---
 
-## Summary
+## Use Diagnostic Tool
 
-- ✅ Model sudah dikembalikan ke: **Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview) + GPT-4o**
-- ✅ Logging diperbaiki untuk debugging yang lebih baik
-- ✅ Error handling lebih detail
-- ✅ Prompt AI sudah lebih natural dan conversational
-- ✅ Transcript akan muncul di laporan kandidat
+### Quick Test
 
-**Chatbot akan bekerja dengan baik jika:**
-1. API Keys terkonfigurasi dengan benar
-2. API Keys memiliki quota yang cukup
-3. Model ID `gemini-2.0-flash-thinking-exp-1219` tersedia/accessible untuk API key Anda
+1. Open `test-ai-functions.html` in browser
+2. Click "Test Connection" → Should be ✅
+3. Click "Test AI Response" → Should generate dynamic response
+4. Check logs for errors
+
+Tool ini test langsung tanpa perlu complete full assessment!
+
+---
+
+## Check Function Logs
+
+```bash
+firebase functions:log --only generateAIResponse
+```
+
+**Good logs**:
+```
+[AI-CONFIG] Gemini API Key present: true
+[AI] Trying Gemini for role: Manajer Keuangan
+[AI] Gemini response generated successfully
+```
+
+**Bad logs**:
+```
+[AI-CONFIG] Gemini API Key present: false
+[AI-CONFIG] NO API KEYS CONFIGURED!
+⚠️ ALL AI PROVIDERS FAILED!
+```
+
+---
+
+## Most Likely Issue
+
+Based on "API keys sudah deploy tapi static":
+
+### Config Not Loaded in Runtime (70% chance)
+
+**Why**: You set config, deployed, but runtime didn't reload
+
+**Fix**:
+```bash
+firebase deploy --only functions --force
+```
+
+Wait 2-3 minutes, test again.
+
+---
+
+## Quick Fix Sequence
+
+Try these:
+
+```bash
+# 1. Check config
+firebase functions:config:get
+
+# Should show:
+# {
+#   "gemini": { "key": "AIza..." }
+# }
+
+# 2. If empty, set it
+firebase functions:config:set gemini.key="YOUR_KEY"
+
+# 3. Force redeploy
+firebase deploy --only functions --force
+
+# 4. Check logs after 2 min
+firebase functions:log --only generateAIResponse
+
+# 5. Clear browser cache & hard reload (Ctrl+F5)
+
+# 6. Test again
+```
+
+---
+
+## What to Check Now
+
+1. **Open browser console** - Check for `[GENAI]` logs
+2. **Note error code** - permission-denied? not-found? internal?
+3. **Check function logs** - `firebase functions:log --only generateAIResponse`
+4. **Test with tool** - `test-ai-functions.html`
+
+With detailed logs, you'll see EXACTLY what's failing!
+
+---
+
+## Files to Read
+
+1. **`TROUBLESHOOT_AI_CHATBOT.md`** - Full troubleshooting guide
+2. **`test-ai-functions.html`** - Diagnostic testing tool
+3. **`AI_QUICK_START.md`** - Quick setup reference
+
+Check browser console logs first - that will tell you the exact issue!

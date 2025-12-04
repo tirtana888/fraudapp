@@ -19,11 +19,23 @@ const firebaseConfig = {
 
 let functions: any;
 
+console.log('[GENAI-INIT] Initializing Firebase for Cloud Functions...');
+console.log('[GENAI-INIT] Project ID:', firebaseConfig.projectId);
+
 try {
   const app = initializeApp(firebaseConfig, "genai-app");
+  console.log('[GENAI-INIT] Firebase app initialized:', app.name);
+
   functions = getFunctions(app, "europe-west1");
-} catch (error) {
-  console.error("Firebase initialization error:", error);
+  console.log('[GENAI-INIT] ✅ Firebase Functions initialized for region: europe-west1');
+  console.log('[GENAI-INIT] Functions object:', typeof functions);
+} catch (error: any) {
+  console.error('[GENAI-INIT] ❌ Firebase initialization error:', error);
+  console.error('[GENAI-INIT] Error details:', {
+    message: error.message,
+    code: error.code,
+    stack: error.stack
+  });
 }
 
 /**
@@ -96,33 +108,64 @@ export const generateNextQuestion = async (
   tier: 'Basic' | 'Premium' | 'Enterprise' = 'Basic',
   assessmentData?: any
 ): Promise<string> => {
+  console.log('[GENAI] generateNextQuestion called with:', {
+    role,
+    historyLength: history.length,
+    tier,
+    functionsInitialized: !!functions
+  });
+
   try {
     if (!functions) {
+      console.error('[GENAI] Firebase Functions not initialized!');
       throw new Error("Firebase Functions not initialized");
     }
 
     // Get last candidate message
     const lastUserMessage = [...history].reverse().find(h => h.speaker === 'candidate' || h.speaker === 'user')?.text || "";
+    console.log('[GENAI] Last user message:', lastUserMessage.substring(0, 50));
 
     // Call Firebase Cloud Function
+    console.log('[GENAI] Calling generateAIResponse function...');
     const generateResponse = httpsCallable(functions, "generateAIResponse");
+
     const result = await generateResponse({
       role,
       history,
       lastUserMessage
     });
 
+    console.log('[GENAI] Function response received:', {
+      hasData: !!result.data,
+      dataType: typeof result.data
+    });
+
     const response = result.data as { success: boolean; response: string };
 
+    console.log('[GENAI] Parsed response:', {
+      success: response.success,
+      hasResponse: !!response.response,
+      responseLength: response.response?.length
+    });
+
     if (response.success && response.response) {
+      console.log('[GENAI] ✅ AI Response generated successfully');
       return response.response;
     }
 
     throw new Error("Invalid response from Cloud Function");
 
-  } catch (error) {
-    console.error("AI Next Question generation failed:", error);
+  } catch (error: any) {
+    console.error('[GENAI] ❌ AI Next Question generation failed');
+    console.error('[GENAI] Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      stack: error.stack
+    });
+
     // Fallback response
+    console.warn('[GENAI] Using static fallback response');
     return "Terima kasih atas jawabannya. Bisa Anda ceritakan lebih lanjut mengenai bagaimana Anda menangani situasi penuh tekanan di pekerjaan sebelumnya?";
   }
 };

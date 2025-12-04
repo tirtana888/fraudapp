@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Functions Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.warning {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+
+        .log-entry.info { color: #4fc3f7; }
+        .log-entry.success { color: #66bb6a; }
+        .log-entry.error { color: #ef5350; }
+        .log-entry.warn { color: #ffca28; }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+            font-family: inherit;
+        }
+
+        .response-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .response-box h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .response-box p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge.success { background: #e8f5e9; color: #2e7d32; }
+        .badge.error { background: #ffebee; color: #c62828; }
+        .badge.pending { background: #fff3e0; color: #ef6c00; }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .config-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .config-info strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🤖 AI Functions Diagnostic Tool</h1>
+            <p class="subtitle">Test Firebase Cloud Functions for AI Chatbot</p>
+
+            <div id="statusContainer"></div>
+
+            <div class="config-info">
+                <strong>Project ID:</strong> gen-lang-client-0226679970<br>
+                <strong>Region:</strong> europe-west1<br>
+                <strong>Functions:</strong> generateAIResponse, analyzeFraudRisk
+            </div>
+
+            <div class="section">
+                <h2>1. Test Firebase Connection</h2>
+                <button id="btnTestConnection" onclick="testConnection()">
+                    Test Connection
+                </button>
+                <div id="connectionResult"></div>
+            </div>
+
+            <div class="section">
+                <h2>2. Test AI Chat Response</h2>
+                <div class="input-group">
+                    <label>Role:</label>
+                    <input type="text" id="testRole" value="Manajer Keuangan" placeholder="Enter role...">
+                </div>
+                <div class="input-group">
+                    <label>User Message:</label>
+                    <textarea id="testMessage" placeholder="Saya pernah bekerja di perusahaan retail selama 5 tahun...">Saya pernah bekerja di perusahaan retail selama 5 tahun dan menangani inventory management.</textarea>
+                </div>
+                <button id="btnTestAI" onclick="testAIResponse()">
+                    Test AI Response
+                </button>
+                <button onclick="clearLogs()">Clear Logs</button>
+                <div id="aiResult"></div>
+            </div>
+
+            <div class="section">
+                <h2>3. Console Logs</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                    Detailed logs to diagnose issues:
+                </p>
+                <div id="logContainer" class="log-container">
+                    <div class="log-entry info">Ready to test...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
+            authDomain: "gen-lang-client-0226679970.firebaseapp.com",
+            projectId: "gen-lang-client-0226679970",
+            storageBucket: "gen-lang-client-0226679970.firebasestorage.app",
+            messagingSenderId: "422224153226",
+            appId: "1:422224153226:web:4598cd213b6275436a3b73"
+        };
+
+        let app, functions;
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function setStatus(message, type = 'info') {
+            const container = document.getElementById('statusContainer');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            container.innerHTML = `<div class="status ${type}">${icon} ${message}</div>`;
+        }
+
+        window.testConnection = async function() {
+            const btn = document.getElementById('btnTestConnection');
+            const resultDiv = document.getElementById('connectionResult');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Testing...';
+            resultDiv.innerHTML = '';
+
+            addLog('🔧 Testing Firebase connection...', 'info');
+
+            try {
+                addLog('Initializing Firebase app...', 'info');
+                app = initializeApp(firebaseConfig, "diagnostic-app");
+                addLog(`✅ Firebase app initialized: ${app.name}`, 'success');
+
+                addLog('Getting Functions instance for region: europe-west1', 'info');
+                functions = getFunctions(app, "europe-west1");
+                addLog('✅ Functions instance created', 'success');
+
+                setStatus('Firebase connection successful!', 'success');
+                resultDiv.innerHTML = `
+                    <div class="response-box">
+                        <h3>✅ Connection Successful</h3>
+                        <p>Firebase initialized successfully. Ready to test AI functions.</p>
+                    </div>
+                `;
+
+                addLog('You can now test AI response!', 'success');
+
+            } catch (error) {
+                addLog(`❌ Connection failed: ${error.message}`, 'error');
+                addLog(`Error code: ${error.code}`, 'error');
+                addLog(`Stack: ${error.stack}`, 'error');
+
+                setStatus('Firebase connection failed!', 'error');
+                resultDiv.innerHTML = `
+                    <div class="response-box">
+                        <h3>❌ Connection Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code || 'N/A'}</p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Connection';
+            }
+        };
+
+        window.testAIResponse = async function() {
+            const btn = document.getElementById('btnTestAI');
+            const resultDiv = document.getElementById('aiResult');
+            const role = document.getElementById('testRole').value;
+            const message = document.getElementById('testMessage').value;
+
+            if (!functions) {
+                setStatus('Please test connection first!', 'warning');
+                addLog('⚠️ Functions not initialized. Run connection test first.', 'warn');
+                return;
+            }
+
+            if (!role || !message) {
+                setStatus('Please fill in role and message!', 'warning');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Testing AI...';
+            resultDiv.innerHTML = '';
+
+            addLog('🤖 Testing AI Response Generation...', 'info');
+            addLog(`Role: ${role}`, 'info');
+            addLog(`Message: ${message.substring(0, 50)}...`, 'info');
+
+            try {
+                addLog('Calling generateAIResponse function...', 'info');
+
+                const generateResponse = httpsCallable(functions, "generateAIResponse");
+
+                const history = [
+                    { speaker: 'ai', text: 'Halo! Selamat datang. Bisa Anda ceritakan tentang pengalaman kerja Anda?' },
+                    { speaker: 'candidate', text: message }
+                ];
+
+                addLog('Sending request to Cloud Function...', 'info');
+                const startTime = Date.now();
+
+                const result = await generateResponse({
+                    role: role,
+                    history: history,
+                    lastUserMessage: message
+                });
+
+                const duration = Date.now() - startTime;
+                addLog(`✅ Function call completed in ${duration}ms`, 'success');
+
+                addLog('Parsing response...', 'info');
+                const response = result.data;
+
+                addLog(`Response type: ${typeof response}`, 'info');
+                addLog(`Response success: ${response.success}`, 'info');
+                addLog(`Response length: ${response.response?.length || 0}`, 'info');
+
+                if (response.success && response.response) {
+                    addLog('✅ AI Response received successfully!', 'success');
+                    addLog(`AI Response: ${response.response}`, 'success');
+
+                    setStatus('AI is working! Dynamic response generated!', 'success');
+                    resultDiv.innerHTML = `
+                        <div class="response-box">
+                            <h3>✅ AI Response (${duration}ms)</h3>
+                            <p>${response.response}</p>
+                        </div>
+                    `;
+
+                    // Check if it's the static fallback
+                    if (response.response.includes('Terima kasih atas jawabannya')) {
+                        addLog('⚠️ Warning: This might be the static fallback response', 'warn');
+                        addLog('Check Firebase Functions logs for errors', 'warn');
+                    }
+                } else {
+                    throw new Error('Invalid response format from Cloud Function');
+                }
+
+            } catch (error) {
+                addLog(`❌ AI test failed: ${error.message}`, 'error');
+                addLog(`Error code: ${error.code || 'N/A'}`, 'error');
+                addLog(`Error details: ${JSON.stringify(error.details || {})}`, 'error');
+
+                setStatus('AI test failed! Check logs below.', 'error');
+                resultDiv.innerHTML = `
+                    <div class="response-box">
+                        <h3>❌ Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Code:</strong> ${error.code || 'N/A'}</p>
+                        ${error.details ? `<p><strong>Details:</strong> ${JSON.stringify(error.details)}</p>` : ''}
+                    </div>
+                `;
+
+                addLog('Troubleshooting suggestions:', 'warn');
+                addLog('1. Check Firebase Functions logs: firebase functions:log', 'warn');
+                addLog('2. Verify API keys are configured: firebase functions:config:get', 'warn');
+                addLog('3. Ensure functions are deployed: firebase deploy --only functions', 'warn');
+                addLog('4. Check function region matches: europe-west1', 'warn');
+
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test AI Response';
+            }
+        };
+
+        window.clearLogs = function() {
+            document.getElementById('logContainer').innerHTML = '<div class="log-entry info">Logs cleared. Ready to test...</div>';
+        };
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            addLog('🚀 Diagnostic tool loaded', 'info');
+            addLog('Click "Test Connection" to begin', 'info');
+        });
+    </script>
+</body>
+</html>
