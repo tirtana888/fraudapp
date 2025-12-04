@@ -97,22 +97,30 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
   };
 
   const determineStage = (session: any): string => {
-    if (session.recruitmentStage) {
-      const stageMap: { [key: string]: string } = {
-        'application': 'Application',
-        'integrity_test': 'Integrity Check',
-        'interview_office': 'Interview',
-        'kyc': 'KYC Process',
-        'approved': 'Hired',
-        'rejected': 'Rejected'
-      };
-      return stageMap[session.recruitmentStage] || 'Processing';
+    const stageMap: { [key: string]: string } = {
+      'screening': 'Screening',
+      'processing': 'Screening',
+      'review': 'Review',
+      'interview': 'Interview',
+      'bc_check': 'Background Check',
+      'background_check': 'Background Check',
+      'hired': 'Hired',
+      'approved': 'Hired',
+      'rejected': 'Rejected',
+      'application': 'Application',
+      'integrity_test': 'Integrity Check',
+      'interview_office': 'Interview',
+      'kyc': 'KYC Process'
+    };
+
+    if (session.recruitmentStage && session.recruitmentStage !== 'screening' && session.recruitmentStage !== 'processing') {
+      return stageMap[session.recruitmentStage] || session.recruitmentStage;
     }
 
-    if (session.status === 'completed') return 'Interview Complete';
+    if (session.status === 'completed') return 'Review';
     if (session.status === 'pending_review') return 'Pending Review';
     if (session.status === 'in_progress') return 'In Progress';
-    return 'New';
+    return 'Screening';
   };
 
   const filterCandidates = () => {
@@ -167,14 +175,18 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
 
   const getStageBadge = (stage: string) => {
     const stageColors: { [key: string]: string } = {
-      'Application': 'bg-blue-100 text-blue-700 border-blue-300',
-      'Integrity Check': 'bg-purple-100 text-purple-700 border-purple-300',
-      'Interview': 'bg-indigo-100 text-indigo-700 border-indigo-300',
-      'Interview Complete': 'bg-cyan-100 text-cyan-700 border-cyan-300',
-      'KYC Process': 'bg-teal-100 text-teal-700 border-teal-300',
+      'Screening': 'bg-blue-100 text-blue-700 border-blue-300',
+      'Review': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+      'Interview': 'bg-orange-100 text-orange-700 border-orange-300',
+      'Background Check': 'bg-purple-100 text-purple-700 border-purple-300',
       'Hired': 'bg-green-100 text-green-700 border-green-300',
       'Rejected': 'bg-red-100 text-red-700 border-red-300',
+      'Application': 'bg-blue-100 text-blue-700 border-blue-300',
+      'Integrity Check': 'bg-purple-100 text-purple-700 border-purple-300',
+      'Interview Complete': 'bg-cyan-100 text-cyan-700 border-cyan-300',
+      'KYC Process': 'bg-teal-100 text-teal-700 border-teal-300',
       'Pending Review': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+      'In Progress': 'bg-blue-100 text-blue-700 border-blue-300',
       'New': 'bg-gray-100 text-gray-700 border-gray-300'
     };
     return stageColors[stage] || 'bg-gray-100 text-gray-700 border-gray-300';

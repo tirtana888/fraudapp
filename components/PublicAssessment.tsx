@@ -172,6 +172,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
           date: new Date().toISOString(),
           status: 'active',
+          recruitmentStage: 'screening',
           structuredAssessment: ftAnswers,
           financialStrainResults: finAnswers,
           sjtResults: sjtAnswers,
@@ -290,6 +291,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     try {
       await updateSessionInDB(sessionId, {
         status: 'completed',
+        recruitmentStage: 'review',
         analysis: finalAnalysis,
         transcript: chatHistory
         // source field is NOT updated here to preserve original source set during session creation

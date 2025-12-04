@@ -83,15 +83,6 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       );
 
       candidatesWithDetails.sort((a, b) => {
-        const aRiskScore = a.analysis?.scores ?
-          Math.round(((a.analysis.scores.pressure || 0) + (a.analysis.scores.opportunity || 0) + (a.analysis.scores.rationalization || 0)) / 3) : 0;
-        const bRiskScore = b.analysis?.scores ?
-          Math.round(((b.analysis.scores.pressure || 0) + (b.analysis.scores.opportunity || 0) + (b.analysis.scores.rationalization || 0)) / 3) : 0;
-
-        if (bRiskScore !== aRiskScore) {
-          return bRiskScore - aRiskScore;
-        }
-
         return new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime();
       });
 

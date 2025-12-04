@@ -1142,6 +1142,7 @@ export const createInterviewSessionFromApplication = async (
       },
       date: new Date().toISOString(),
       status: 'pending_review' as const,
+      recruitmentStage: 'screening',
       transcript: [
         {
           speaker: 'ai' as const,
