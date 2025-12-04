@@ -331,22 +331,33 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   const brandColor = company?.brandColor || '#CC5500';
   const logoUrl = company?.logoUrl;
 
+  const Watermark = () => (
+    <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 py-3 px-4 z-50 shadow-lg">
+      <div className="max-w-2xl mx-auto flex items-center justify-center gap-2">
+        <ShieldCheck size={16} className="text-orange-600" />
+        <span className="text-xs text-gray-600 font-medium">
+          Powered by <span className="font-bold text-orange-600">goodhire.one</span>
+        </span>
+      </div>
+    </div>
+  );
+
   if (step === 'login') {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 font-sans">
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 font-sans pb-20">
               <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100">
                   <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
                       <Lock size={32} />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Seleksi Integritas</h2>
                   <p className="text-gray-500 mb-6 text-sm">Masukkan kode akses unik yang dikirimkan ke email Anda untuk memulai tes.</p>
-                  
+
                   <form onSubmit={handleVerifyCode} className="space-y-4">
                       <div className="relative">
                           <KeyRound className="absolute left-4 top-3.5 text-gray-400" size={20} />
-                          <input 
-                              type="text" 
-                              value={accessCode} 
+                          <input
+                              type="text"
+                              value={accessCode}
                               onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                               placeholder="KODE AKSES (Contoh: X7Y9Z2)"
                               className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-center font-mono text-lg tracking-widest uppercase focus:ring-2 focus:ring-orange-500 outline-none"
@@ -354,8 +365,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                           />
                       </div>
                       {errorMsg && <p className="text-red-500 text-sm font-bold bg-red-50 p-2 rounded">{errorMsg}</p>}
-                      <button 
-                          type="submit" 
+                      <button
+                          type="submit"
                           disabled={isVerifyingCode || !accessCode}
                           className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold shadow-lg disabled:opacity-50 flex justify-center items-center gap-2 hover:bg-orange-700 transition-all"
                       >
@@ -363,6 +374,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                       </button>
                   </form>
               </div>
+              <Watermark />
           </div>
       );
   }
@@ -397,7 +409,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   
   if (step === 'done') {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50 p-4 font-sans">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50 p-4 font-sans pb-20">
           <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center space-y-6">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 size={48} className="text-green-600" />
@@ -423,6 +435,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
               Semoga berhasil! 🎉
             </p>
           </div>
+          <Watermark />
         </div>
       );
   }
@@ -625,6 +638,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
             </div>
         )}
       </div>
+      <Watermark />
     </div>
   );
 };

@@ -11,6 +11,17 @@ interface ActiveInterviewProps {
   existingSession?: InterviewSession;
 }
 
+const Watermark: React.FC = () => (
+  <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 py-3 px-4 z-50 shadow-lg dark:bg-gray-800/95 dark:border-gray-700">
+    <div className="max-w-5xl mx-auto flex items-center justify-center gap-2">
+      <ShieldCheck size={16} className="text-orange-600" />
+      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+        Powered by <span className="font-bold text-orange-600">goodhire.one</span>
+      </span>
+    </div>
+  </div>
+);
+
 const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId, existingSession }) => {
   // This component is now primarily a REVIEWER for sessions created via Public Link
   const [session, setSession] = useState<InterviewSession | undefined>(existingSession);
@@ -58,15 +69,16 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
 
   // Otherwise show review interface for incomplete sessions
   return (
-      <div className="max-w-5xl mx-auto space-y-6 pb-20">
-          <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Review Jawaban Kandidat</h2>
-              <button onClick={handleReAnalyze} disabled={isReAnalyzing} className="bg-brand-orange text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90">
-                 {isReAnalyzing ? 'Menganalisis...' : 'Simpan & Finalisasi Laporan'}
-              </button>
-          </div>
+      <>
+        <div className="max-w-5xl mx-auto space-y-6 pb-20">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Review Jawaban Kandidat</h2>
+                <button onClick={handleReAnalyze} disabled={isReAnalyzing} className="bg-brand-orange text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90">
+                   {isReAnalyzing ? 'Menganalisis...' : 'Simpan & Finalisasi Laporan'}
+                </button>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* LEFT: SURVEY RESULTS */}
               <div className="space-y-6">
                   <div className="bg-white dark:bg-brand-slate-850 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
@@ -131,8 +143,10 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
                       )}
                   </div>
               </div>
-          </div>
-      </div>
+            </div>
+        </div>
+        <Watermark />
+      </>
   );
 };
 
