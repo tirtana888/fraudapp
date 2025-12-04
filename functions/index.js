@@ -638,23 +638,104 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
     }
   }
 
-  // Final fallback - manual calculation
+  // Final fallback - manual calculation with dynamic red flags
   console.error("[ANALYSIS] ⚠️ ALL AI PROVIDERS FAILED! Using manual fallback calculation.");
   console.error("[ANALYSIS] Check: 1) API Keys configured? 2) API Keys valid? 3) Quota exceeded?");
-  const scores = { pressure: 50, opportunity: 50, rationalization: 50 };
+
+  // Calculate scores from assessment data
+  const categoryScores = { pressure: 0, opportunity: 0, rationalization: 0 };
+  const categoryCounts = { pressure: 0, opportunity: 0, rationalization: 0 };
+
+  structuredAssessment.forEach((item) => {
+    const score = typeof item.response === 'number' ? item.response :
+                  item.response === 'high' ? 5 :
+                  item.response === 'medium' ? 3 : 1;
+
+    if (item.category === 'pressure' || item.category === 'opportunity' || item.category === 'rationalization') {
+      categoryScores[item.category] += score;
+      categoryCounts[item.category]++;
+    }
+  });
+
+  const pressureScore = categoryCounts.pressure ? (categoryScores.pressure / (categoryCounts.pressure * 5)) * 100 : 50;
+  const opportunityScore = categoryCounts.opportunity ? (categoryScores.opportunity / (categoryCounts.opportunity * 5)) * 100 : 50;
+  const rationalizationScore = categoryCounts.rationalization ? (categoryScores.rationalization / (categoryCounts.rationalization * 5)) * 100 : 50;
+
+  const scores = {
+    pressure: Math.round(pressureScore),
+    opportunity: Math.round(opportunityScore),
+    rationalization: Math.round(rationalizationScore)
+  };
+
+  const avgScore = Math.round((scores.pressure + scores.opportunity + scores.rationalization) / 3);
+
+  // Generate dynamic red flags based on scores
+  const redFlags = [];
+
+  if (scores.pressure > 60) {
+    redFlags.push("Kandidat menunjukkan indikator tekanan finansial tinggi berdasarkan jawaban assessment.");
+  } else if (scores.pressure > 40) {
+    redFlags.push("Kandidat melaporkan tingkat stres keuangan sedang yang perlu diperhatikan.");
+  }
+
+  if (scores.opportunity > 60) {
+    redFlags.push("Terdapat indikasi pemahaman kandidat terhadap celah dalam sistem kontrol internal.");
+  } else if (scores.opportunity > 40) {
+    redFlags.push("Kandidat menunjukkan kesadaran terhadap potensi kelemahan dalam prosedur perusahaan.");
+  }
+
+  if (scores.rationalization > 60) {
+    redFlags.push("Pola jawaban menunjukkan kecenderungan rasionalisasi perilaku tidak etis.");
+  } else if (scores.rationalization > 40) {
+    redFlags.push("Kandidat menunjukkan beberapa pola pemikiran yang dapat mengarah pada rasionalisasi.");
+  }
+
+  // Check SJT results for high-risk choices
+  if (sjtResults && sjtResults.length > 0) {
+    let highRiskChoices = 0;
+    sjtResults.forEach(item => {
+      if (item.selectedOptionIndex !== null) {
+        const risk = item.options[item.selectedOptionIndex].riskWeight;
+        if (risk === 'critical' || risk === 'high') {
+          highRiskChoices++;
+        }
+      }
+    });
+
+    if (highRiskChoices > 0) {
+      redFlags.push(`Kandidat memilih ${highRiskChoices} opsi berisiko tinggi dalam skenario situational judgment.`);
+    }
+  }
+
+  // If no specific flags, add generic one
+  if (redFlags.length === 0) {
+    redFlags.push("Profil risiko dalam batas wajar, namun perlu review manual untuk validasi.");
+  }
+
+  // Add note about AI unavailability
+  redFlags.push("⚠️ Catatan: Analisis AI tidak tersedia - hasil berdasarkan kalkulasi manual dari skor assessment.");
+
+  // Determine risk level
+  let riskLevel = "Low";
+  if (avgScore > 70) riskLevel = "Critical";
+  else if (avgScore > 55) riskLevel = "High";
+  else if (avgScore > 35) riskLevel = "Medium";
+
+  // Generate summary
+  const summary = `Kandidat menunjukkan profil risiko ${riskLevel.toLowerCase()} berdasarkan analisis assessment dengan skor tekanan ${scores.pressure}, peluang ${scores.opportunity}, dan rasionalisasi ${scores.rationalization}. Analisis lengkap dengan AI tidak dapat dilakukan saat ini, sehingga hasil ini berdasarkan kalkulasi manual dari jawaban assessment kandidat. Disarankan untuk melakukan review manual terhadap transkrip wawancara dan verifikasi lebih lanjut sebelum pengambilan keputusan final.`;
 
   return {
     success: true,
     analysis: {
       scores: scores,
-      riskLevel: "Medium",
-      summary: "Analisis AI mengalami gangguan. Skor dihitung dari kuesioner. Mohon review manual transkrip.",
-      redFlags: ["Analisis AI tidak tersedia - perlu review manual"],
-      recommendation: "Lakukan review manual lengkap terhadap transkrip dan jawaban kandidat.",
+      riskLevel: riskLevel,
+      summary: summary,
+      redFlags: redFlags,
+      recommendation: "Lakukan review manual lengkap terhadap transkrip wawancara. Verifikasi latar belakang kandidat dan referensi kerja sebelumnya. Pertimbangkan untuk melakukan wawancara lanjutan jika diperlukan.",
       consistencyScore: 0,
       euphemismScore: 0,
       sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
-      benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
+      benchmarkComparison: { candidateAvg: avgScore, companyAvg: 48, industryAvg: 45 }
     }
   };
 });
