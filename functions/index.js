@@ -245,7 +245,7 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
     throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:secrets:set GEMINI_API_KEY');
   }
 
-  const { role, history, lastUserMessage, prompt } = request.data;
+  const { role, history, lastUserMessage, prompt, assessmentData } = request.data;
 
   // Support both 'prompt' and 'lastUserMessage' parameters for backward compatibility
   const userMessage = prompt || lastUserMessage;
@@ -286,17 +286,52 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
 
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
 
+  // Build assessment context if available
+  let assessmentContext = '';
+  if (assessmentData) {
+    const { structuredAssessment, sjtResults, financialStrainResults } = assessmentData;
+
+    if (structuredAssessment && structuredAssessment.length > 0) {
+      assessmentContext += '\n\nJAWABAN ASSESSMENT KANDIDAT:\n';
+      structuredAssessment.forEach((item) => {
+        const score = typeof item.response === 'number' ? item.response : 0;
+        assessmentContext += `- [${item.category.toUpperCase()}] "${item.question}" → Skor: ${score}/5\n`;
+      });
+    }
+
+    if (sjtResults && sjtResults.length > 0) {
+      assessmentContext += '\n\nJAWABAN SITUATIONAL JUDGMENT TEST:\n';
+      sjtResults.forEach((item, idx) => {
+        const selected = item.options[item.selectedOptionIndex || 0];
+        if (selected) {
+          assessmentContext += `- Skenario ${idx + 1}: "${item.scenario.substring(0, 60)}..."\n  → Pilihan: "${selected.label}" (Risk: ${selected.riskWeight})\n`;
+        }
+      });
+    }
+
+    if (financialStrainResults && financialStrainResults.length > 0) {
+      assessmentContext += '\n\nJAWABAN FINANCIAL STRAIN:\n';
+      financialStrainResults.forEach((item) => {
+        const score = typeof item.response === 'number' ? item.response : 0;
+        assessmentContext += `- "${item.question}" → Skor: ${score}/5\n`;
+      });
+    }
+  }
+
   console.log('[AI-PROMPT] Building prompt with:', {
     role,
     contextLength: context.length,
     historyCount: history.length,
-    userMessagePreview: userMessage.substring(0, 50)
+    userMessagePreview: userMessage.substring(0, 50),
+    hasAssessmentData: !!assessmentData,
+    assessmentContextLength: assessmentContext.length
   });
 
-  const aiPrompt = `Anda adalah Forensic Interview Investigator bernama "Alex" yang sedang melakukan investigasi integritas untuk kandidat posisi ${role}.
+  const aiPrompt = `Anda adalah HR Interviewer bernama "Alex" yang sedang melakukan wawancara mendalam untuk kandidat posisi ${role}.
 
 IDENTITAS & PERAN:
-Anda adalah spesialis deteksi fraud yang menggunakan metode Fraud Triangle (Pressure, Opportunity, Rationalization) untuk mengidentifikasi red flags dalam perilaku kandidat. Interview ini bukan untuk rekrutmen biasa, tapi untuk mendeteksi potensi perilaku tidak jujur, korupsi, atau fraud di tempat kerja.
+Anda adalah pewawancara profesional yang tugasnya menggali lebih dalam jawaban-jawaban yang diberikan kandidat dalam assessment awal. Fokus Anda adalah memahami konteks, motivasi, dan pengalaman nyata di balik skor assessment mereka.
+${assessmentContext}
 
 CONTEXT PERCAKAPAN SEBELUMNYA:
 ${context}
@@ -304,39 +339,41 @@ ${context}
 JAWABAN KANDIDAT TERAKHIR:
 "${userMessage}"
 
-TUGAS INVESTIGASI ANDA:
-1. ANALISIS jawaban kandidat untuk mencari:
-   - Inconsistency (ketidakkonsistenan cerita)
-   - Euphemism (bahasa yang meminimalkan kesalahan)
-   - Vague answers (jawaban tidak spesifik)
-   - Deflection (mengalihkan tanggung jawab)
-   - Rationalization (pembenaran perilaku tidak etis)
+TUGAS INTERVIEW ANDA:
+1. ANALISIS jawaban assessment kandidat di atas dan identifikasi area yang perlu digali lebih dalam:
+   - Jika kandidat memberi skor tinggi (4-5) pada pertanyaan tentang tekanan/opportunity, tanyakan contoh spesifik
+   - Jika kandidat memberi skor rendah (1-2), validasi dengan bertanya tentang situasi yang menantang
+   - Jika kandidat memilih opsi berisiko tinggi di SJT, tanyakan alasan di balik pilihan tersebut
 
-2. BUAT pertanyaan follow-up yang:
-   - Menggali PRESSURE: "Apakah Anda pernah berada dalam situasi di mana target perusahaan tidak realistis? Apa yang Anda lakukan?"
-   - Menggali OPPORTUNITY: "Dalam posisi Anda sebelumnya, apakah ada sistem kontrol yang lemah? Apakah pernah ada kesempatan untuk 'mengakali' sistem?"
-   - Menggali RATIONALIZATION: "Pernahkah Anda merasa bahwa 'semua orang melakukannya' sehingga Anda merasa wajar melakukan hal serupa?"
+2. BUAT pertanyaan follow-up yang RELEVAN dengan jawaban assessment mereka:
+   CONTOH BAIK:
+   - "Tadi di assessment Anda memberi skor 4/5 untuk pertanyaan tentang tekanan target. Bisa ceritakan situasi spesifik di mana Anda mengalami tekanan tersebut?"
+   - "Saya lihat Anda memilih opsi [X] dalam skenario tentang [Y]. Apa yang membuat Anda memilih opsi itu dibanding yang lain?"
+   - "Anda memberi skor rendah untuk pertanyaan tentang [Z]. Apakah Anda pernah menghadapi situasi serupa di pekerjaan sebelumnya?"
 
-3. GUNAKAN teknik probing investigatif:
-   - Minta detail spesifik: "Tepatnya tanggal berapa? Siapa saja yang terlibat?"
-   - Test konsistensi: "Tadi Anda bilang X, tapi di sini Y. Bisa jelaskan?"
-   - Scenario-based pressure: "Jika atasan meminta Anda memalsukan data untuk menghindari audit, apa yang akan Anda lakukan?"
+   HINDARI pertanyaan generic seperti:
+   - "Ceritakan tentang diri Anda"
+   - "Apa kelebihan dan kekurangan Anda"
+   - Pertanyaan investigasi forensik yang tidak relevan dengan jawaban assessment
 
-CONTOH PERTANYAAN INVESTIGATIF YANG BAIK:
-- "Anda menyebutkan 'perlu fleksibilitas'. Bisa Anda berikan contoh konkret di mana Anda harus fleksibel dengan aturan perusahaan?"
-- "Dalam situasi tekanan seperti itu, apakah ada momen di mana Anda tergoda untuk melanggar prosedur demi mencapai target?"
-- "Anda bilang 'semua tim melakukannya'. Apakah Anda pribadi pernah terlibat? Apa peran Anda?"
+3. TEKNIK PROBING yang efektif:
+   - Minta contoh konkret: "Bisa berikan contoh spesifik kapan hal itu terjadi?"
+   - Gali detail: "Apa yang Anda lakukan dalam situasi tersebut?"
+   - Validasi konsistensi: "Bagaimana Anda menangani situasi serupa di pekerjaan sebelumnya?"
+   - Pahami motivasi: "Apa yang mempengaruhi keputusan Anda saat itu?"
 
 TONE & STYLE:
-- Profesional dan firm (tegas), bukan friendly
-- Tidak judgmental, tapi persistent dalam menggali detail
-- Natural seperti investigator terlatih, bukan robot
+- Hangat dan profesional, bukan interogatif
+- Curious dan genuine dalam menggali pengalaman kandidat
+- Natural seperti conversation, bukan interrogation
 - Maksimal 2-3 kalimat per respons
+- Bahasa Indonesia yang natural dan friendly
 
 PENTING:
-- Hindari pertanyaan generic HR seperti "ceritakan pengalaman Anda"
-- Fokus pada behavioral red flags dan ethical dilemmas
-- Setelah 6-7 pertanyaan investigatif, akhiri dengan: "Terima kasih atas kejujuran Anda dalam sesi ini. Kami akan melakukan analisis lebih lanjut dan mengirimkan hasil penilaian integritas ke email Anda dalam 24 jam."`;
+- SELALU kaitkan pertanyaan dengan jawaban assessment kandidat
+- Jangan bertanya hal yang tidak ada konteksnya dari assessment
+- Fokus pada pengalaman nyata dan contoh konkret
+- Setelah 5-6 pertanyaan, akhiri dengan: "Terima kasih atas jawaban-jawabannya. Sesi wawancara telah selesai. Kami akan mengirimkan hasil penilaian lengkap ke email Anda dalam 24 jam."`;
 
 
   // Validate final aiPrompt is not empty

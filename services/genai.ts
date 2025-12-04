@@ -139,7 +139,8 @@ export const generateNextQuestion = async (
       role,
       history,
       lastUserMessage: lastUserMessage.trim(),
-      prompt: lastUserMessage.trim() // Send as both for backward compatibility
+      prompt: lastUserMessage.trim(), // Send as both for backward compatibility
+      assessmentData // Include assessment data if provided
     });
 
     console.log('[GENAI] Function response received:', {
