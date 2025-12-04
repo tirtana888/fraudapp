@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend
+import {
+  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Tooltip
 } from 'recharts';
 import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText, MessageSquare } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile } from '../types';
@@ -13,6 +13,98 @@ interface ReportViewProps {
   isDarkMode?: boolean;
   onReReview?: () => void;
 }
+
+// Custom Fraud Triangle Component
+const DynamicFraudTriangle: React.FC<{
+  pressure: number;
+  opportunity: number;
+  rationalization: number;
+  isDarkMode?: boolean;
+}> = ({ pressure, opportunity, rationalization, isDarkMode }) => {
+  const width = 300;
+  const height = 280;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxRadius = 100;
+
+  // Calculate positions based on values (0-100)
+  // Top vertex: Pressure
+  const pressureX = centerX;
+  const pressureY = centerY - (pressure / 100) * maxRadius;
+
+  // Bottom Right vertex: Opportunity
+  const opportunityAngle = (Math.PI / 180) * 30; // 30 degrees
+  const opportunityX = centerX + (opportunity / 100) * maxRadius * Math.cos(opportunityAngle);
+  const opportunityY = centerY + (opportunity / 100) * maxRadius * Math.sin(opportunityAngle);
+
+  // Bottom Left vertex: Rationalization
+  const rationalizationAngle = (Math.PI / 180) * 150; // 150 degrees
+  const rationalizationX = centerX + (rationalization / 100) * maxRadius * Math.cos(rationalizationAngle);
+  const rationalizationY = centerY + (rationalization / 100) * maxRadius * Math.sin(rationalizationAngle);
+
+  // Create path for the triangle
+  const trianglePath = `M ${pressureX} ${pressureY} L ${opportunityX} ${opportunityY} L ${rationalizationX} ${rationalizationY} Z`;
+
+  // Reference triangle (max values)
+  const refPressureY = centerY - maxRadius;
+  const refOpportunityX = centerX + maxRadius * Math.cos(opportunityAngle);
+  const refOpportunityY = centerY + maxRadius * Math.sin(opportunityAngle);
+  const refRationalizationX = centerX + maxRadius * Math.cos(rationalizationAngle);
+  const refRationalizationY = centerY + maxRadius * Math.sin(rationalizationAngle);
+  const refPath = `M ${centerX} ${refPressureY} L ${refOpportunityX} ${refOpportunityY} L ${refRationalizationX} ${refRationalizationY} Z`;
+
+  return (
+    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="mx-auto">
+      {/* Reference triangle (light gray) */}
+      <path
+        d={refPath}
+        fill={isDarkMode ? '#1e293b' : '#f1f5f9'}
+        stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+        strokeWidth="2"
+        strokeDasharray="5,5"
+      />
+
+      {/* Actual triangle based on scores */}
+      <path
+        d={trianglePath}
+        fill="url(#fraudGradient)"
+        stroke="#CC5500"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+
+      {/* Gradient definition */}
+      <defs>
+        <linearGradient id="fraudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#CC5500" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#FF6B35" stopOpacity="0.3" />
+        </linearGradient>
+      </defs>
+
+      {/* Vertices with labels */}
+      {/* Pressure (Top) */}
+      <circle cx={pressureX} cy={pressureY} r="6" fill="#ef4444" stroke="#fff" strokeWidth="2" />
+      <text x={pressureX} y={pressureY - 15} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#f87171' : '#dc2626'}>
+        Tekanan: {pressure}
+      </text>
+
+      {/* Opportunity (Bottom Right) */}
+      <circle cx={opportunityX} cy={opportunityY} r="6" fill="#3b82f6" stroke="#fff" strokeWidth="2" />
+      <text x={opportunityX + 15} y={opportunityY + 5} textAnchor="start" className="text-xs font-bold" fill={isDarkMode ? '#60a5fa' : '#2563eb'}>
+        Peluang: {opportunity}
+      </text>
+
+      {/* Rationalization (Bottom Left) */}
+      <circle cx={rationalizationX} cy={rationalizationY} r="6" fill="#eab308" stroke="#fff" strokeWidth="2" />
+      <text x={rationalizationX - 15} y={rationalizationY + 5} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#facc15' : '#ca8a04'}>
+        Rasionalisasi: {rationalization}
+      </text>
+
+      {/* Center point */}
+      <circle cx={centerX} cy={centerY} r="3" fill={isDarkMode ? '#94a3b8' : '#64748b'} opacity="0.5" />
+    </svg>
+  );
+};
 
 const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, onReReview }) => {
   const { analysis, candidate, companyId } = session;
@@ -86,13 +178,6 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
     rationalization: safeNumber(analysis.scores?.rationalization),
     opportunity: safeNumber(analysis.scores?.opportunity),
   };
-
-  // Chart Data using safe scores
-  const radarData = [
-    { subject: 'Tekanan', A: scores.pressure, fullMark: 100 },
-    { subject: 'Rasionalisasi', A: scores.rationalization, fullMark: 100 },
-    { subject: 'Peluang', A: scores.opportunity, fullMark: 100 },
-  ];
 
   const benchmarkData = analysis.benchmarkComparison ? [
     { name: 'Kandidat', score: safeNumber(analysis.benchmarkComparison.candidateAvg), fill: '#CC5500' },
@@ -181,44 +266,43 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
         
         {/* LEFT COLUMN */}
         <div className="lg:col-span-5 space-y-6">
-            {/* Radar Chart */}
+            {/* Dynamic Fraud Triangle */}
             <div className="bg-white dark:bg-brand-slate-850 p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col items-center transition-colors">
             <h3 className="w-full text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 md:mb-6 border-b border-gray-100 dark:border-slate-700 pb-4 text-center">Visualisasi Fraud Triangle</h3>
-            <div className="w-full h-[250px] md:h-[300px] relative">
-                <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                    <PolarGrid stroke={isDarkMode ? '#334155' : '#e2e8f0'} />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 10, fontWeight: '700' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Radar
-                    name={candidate.name}
-                    dataKey="A"
-                    stroke="#CC5500"
-                    strokeWidth={3}
-                    fill="#CC5500"
-                    fillOpacity={0.3}
-                    />
-                    <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ color: '#CC5500', fontWeight: 'bold' }}
-                    />
-                </RadarChart>
-                </ResponsiveContainer>
+            <div className="w-full h-[280px] relative flex items-center justify-center">
+                <DynamicFraudTriangle
+                  pressure={scores.pressure}
+                  opportunity={scores.opportunity}
+                  rationalization={scores.rationalization}
+                  isDarkMode={isDarkMode}
+                />
             </div>
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mt-4 text-center">
-                <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Tekanan</p>
-                    <p className="text-lg font-black text-red-700 dark:text-red-400">{scores.pressure}</p>
+                    <p className="text-2xl font-black text-red-700 dark:text-red-400">{scores.pressure}</p>
+                    <div className="mt-1 h-1.5 bg-red-200 dark:bg-red-900/40 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-600 dark:bg-red-500 rounded-full" style={{ width: `${scores.pressure}%` }}></div>
+                    </div>
                 </div>
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Peluang</p>
-                    <p className="text-lg font-black text-blue-700 dark:text-blue-400">{scores.opportunity}</p>
+                    <p className="text-2xl font-black text-blue-700 dark:text-blue-400">{scores.opportunity}</p>
+                    <div className="mt-1 h-1.5 bg-blue-200 dark:bg-blue-900/40 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600 dark:bg-blue-500 rounded-full" style={{ width: `${scores.opportunity}%` }}></div>
+                    </div>
                 </div>
-                <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-2 border-yellow-200 dark:border-yellow-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Rasionalisasi</p>
-                    <p className="text-lg font-black text-yellow-700 dark:text-yellow-400">{scores.rationalization}</p>
+                    <p className="text-2xl font-black text-yellow-700 dark:text-yellow-400">{scores.rationalization}</p>
+                    <div className="mt-1 h-1.5 bg-yellow-200 dark:bg-yellow-900/40 rounded-full overflow-hidden">
+                      <div className="h-full bg-yellow-600 dark:bg-yellow-500 rounded-full" style={{ width: `${scores.rationalization}%` }}></div>
+                    </div>
                 </div>
             </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center italic">
+              Bentuk triangle berubah sesuai nilai masing-masing komponen
+            </p>
             </div>
 
             {/* ENTERPRISE: Benchmarking Chart */}
