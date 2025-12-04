@@ -66,7 +66,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <div className="bg-brand-orange p-1.5 rounded-lg text-white">
               <ShieldAlert size={20} />
             </div>
-            <span className="font-bold text-xl text-gray-800 tracking-tight">FraudGuard</span>
+            <span className="font-bold text-xl text-gray-800 tracking-tight">HireGood.one</span>
             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold border border-green-200">SECURE</span>
         </div>
 
@@ -215,7 +215,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
         
         <div className="absolute bottom-6 left-0 right-0 text-center">
-             <p className="text-xs text-gray-300 font-medium">© 2024 FraudGuard System AI</p>
+             <p className="text-xs text-gray-300 font-medium">© 2024 HireGood.one System AI</p>
         </div>
       </div>
 

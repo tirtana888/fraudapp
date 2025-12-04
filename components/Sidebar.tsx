@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             <ShieldAlert size={24} />
             </div>
             <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight font-sans">FraudGuard</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight font-sans">HireGood.one</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider truncate max-w-[120px]">{companyName}</p>
             </div>
         </div>
