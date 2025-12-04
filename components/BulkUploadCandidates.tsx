@@ -3,6 +3,7 @@ import { Upload, Download, AlertCircle, CheckCircle, X, FileSpreadsheet } from '
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { blastAssessmentInvites } from '../services/firebase';
+import { useToast } from './Toast';
 
 interface BulkUploadCandidatesProps {
   companyId: string;
@@ -25,6 +26,7 @@ interface ValidationError {
 }
 
 export default function BulkUploadCandidates({ companyId, companyName, onClose, onSuccess }: BulkUploadCandidatesProps) {
+  const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<CandidateRow[]>([]);
@@ -69,7 +71,7 @@ export default function BulkUploadCandidates({ companyId, companyName, onClose, 
           processData(results.data as CandidateRow[]);
         },
         error: (error) => {
-          alert('Error parsing CSV: ' + error.message);
+          toast.error('Error parsing CSV: ' + error.message);
         }
       });
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
@@ -82,12 +84,12 @@ export default function BulkUploadCandidates({ companyId, companyName, onClose, 
           const jsonData = XLSX.utils.sheet_to_json(firstSheet) as CandidateRow[];
           processData(jsonData);
         } catch (error) {
-          alert('Error parsing Excel: ' + (error as Error).message);
+          toast.error('Error parsing Excel: ' + (error as Error).message);
         }
       };
       reader.readAsBinaryString(file);
     } else {
-      alert('Format file tidak didukung. Gunakan CSV atau Excel (.xlsx, .xls)');
+      toast.error('Format file tidak didukung. Gunakan CSV atau Excel (.xlsx, .xls)');
     }
   };
 
