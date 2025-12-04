@@ -231,17 +231,18 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
   const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
   const functions = require("firebase-functions");
 
-  // Get API keys from Firebase config
-  // Set with: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"
-  const GEMINI_API_KEY = functions.config().gemini?.key;
-  const OPENAI_API_KEY = functions.config().openai?.key;
+  // Get API keys from environment variables (Firebase Secrets)
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
   console.log(`[AI-CONFIG] Gemini API Key present: ${!!GEMINI_API_KEY}`);
+  console.log(`[AI-CONFIG] Gemini API Key length: ${GEMINI_API_KEY?.length || 0}`);
   console.log(`[AI-CONFIG] OpenAI API Key present: ${!!OPENAI_API_KEY}`);
+  console.log(`[AI-CONFIG] OpenAI API Key length: ${OPENAI_API_KEY?.length || 0}`);
 
   if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
     console.error('[AI-CONFIG] NO API KEYS CONFIGURED! Using static fallback.');
-    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
+    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:secrets:set GEMINI_API_KEY');
   }
 
   const { role, history, lastUserMessage, prompt } = request.data;
@@ -442,16 +443,18 @@ exports.analyzeFraudRisk = onCall({ region: "europe-west1" }, async (request) =>
   const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
   const functions = require("firebase-functions");
 
-  // Get API keys from Firebase config
-  const GEMINI_API_KEY = functions.config().gemini?.key;
-  const OPENAI_API_KEY = functions.config().openai?.key;
+  // Get API keys from environment variables (Firebase Secrets)
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
   console.log(`[ANALYSIS-CONFIG] Gemini API Key present: ${!!GEMINI_API_KEY}`);
+  console.log(`[ANALYSIS-CONFIG] Gemini API Key length: ${GEMINI_API_KEY?.length || 0}`);
   console.log(`[ANALYSIS-CONFIG] OpenAI API Key present: ${!!OPENAI_API_KEY}`);
+  console.log(`[ANALYSIS-CONFIG] OpenAI API Key length: ${OPENAI_API_KEY?.length || 0}`);
 
   if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
     console.error('[ANALYSIS-CONFIG] NO API KEYS CONFIGURED!');
-    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
+    throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:secrets:set GEMINI_API_KEY');
   }
 
   const { role, history, structuredAssessment, sjtResults } = request.data;
