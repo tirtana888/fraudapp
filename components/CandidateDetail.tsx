@@ -69,15 +69,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         }
       }
 
-      const riskScore = sessionData.analysis?.riskScore || sessionData.analysis?.fraudScore || calculateRiskScore(sessionData);
+      const riskScore = calculateRiskScore(sessionData);
 
-      const fraudTriangle = sessionData.fraudTriangle || {
-        pressure: Math.floor(Math.random() * 30) + 10,
-        opportunity: Math.floor(Math.random() * 40) + 20,
-        rationalization: riskScore > 50 ? Math.floor(Math.random() * 30) + 60 : Math.floor(Math.random() * 40) + 10
+      const fraudTriangle = sessionData.analysis?.scores ? {
+        pressure: sessionData.analysis.scores.pressure || 0,
+        opportunity: sessionData.analysis.scores.opportunity || 0,
+        rationalization: sessionData.analysis.scores.rationalization || 0
+      } : {
+        pressure: 0,
+        opportunity: 0,
+        rationalization: 0
       };
 
-      const financialStrain = sessionData.financialStrain || (riskScore > 50 ? Math.floor(Math.random() * 30) + 60 : Math.floor(Math.random() * 40) + 10);
+      const financialStrain = sessionData.analysis?.scores?.pressure || 0;
 
       const verificationStatus = sessionData.verificationStatus || {
         email: true,
@@ -102,11 +106,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   };
 
   const calculateRiskScore = (session: any): number => {
-    if (session.analysis?.riskLevel === 'CRITICAL') return 90;
-    if (session.analysis?.riskLevel === 'HIGH') return 65;
-    if (session.analysis?.riskLevel === 'MEDIUM') return 35;
-    if (session.analysis?.riskLevel === 'LOW') return 10;
-    return 25;
+    if (!session.analysis?.scores) {
+      if (session.analysis?.riskLevel === 'CRITICAL') return 90;
+      if (session.analysis?.riskLevel === 'HIGH') return 65;
+      if (session.analysis?.riskLevel === 'MEDIUM') return 35;
+      if (session.analysis?.riskLevel === 'LOW') return 10;
+      return 0;
+    }
+
+    const { pressure = 0, opportunity = 0, rationalization = 0 } = session.analysis.scores;
+    const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
+    return avgScore;
   };
 
   const handleStatusUpdate = async (newStage: string) => {

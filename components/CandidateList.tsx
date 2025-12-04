@@ -61,9 +61,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
             }
           }
 
-          const riskScore = sessionData.analysis?.riskScore ||
-                           sessionData.analysis?.fraudScore ||
-                           calculateRiskScore(sessionData);
+          const riskScore = calculateRiskScore(sessionData);
 
           const stage = determineStage(sessionData);
 
@@ -89,11 +87,17 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
   };
 
   const calculateRiskScore = (session: any): number => {
-    if (session.analysis?.riskLevel === 'CRITICAL') return 90;
-    if (session.analysis?.riskLevel === 'HIGH') return 65;
-    if (session.analysis?.riskLevel === 'MEDIUM') return 35;
-    if (session.analysis?.riskLevel === 'LOW') return 10;
-    return 25;
+    if (!session.analysis?.scores) {
+      if (session.analysis?.riskLevel === 'CRITICAL') return 90;
+      if (session.analysis?.riskLevel === 'HIGH') return 65;
+      if (session.analysis?.riskLevel === 'MEDIUM') return 35;
+      if (session.analysis?.riskLevel === 'LOW') return 10;
+      return 0;
+    }
+
+    const { pressure = 0, opportunity = 0, rationalization = 0 } = session.analysis.scores;
+    const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
+    return avgScore;
   };
 
   const determineStage = (session: any): string => {
