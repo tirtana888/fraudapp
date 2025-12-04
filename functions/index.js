@@ -342,9 +342,9 @@ PENTING:
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ];
 
-      // Use Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview)
+      // Use Gemini 2.0 Flash Experimental (Stable Release)
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-thinking-exp-1219",
+        model: "gemini-2.0-flash-exp",
         safetySettings
       });
 
@@ -506,8 +506,8 @@ Provide a final verdict in Indonesian language. Output a JSON with these keys:
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ];
 
-      // Use Gemini 2.0 Flash Thinking Experimental (Gemini "3" Preview) for analysis
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-1219", safetySettings });
+      // Use Gemini 2.0 Flash Experimental (Stable Release) for analysis
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", safetySettings });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       let text = response.text();
