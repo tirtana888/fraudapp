@@ -143,11 +143,24 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   };
 
   const calculateRiskScore = (candidate: AutoCandidate): number => {
-    if (!candidate.analysis?.scores) return 0;
+    if (candidate.analysis?.scores) {
+      const { pressure = 0, opportunity = 0, rationalization = 0 } = candidate.analysis.scores;
+      const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
+      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: P=${pressure}, O=${opportunity}, R=${rationalization}, Avg=${avgScore}`);
+      return avgScore;
+    }
 
-    const { pressure = 0, opportunity = 0, rationalization = 0 } = candidate.analysis.scores;
-    const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
-    return avgScore;
+    if (candidate.analysis?.riskLevel) {
+      const riskLevel = candidate.analysis.riskLevel.toLowerCase();
+      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using riskLevel=${riskLevel} (no scores available)`);
+      if (riskLevel === 'critical') return 90;
+      if (riskLevel === 'high') return 65;
+      if (riskLevel === 'medium') return 35;
+      if (riskLevel === 'low') return 10;
+    }
+
+    console.log(`[RISK-SCORE] ${candidate.candidate?.name}: No analysis data, returning 0`);
+    return 0;
   };
 
   const getRiskScoreBadge = (candidate: AutoCandidate) => {
