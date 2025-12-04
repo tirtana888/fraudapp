@@ -13,7 +13,6 @@ interface CandidatesAutoViewProps {
 interface AutoCandidate extends InterviewSession {
   jobTitle?: string;
   jobLocation?: string;
-  testScore?: number;
   completedAt?: string;
   currentQuestionIndex?: number;
   totalQuestions?: number;
@@ -71,22 +70,29 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
             }
           }
 
-          const testScore = sessionData.analysis?.overallScore || 0;
           const completedAt = sessionData.completedAt || sessionData.date;
 
           return {
             ...sessionData,
             jobTitle,
             jobLocation,
-            testScore,
             completedAt
           } as AutoCandidate;
         })
       );
 
-      candidatesWithDetails.sort((a, b) =>
-        new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime()
-      );
+      candidatesWithDetails.sort((a, b) => {
+        const aRiskScore = a.analysis?.scores ?
+          Math.round(((a.analysis.scores.pressure || 0) + (a.analysis.scores.opportunity || 0) + (a.analysis.scores.rationalization || 0)) / 3) : 0;
+        const bRiskScore = b.analysis?.scores ?
+          Math.round(((b.analysis.scores.pressure || 0) + (b.analysis.scores.opportunity || 0) + (b.analysis.scores.rationalization || 0)) / 3) : 0;
+
+        if (bRiskScore !== aRiskScore) {
+          return bRiskScore - aRiskScore;
+        }
+
+        return new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime();
+      });
 
       setCandidates(candidatesWithDetails);
       console.log('[CANDIDATES-AUTO] ✅ Total candidates loaded:', candidatesWithDetails.length);
@@ -137,25 +143,87 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     window.open(cvUrl, '_blank');
   };
 
-  const getRiskScoreBadge = (score: number) => {
-    if (score <= 20) {
-      return <span className="px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-sm flex items-center gap-1">🟢 {score}</span>;
-    } else if (score <= 50) {
-      return <span className="px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-sm flex items-center gap-1">🟡 {score}</span>;
+  const calculateRiskScore = (candidate: AutoCandidate): number => {
+    if (!candidate.analysis?.scores) return 0;
+
+    const { pressure = 0, opportunity = 0, rationalization = 0 } = candidate.analysis.scores;
+    const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
+    return avgScore;
+  };
+
+  const getRiskScoreBadge = (candidate: AutoCandidate) => {
+    if (!candidate.analysis) {
+      return (
+        <span className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold text-sm flex items-center gap-1">
+          <Clock size={14} />
+          Pending
+        </span>
+      );
+    }
+
+    const score = calculateRiskScore(candidate);
+    const riskLevel = candidate.analysis.riskLevel?.toLowerCase() || 'low';
+
+    if (riskLevel === 'critical' || score >= 75) {
+      return (
+        <span className="px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold text-sm flex items-center gap-1">
+          <AlertCircle size={14} />
+          {score}/100
+        </span>
+      );
+    } else if (riskLevel === 'high' || score >= 50) {
+      return (
+        <span className="px-3 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold text-sm flex items-center gap-1">
+          <AlertTriangle size={14} />
+          {score}/100
+        </span>
+      );
+    } else if (riskLevel === 'medium' || score >= 30) {
+      return (
+        <span className="px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-sm flex items-center gap-1">
+          <AlertTriangle size={14} />
+          {score}/100
+        </span>
+      );
     } else {
-      return <span className="px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold text-sm flex items-center gap-1">🔴 {score}</span>;
+      return (
+        <span className="px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-sm flex items-center gap-1">
+          <CheckCircle2 size={14} />
+          {score}/100
+        </span>
+      );
     }
   };
 
   const getStageBadge = (status: string, hasAnalysis: boolean) => {
     if (status === 'completed' && hasAnalysis) {
-      return <span className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-semibold text-xs">✅ Completed</span>;
-    } else if (status === 'completed') {
-      return <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold text-xs">Review Pending</span>;
-    } else if (status === 'in-progress') {
-      return <span className="px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs">⏳ In Progress</span>;
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-xs border border-green-200 dark:border-green-800">
+          <CheckCircle2 size={14} />
+          Assessment Complete
+        </span>
+      );
+    } else if (status === 'completed' && !hasAnalysis) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold text-xs border border-blue-200 dark:border-blue-800">
+          <Clock size={14} />
+          Awaiting Analysis
+        </span>
+      );
+    } else if (status === 'active') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-xs border border-yellow-200 dark:border-yellow-800">
+          <Loader2 size={14} className="animate-spin" />
+          In Progress
+        </span>
+      );
     } else {
-      return <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs">Invited</span>;
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-semibold text-xs border border-gray-200 dark:border-slate-600">
+          <User size={14} />
+          New Application
+        </span>
+      );
     }
   };
 
@@ -378,7 +446,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
                     {/* Risk Score Column */}
                     <td className="px-6 py-4">
-                      {getRiskScoreBadge(candidate.testScore || 0)}
+                      {getRiskScoreBadge(candidate)}
                     </td>
 
                     {/* Background Check Column */}
