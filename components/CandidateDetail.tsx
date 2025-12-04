@@ -288,7 +288,34 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 </span>
               )}
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => handleStatusUpdate('interview')}
+                    disabled={isUpdating}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <User size={14} />
+                    Interview
+                  </button>
+
+                  <button
+                    onClick={() => handleStatusUpdate('bc_check')}
+                    disabled={isUpdating}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Shield size={14} />
+                    BC Check
+                  </button>
+
+                  <button
+                    onClick={() => handleStatusUpdate('hired')}
+                    disabled={isUpdating}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle2 size={14} />
+                    Hire
+                  </button>
+
                   <button
                     onClick={() => handleStatusUpdate('rejected')}
                     disabled={isUpdating}
@@ -297,50 +324,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <XCircle size={14} />
                     Reject
                   </button>
-
-                  {(candidate.recruitmentStage === 'screening' || candidate.recruitmentStage === 'processing') && (
-                    <button
-                      onClick={() => handleStatusUpdate('review')}
-                      disabled={isUpdating}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <FileText size={14} />
-                      Review
-                    </button>
-                  )}
-
-                  {candidate.recruitmentStage === 'review' && (
-                    <button
-                      onClick={() => handleStatusUpdate('interview')}
-                      disabled={isUpdating}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <User size={14} />
-                      Interview
-                    </button>
-                  )}
-
-                  {candidate.recruitmentStage === 'interview' && (
-                    <button
-                      onClick={() => handleStatusUpdate('bc_check')}
-                      disabled={isUpdating}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Shield size={14} />
-                      BC Check
-                    </button>
-                  )}
-
-                  {(candidate.recruitmentStage === 'bc_check' || candidate.recruitmentStage === 'background_check') && (
-                    <button
-                      onClick={() => handleStatusUpdate('hired')}
-                      disabled={isUpdating}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <CheckCircle2 size={14} />
-                      Hire
-                    </button>
-                  )}
                 </div>
               )}
             </div>
