@@ -157,8 +157,8 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   const getRiskScoreBadge = (candidate: AutoCandidate) => {
     if (!candidate.analysis) {
       return (
-        <span className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold text-sm flex items-center gap-1">
-          <Clock size={14} />
+        <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold text-xs flex items-center gap-1">
+          <Clock size={12} />
           Pending
         </span>
       );
@@ -169,29 +169,29 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
     if (riskLevel === 'critical' || score >= 75) {
       return (
-        <span className="px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold text-sm flex items-center gap-1">
-          <AlertCircle size={14} />
+        <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold text-xs flex items-center gap-1">
+          <AlertCircle size={12} />
           {score}/100
         </span>
       );
     } else if (riskLevel === 'high' || score >= 50) {
       return (
-        <span className="px-3 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold text-sm flex items-center gap-1">
-          <AlertTriangle size={14} />
+        <span className="px-2.5 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-semibold text-xs flex items-center gap-1">
+          <AlertTriangle size={12} />
           {score}/100
         </span>
       );
     } else if (riskLevel === 'medium' || score >= 30) {
       return (
-        <span className="px-3 py-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-sm flex items-center gap-1">
-          <AlertTriangle size={14} />
+        <span className="px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs flex items-center gap-1">
+          <AlertTriangle size={12} />
           {score}/100
         </span>
       );
     } else {
       return (
-        <span className="px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-sm flex items-center gap-1">
-          <CheckCircle2 size={14} />
+        <span className="px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-semibold text-xs flex items-center gap-1">
+          <CheckCircle2 size={12} />
           {score}/100
         </span>
       );
@@ -206,29 +206,34 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       'processing': {
         label: 'Processing',
         color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        icon: <Clock size={14} />
+        icon: <Clock size={12} />
       },
       'interview': {
-        label: 'Interview Stage',
+        label: 'Interview',
         color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-        icon: <User size={14} />
+        icon: <User size={12} />
+      },
+      'background_check': {
+        label: 'BG Check',
+        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+        icon: <CheckCircle2 size={12} />
       },
       'approved': {
         label: 'Hired',
         color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-        icon: <CheckCircle2 size={14} />
+        icon: <CheckCircle2 size={12} />
       },
       'rejected': {
         label: 'Rejected',
         color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
-        icon: <AlertCircle size={14} />
+        icon: <AlertCircle size={12} />
       }
     };
 
     if (!hasAnalysis && recruitmentStage === 'processing') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-xs border border-purple-200 dark:border-purple-800">
-          <Loader2 size={14} className="animate-spin" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs border border-yellow-200 dark:border-yellow-800">
+          <Loader2 size={12} className="animate-spin" />
           Analyzing
         </span>
       );
@@ -237,7 +242,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     const stage = stageMap[recruitmentStage] || stageMap['processing'];
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs border ${stage.color}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border ${stage.color}`}>
         {stage.icon}
         {stage.label}
       </span>
@@ -299,7 +304,8 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
         >
           <option value="all">Semua Stage</option>
           <option value="processing">Processing</option>
-          <option value="interview">Interview Stage</option>
+          <option value="interview">Interview</option>
+          <option value="background_check">Background Check</option>
           <option value="approved">Hired</option>
           <option value="rejected">Rejected</option>
         </select>
@@ -395,9 +401,9 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => onViewSession(candidate.id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors"
                       >
-                        <Eye size={16} />
+                        <Eye size={14} />
                         View
                       </button>
                     </td>

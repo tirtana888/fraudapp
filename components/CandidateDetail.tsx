@@ -146,22 +146,27 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       'processing': {
         label: 'Processing',
         color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-        icon: <Clock size={14} />
+        icon: <Clock size={12} />
       },
       'interview': {
-        label: 'Interview Stage',
+        label: 'Interview',
         color: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
-        icon: <User size={14} />
+        icon: <User size={12} />
+      },
+      'background_check': {
+        label: 'Background Check',
+        color: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+        icon: <Shield size={12} />
       },
       'approved': {
         label: 'Hired',
         color: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
-        icon: <CheckCircle2 size={14} />
+        icon: <CheckCircle2 size={12} />
       },
       'rejected': {
         label: 'Rejected',
         color: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
-        icon: <XCircle size={14} />
+        icon: <XCircle size={12} />
       }
     };
 
@@ -253,31 +258,56 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {statusBadge && (
-                <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border ${statusBadge.color}`}>
+                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border ${statusBadge.color}`}>
                   {statusBadge.icon}
                   {statusBadge.label}
                 </span>
               )}
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && (
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleStatusUpdate('rejected')}
                     disabled={isUpdating}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <XCircle size={16} />
+                    <XCircle size={14} />
                     Reject
                   </button>
-                  <button
-                    onClick={() => handleStatusUpdate('interview')}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#D95D00] to-[#FF6B00] text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle2 size={16} />
-                    Advance to Interview
-                  </button>
+
+                  {candidate.recruitmentStage === 'processing' && (
+                    <button
+                      onClick={() => handleStatusUpdate('interview')}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <User size={14} />
+                      Interview
+                    </button>
+                  )}
+
+                  {candidate.recruitmentStage === 'interview' && (
+                    <button
+                      onClick={() => handleStatusUpdate('background_check')}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Shield size={14} />
+                      BG Check
+                    </button>
+                  )}
+
+                  {(candidate.recruitmentStage === 'background_check' || candidate.recruitmentStage === 'interview') && (
+                    <button
+                      onClick={() => handleStatusUpdate('approved')}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 size={14} />
+                      Hire
+                    </button>
+                  )}
                 </div>
               )}
             </div>
