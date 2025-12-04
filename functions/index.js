@@ -373,7 +373,10 @@ PENTING:
 - SELALU kaitkan pertanyaan dengan jawaban assessment kandidat
 - Jangan bertanya hal yang tidak ada konteksnya dari assessment
 - Fokus pada pengalaman nyata dan contoh konkret
-- Setelah 5-6 pertanyaan, akhiri dengan: "Terima kasih atas jawaban-jawabannya. Sesi wawancara telah selesai. Kami akan mengirimkan hasil penilaian lengkap ke email Anda dalam 24 jam."`;
+- Lakukan minimal 30 pertanyaan mendalam untuk menggali berbagai aspek
+- Eksplorasi SEMUA kategori assessment: Pressure, Opportunity, Rationalization, Financial Strain, dan SJT scenarios
+- Variasikan topik: pengalaman kerja, situasi konfliktual, decision-making, etika kerja, tekanan, dan penanganan masalah
+- Setelah 30+ pertanyaan terpenuhi, akhiri dengan: "Terima kasih atas jawaban-jawabannya. Sesi wawancara telah selesai. Kami akan mengirimkan hasil penilaian lengkap ke email Anda dalam 24 jam."`;
 
 
   // Validate final aiPrompt is not empty
