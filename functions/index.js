@@ -244,26 +244,37 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
     throw new HttpsError('failed-precondition', 'API keys belum dikonfigurasi. Set dengan: firebase functions:config:set gemini.key="YOUR_KEY" openai.key="YOUR_KEY"');
   }
 
-  const { role, history, lastUserMessage } = request.data;
+  const { role, history, lastUserMessage, prompt } = request.data;
+
+  // Support both 'prompt' and 'lastUserMessage' parameters for backward compatibility
+  const userMessage = prompt || lastUserMessage;
 
   console.log('[AI-REQUEST] Request received:', {
     hasRole: !!role,
     roleValue: role,
     hasHistory: !!history,
     historyLength: history?.length || 0,
+    hasPrompt: !!prompt,
     hasLastUserMessage: !!lastUserMessage,
-    lastUserMessageLength: lastUserMessage?.length || 0
+    userMessageLength: userMessage?.length || 0,
+    parameterUsed: prompt ? 'prompt' : 'lastUserMessage'
   });
 
-  if (!role || !history || !lastUserMessage) {
-    console.error('[AI-ERROR] Missing required parameters:', { role: !!role, history: !!history, lastUserMessage: !!lastUserMessage });
-    throw new HttpsError('invalid-argument', 'Parameter role, history, dan lastUserMessage wajib diisi.');
+  if (!role || !history || !userMessage) {
+    console.error('[AI-ERROR] Missing required parameters:', {
+      role: !!role,
+      history: !!history,
+      userMessage: !!userMessage,
+      prompt: !!prompt,
+      lastUserMessage: !!lastUserMessage
+    });
+    throw new HttpsError('invalid-argument', 'Parameter role, history, dan (prompt atau lastUserMessage) wajib diisi.');
   }
 
-  // Validate lastUserMessage is not empty or just whitespace
-  if (!lastUserMessage.trim()) {
-    console.error('[AI-ERROR] lastUserMessage is empty or whitespace only');
-    throw new HttpsError('invalid-argument', 'Prompt kosong - lastUserMessage tidak boleh kosong.');
+  // Validate userMessage is not empty or just whitespace
+  if (!userMessage.trim()) {
+    console.error('[AI-ERROR] userMessage is empty or whitespace only');
+    throw new HttpsError('invalid-argument', 'Prompt kosong - user message tidak boleh kosong.');
   }
 
   // Validate history is array
@@ -278,15 +289,15 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
     role,
     contextLength: context.length,
     historyCount: history.length,
-    lastMessagePreview: lastUserMessage.substring(0, 50)
+    userMessagePreview: userMessage.substring(0, 50)
   });
 
-  const prompt = `Anda adalah AI Interviewer profesional bernama "Alex" yang sedang melakukan wawancara untuk posisi ${role}.
+  const aiPrompt = `Anda adalah AI Interviewer profesional bernama "Alex" yang sedang melakukan wawancara untuk posisi ${role}.
 
 Context percakapan sebelumnya:
 ${context}
 
-Kandidat baru saja menjawab: "${lastUserMessage}"
+Kandidat baru saja menjawab: "${userMessage}"
 
 TUGAS ANDA:
 1. Berikan respons yang natural, ramah, dan conversational dalam Bahasa Indonesia
@@ -307,19 +318,19 @@ PENTING:
 - Setelah 5-6 pertanyaan, akhiri dengan: "Terima kasih atas waktunya. Sesi wawancara telah selesai. Kami akan mengirimkan hasil assessment ke email Anda."`;
 
 
-  // Validate final prompt is not empty
-  if (!prompt || prompt.trim().length === 0) {
-    console.error('[AI-ERROR] Final prompt is empty after construction!');
+  // Validate final aiPrompt is not empty
+  if (!aiPrompt || aiPrompt.trim().length === 0) {
+    console.error('[AI-ERROR] Final aiPrompt is empty after construction!');
     throw new HttpsError('internal', 'Prompt kosong setelah konstruksi. Bug di server.');
   }
 
-  console.log('[AI-PROMPT] Prompt constructed successfully, length:', prompt.length);
+  console.log('[AI-PROMPT] Prompt constructed successfully, length:', aiPrompt.length);
 
   // Try Gemini first
   if (GEMINI_API_KEY) {
     try {
       console.log(`[AI] Trying Gemini for role: ${role}`);
-      console.log(`[AI] Prompt length: ${prompt.length} characters`);
+      console.log(`[AI] Prompt length: ${aiPrompt.length} characters`);
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
@@ -337,7 +348,7 @@ PENTING:
       });
 
       console.log('[AI] Calling Gemini API...');
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(aiPrompt);
       const response = await result.response;
       let aiResponse = response.text();
 
@@ -383,7 +394,7 @@ PENTING:
           model: "gpt-4o",
           messages: [
             { role: "system", content: "Anda adalah HR Interviewer profesional yang melakukan wawancara dalam Bahasa Indonesia." },
-            { role: "user", content: prompt }
+            { role: "user", content: aiPrompt }
           ],
           max_tokens: 150,
           temperature: 0.7
