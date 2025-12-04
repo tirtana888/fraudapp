@@ -246,11 +246,40 @@ exports.generateAIResponse = onCall({ region: "europe-west1" }, async (request) 
 
   const { role, history, lastUserMessage } = request.data;
 
+  console.log('[AI-REQUEST] Request received:', {
+    hasRole: !!role,
+    roleValue: role,
+    hasHistory: !!history,
+    historyLength: history?.length || 0,
+    hasLastUserMessage: !!lastUserMessage,
+    lastUserMessageLength: lastUserMessage?.length || 0
+  });
+
   if (!role || !history || !lastUserMessage) {
+    console.error('[AI-ERROR] Missing required parameters:', { role: !!role, history: !!history, lastUserMessage: !!lastUserMessage });
     throw new HttpsError('invalid-argument', 'Parameter role, history, dan lastUserMessage wajib diisi.');
   }
 
+  // Validate lastUserMessage is not empty or just whitespace
+  if (!lastUserMessage.trim()) {
+    console.error('[AI-ERROR] lastUserMessage is empty or whitespace only');
+    throw new HttpsError('invalid-argument', 'Prompt kosong - lastUserMessage tidak boleh kosong.');
+  }
+
+  // Validate history is array
+  if (!Array.isArray(history) || history.length === 0) {
+    console.error('[AI-ERROR] history is not a valid array or is empty');
+    throw new HttpsError('invalid-argument', 'Prompt kosong - history harus berisi minimal 1 pesan.');
+  }
+
   const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+
+  console.log('[AI-PROMPT] Building prompt with:', {
+    role,
+    contextLength: context.length,
+    historyCount: history.length,
+    lastMessagePreview: lastUserMessage.substring(0, 50)
+  });
 
   const prompt = `Anda adalah AI Interviewer profesional bernama "Alex" yang sedang melakukan wawancara untuk posisi ${role}.
 
@@ -278,10 +307,19 @@ PENTING:
 - Setelah 5-6 pertanyaan, akhiri dengan: "Terima kasih atas waktunya. Sesi wawancara telah selesai. Kami akan mengirimkan hasil assessment ke email Anda."`;
 
 
+  // Validate final prompt is not empty
+  if (!prompt || prompt.trim().length === 0) {
+    console.error('[AI-ERROR] Final prompt is empty after construction!');
+    throw new HttpsError('internal', 'Prompt kosong setelah konstruksi. Bug di server.');
+  }
+
+  console.log('[AI-PROMPT] Prompt constructed successfully, length:', prompt.length);
+
   // Try Gemini first
   if (GEMINI_API_KEY) {
     try {
       console.log(`[AI] Trying Gemini for role: ${role}`);
+      console.log(`[AI] Prompt length: ${prompt.length} characters`);
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
@@ -298,14 +336,22 @@ PENTING:
         safetySettings
       });
 
+      console.log('[AI] Calling Gemini API...');
       const result = await model.generateContent(prompt);
       const response = await result.response;
       let aiResponse = response.text();
 
+      console.log('[AI] Gemini raw response received, length:', aiResponse?.length || 0);
+
       // Clean up response
       aiResponse = aiResponse.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
 
-      console.log(`[AI] Gemini response generated successfully`);
+      if (!aiResponse || aiResponse.length === 0) {
+        console.error('[AI-ERROR] Gemini returned empty response after cleanup');
+        throw new Error('Empty response from Gemini');
+      }
+
+      console.log(`[AI] ✅ Gemini response generated successfully, length: ${aiResponse.length}`);
 
       return {
         success: true,
