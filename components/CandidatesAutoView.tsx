@@ -253,15 +253,6 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       }
     };
 
-    if (!hasAnalysis && (recruitmentStage === 'processing' || recruitmentStage === 'screening')) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-semibold text-xs border border-gray-200 dark:border-gray-600">
-          <Loader2 size={12} className="animate-spin" />
-          Analyzing
-        </span>
-      );
-    }
-
     const stage = stageMap[recruitmentStage] || stageMap['screening'];
 
     return (
