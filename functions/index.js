@@ -1068,6 +1068,7 @@ exports.diditWebhook = onRequest({
 // ==========================================
 exports.createDiditSession = onCall({
   region: "europe-west1",
+  cors: true,
   secrets: [diditApiKey]
 }, async (request) => {
   const { sessionId, candidateName, candidateEmail } = request.data;
@@ -1181,12 +1182,11 @@ exports.initiateBackgroundCheck = onCall({
     const diditResponse = await new Promise((resolve, reject) => {
       const options = {
         hostname: 'verification.didit.me',
-        port: 443,
-        path: '/api/v2/verifications',
+        path: '/v2/session/',
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${diditApiKey.value()}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${diditApiKey.value()}`,
           'Content-Length': Buffer.byteLength(diditPayload)
         }
       };
@@ -1208,7 +1208,7 @@ exports.initiateBackgroundCheck = onCall({
       req.end();
     });
 
-    const verificationLink = diditResponse.verification_url;
+    const verificationLink = diditResponse.url;
     const diditSessionId = diditResponse.session_id;
 
     logger.info(`[BG-CHECK] Didit session created: ${diditSessionId}`);
