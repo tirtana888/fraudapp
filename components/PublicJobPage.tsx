@@ -173,14 +173,15 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
           const assessmentLink = `${window.location.origin}?mode=assess`;
 
           const emailSent = await sendEmailViaCloudFunction(
-            "candidate",
+            "candidate_invitation",
             formData.email,
-            formData.fullName,
             {
-              company_name: company.name,
-              access_code: accessCode,
-              assessment_link: assessmentLink,
-              message: `Terima kasih telah melamar ke posisi ${job.title}. Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
+              candidateName: formData.fullName,
+              candidateEmail: formData.email,
+              companyName: company.name,
+              accessCode: accessCode,
+              assessmentLink: assessmentLink,
+              role: job.title
             }
           );
 

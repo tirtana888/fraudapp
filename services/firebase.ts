@@ -29,86 +29,26 @@ export let db: Firestore;
 export let functions: any;
 let storage: any;
 
-// EmailJS Configuration (Client-side fallback)
-const EMAILJS_CONFIG = {
-  publicKey: "bclRHuJQwKQIOljiq",
-  serviceId: "service_8o2nl6d",
-  templateBusiness: "template_gfg2qr4",
-  templateCandidate: "template_dvgrjda"
-};
-
-// Helper function untuk kirim email via EmailJS (Client-side direct)
-const sendEmailDirectly = async (
-  type: "business" | "candidate" | "reset",
-  to_email: string,
-  to_name: string,
-  data: Record<string, any>
-): Promise<boolean> => {
-  try {
-    console.log(`Sending ${type} email to ${to_email} via EmailJS direct...`);
-
-    // Pilih template berdasarkan type
-    let templateId = EMAILJS_CONFIG.templateBusiness;
-    if (type === "candidate") {
-      templateId = EMAILJS_CONFIG.templateCandidate;
-    }
-
-    // Prepare EmailJS payload
-    const emailPayload = {
-      service_id: EMAILJS_CONFIG.serviceId,
-      template_id: templateId,
-      user_id: EMAILJS_CONFIG.publicKey,
-      template_params: {
-        to_email: to_email,
-        to_name: to_name,
-        ...data
-      }
-    };
-
-    // Kirim via EmailJS REST API
-    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(emailPayload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`EmailJS API Error: ${errorText}`);
-    }
-
-    console.log(`Email sent successfully to ${to_email}`);
-    return true;
-  } catch (error: any) {
-    console.error("Error sending email via EmailJS:", error);
-    throw new Error(`Email gagal dikirim: ${error.message || 'Unknown error'}`);
-  }
-};
-
-// Helper function untuk kirim email via Firebase Cloud Function (Production)
+// Helper function untuk kirim email via Firebase Cloud Function dengan Resend
 export const sendEmailViaCloudFunction = async (
-  type: "business" | "candidate" | "reset",
+  emailType: "business_invitation" | "candidate_invitation" | "assessment_complete" | "password_reset",
   to_email: string,
-  to_name: string,
-  data: Record<string, any>
+  emailData: Record<string, any>
 ): Promise<boolean> => {
   try {
     if (!functions) {
-      console.warn("Firebase Functions not deployed, using direct EmailJS...");
-      return await sendEmailDirectly(type, to_email, to_name, data);
+      console.warn("Firebase Functions not deployed!");
+      throw new Error("Email service not configured");
     }
 
-    console.log(`Sending ${type} email to ${to_email} via Firebase Functions...`);
+    console.log(`[EMAIL] Sending ${emailType} to ${to_email}...`);
 
-    // Panggil Firebase Cloud Function
-    const sendEmail = httpsCallable(functions, "sendEmailViaEmailJS");
+    // Panggil Firebase Cloud Function dengan Resend
+    const sendEmail = httpsCallable(functions, "sendEmail");
     const result = await sendEmail({
-      type,
-      to_email,
-      to_name,
-      data,
+      type: emailType,
+      to: to_email,
+      data: emailData
     });
 
     const response = result.data as { success: boolean; message?: string };
@@ -117,14 +57,11 @@ export const sendEmailViaCloudFunction = async (
       throw new Error(response.message || "Gagal mengirim email");
     }
 
-    console.log(`Email sent successfully via Firebase Functions to ${to_email}`);
+    console.log(`[EMAIL] ✅ Sent successfully to ${to_email}`);
     return true;
   } catch (error: any) {
-    console.error("Error sending email via Firebase Function:", error);
-
-    // Fallback to direct EmailJS if Functions fail
-    console.warn("Firebase Functions failed, falling back to direct EmailJS...");
-    return await sendEmailDirectly(type, to_email, to_name, data);
+    console.error(`[EMAIL] ❌ Error sending to ${to_email}:`, error);
+    throw new Error(`Email gagal dikirim: ${error.message || 'Unknown error'}`);
   }
 };
 
@@ -141,13 +78,12 @@ try {
 // Export email function for external use
 export const sendAssessmentCompleteEmail = async (candidateName: string, candidateEmail: string, companyName: string): Promise<boolean> => {
   return await sendEmailViaCloudFunction(
-    "candidate",
+    "assessment_complete",
     candidateEmail,
-    candidateName,
     {
-      company_name: companyName,
-      message: `Terima kasih telah menyelesaikan Integrity Assessment untuk ${companyName}. Hasil assessment Anda telah tersimpan dengan aman dan saat ini sedang dalam proses review oleh tim HR kami. Kami akan segera menghubungi Anda melalui email untuk tahapan selanjutnya dalam proses rekrutmen.`,
-      assessment_link: window.location.origin
+      candidateName,
+      candidateEmail,
+      companyName
     }
   );
 };
@@ -212,14 +148,13 @@ export const resetUserPassword = async (email: string) => {
 
         // Send Email via Firebase Cloud Function
         const emailSent = await sendEmailViaCloudFunction(
-            "reset",
+            "password_reset",
             cleanEmail,
-            userData.name,
             {
-                password: tempPassword,
-                login_url: window.location.origin,
-                tier: "Reset Request",
-                message: `Permintaan reset password Anda berhasil. Gunakan password sementara di atas untuk login.`
+                candidateName: userData.name,
+                candidateEmail: cleanEmail,
+                tempPassword: tempPassword,
+                loginUrl: window.location.origin
             }
         );
 
@@ -435,14 +370,12 @@ export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>)
 
         try {
             const emailSent = await sendEmailViaCloudFunction(
-                "business",
+                "business_invitation",
                 companyData.adminEmail,
-                companyData.name,
                 {
-                    password: generatedPassword,
-                    login_url: window.location.origin,
-                    tier: companyData.tier,
-                    message: `Selamat bergabung! Akun ${companyData.tier} Anda aktif hingga ${defaultExpiry.toLocaleDateString('id-ID')}.`
+                    companyName: companyData.name,
+                    adminEmail: companyData.adminEmail,
+                    tier: companyData.tier
                 }
             );
 
@@ -489,14 +422,12 @@ export const resendInviteEmail = async (companyId: string) => {
         const userPassword = userData.password || "Hubungi Super Admin";
 
         const emailSent = await sendEmailViaCloudFunction(
-            "business",
+            "business_invitation",
             companyData.adminEmail,
-            companyData.name,
             {
-                password: userPassword,
-                login_url: window.location.origin,
-                tier: companyData.tier,
-                message: `[KIRIM ULANG] Berikut adalah kredensial akses Anda.`
+                companyName: companyData.name,
+                adminEmail: companyData.adminEmail,
+                tier: companyData.tier
             }
         );
 
@@ -663,14 +594,15 @@ export const blastAssessmentInvites = async (
         console.log(`[BLAST] Attempting to send email to ${candidate.email}...`);
 
         const emailSent = await sendEmailViaCloudFunction(
-          "candidate",
+          "candidate_invitation",
           candidate.email,
-          candidate.name,
           {
-            company_name: companyName,
-            access_code: accessCode,
-            assessment_link: assessmentLink,
-            message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${accessCode}. Kode ini hanya berlaku 1 kali.`
+            candidateName: candidate.name,
+            candidateEmail: candidate.email,
+            companyName: companyName,
+            accessCode: accessCode,
+            assessmentLink: assessmentLink,
+            role: candidate.role || "Kandidat"
           }
         );
 
@@ -790,14 +722,15 @@ export const resendCandidateInvite = async (inviteId: string, companyName: strin
 
     const assessmentLink = `${window.location.origin}?mode=assess`;
     const emailSent = await sendEmailViaCloudFunction(
-      "candidate",
+      "candidate_invitation",
       inviteData.email,
-      inviteData.name,
       {
-        company_name: companyName,
-        access_code: inviteData.access_code,
-        assessment_link: assessmentLink,
-        message: `Silakan akses tes integritas Anda menggunakan Kode Akses: ${inviteData.access_code}. Kode ini hanya berlaku 1 kali.`
+        candidateName: inviteData.name,
+        candidateEmail: inviteData.email,
+        companyName: companyName,
+        accessCode: inviteData.access_code,
+        assessmentLink: assessmentLink,
+        role: inviteData.role || "Kandidat"
       }
     );
 
