@@ -22,7 +22,7 @@ const resend = new Resend(RESEND_API_KEY);
 
 // --- EMAIL SENDERS ---
 const EMAIL_SENDERS = {
-  business: "support@hiregood.one",
+  business: "no-reply@hiregood.one",
   interview: "interview@hiregood.one"
 };
 
