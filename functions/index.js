@@ -41,7 +41,7 @@ const DIDIT_FLOW_ID = 'f6eb1a67-47c4-4668-960a-1baab821f388';
 
 const EMAIL_TEMPLATES = {
   // Template untuk undangan bisnis/company
-  businessInvitation: (companyName, adminEmail, tier) => ({
+  businessInvitation: (companyName, adminEmail, tier, password) => ({
     from: EMAIL_SENDERS.business,
     subject: `Undangan Bergabung - ${companyName}`,
     html: `
@@ -72,7 +72,7 @@ const EMAIL_TEMPLATES = {
 
                     <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
                       Akun Enterprise Anda telah berhasil didaftarkan di platform <strong>HireGood</strong>.
-                      Berikut adalah detail langganan Anda:
+                      Berikut adalah detail langganan dan kredensial login Anda:
                     </p>
 
                     <!-- Info Table -->
@@ -83,19 +83,33 @@ const EMAIL_TEMPLATES = {
                       </tr>
                       <tr>
                         <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0; font-weight: 600; color: #333333;">Status</td>
-                        <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0; color: #FF9800; font-weight: 600;">⏳ Menunggu Aktivasi</td>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0; color: #10B981; font-weight: 600;">✅ Aktif</td>
                       </tr>
                       <tr style="background-color: #f9f9f9;">
-                        <td style="padding: 15px 20px; font-weight: 600; color: #333333;">Admin Email</td>
-                        <td style="padding: 15px 20px; color: #555555;">${adminEmail}</td>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0; font-weight: 600; color: #333333;">Admin Email</td>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0; color: #555555;">${adminEmail}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 15px 20px; font-weight: 600; color: #333333;">Password</td>
+                        <td style="padding: 15px 20px; color: #CC5500; font-weight: 700; font-family: 'Courier New', monospace; font-size: 18px; letter-spacing: 1px;">${password}</td>
                       </tr>
                     </table>
+
+                    <!-- Security Notice -->
+                    <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #92400E; font-size: 14px; font-weight: 600;">🔒 Penting - Keamanan Akun:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #78350F; font-size: 14px; line-height: 1.8;">
+                        <li>Segera ubah password setelah login pertama</li>
+                        <li>Jangan bagikan kredensial ini kepada siapapun</li>
+                        <li>Simpan password di tempat yang aman</li>
+                      </ul>
+                    </div>
 
                     <!-- CTA Button -->
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                       <tr>
                         <td align="center">
-                          <a href="https://fraudguard.id/login" style="display: inline-block; background: linear-gradient(135deg, #CC5500 0%, #FF6B35 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(204, 85, 0, 0.3);">
+                          <a href="https://app.hiregood.one" style="display: inline-block; background: linear-gradient(135deg, #CC5500 0%, #FF6B35 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(204, 85, 0, 0.3);">
                             Masuk ke Dashboard →
                           </a>
                         </td>
@@ -433,7 +447,8 @@ exports.sendEmail = onCall({ region: "europe-west1", cors: true }, async (reques
         emailTemplate = EMAIL_TEMPLATES.businessInvitation(
           data.companyName,
           data.adminEmail,
-          data.tier
+          data.tier,
+          data.password
         );
         break;
 

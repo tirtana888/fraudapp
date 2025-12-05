@@ -375,7 +375,8 @@ export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>)
                 {
                     companyName: companyData.name,
                     adminEmail: companyData.adminEmail,
-                    tier: companyData.tier
+                    tier: companyData.tier,
+                    password: generatedPassword
                 }
             );
 
@@ -427,7 +428,8 @@ export const resendInviteEmail = async (companyId: string) => {
             {
                 companyName: companyData.name,
                 adminEmail: companyData.adminEmail,
-                tier: companyData.tier
+                tier: companyData.tier,
+                password: userPassword
             }
         );
 
