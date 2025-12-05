@@ -220,34 +220,58 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
       await updateCompany(currentCompany.id, dataToSave);
       console.log('[SAVE] ✅ Save to Firestore successful');
 
-      // Wait a bit for Firestore to propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for Firestore to propagate (increased delay)
+      console.log('[SAVE] Waiting for Firestore propagation...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Verify saved data
+      // Verify saved data with retry
       console.log('[SAVE] Verifying saved data...');
       const { getCompanyById } = await import('../services/firebase');
-      const verifyData = await getCompanyById(currentCompany.id);
+
+      let verifyData = await getCompanyById(currentCompany.id);
+
+      // Retry once if verification fails
+      if (verifyData && formData.logoUrl && !verifyData.logoUrl) {
+        console.log('[SAVE] First verification failed, retrying after 1s...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        verifyData = await getCompanyById(currentCompany.id);
+      }
 
       if (verifyData) {
         console.log('[SAVE] Verification result:', {
           hasLogo: !!verifyData.logoUrl,
           logoUrlLength: verifyData.logoUrl?.length || 0,
+          logoUrlPreview: verifyData.logoUrl?.substring(0, 100),
           brandColor: verifyData.brandColor,
           headerTitle: verifyData.headerTitle,
           welcomeMessageLength: verifyData.welcomeMessage?.length || 0
         });
 
-        // Check if logo was saved correctly
-        if (formData.logoUrl && !verifyData.logoUrl) {
-          console.error('[SAVE] ❌ Logo not saved to Firestore');
-          toast.warning('Logo gagal tersimpan. Silakan coba lagi.');
-          setIsSaving(false);
-          return;
+        console.log('[SAVE] Form data comparison:', {
+          formHasLogo: !!formData.logoUrl,
+          formLogoLength: formData.logoUrl?.length || 0,
+          formLogoPreview: formData.logoUrl?.substring(0, 100),
+          verifyHasLogo: !!verifyData.logoUrl,
+          verifyLogoLength: verifyData.logoUrl?.length || 0
+        });
+
+        // Check if logo was saved correctly (only if we intended to save a logo)
+        if (formData.logoUrl && formData.logoUrl.trim() !== '') {
+          if (!verifyData.logoUrl || verifyData.logoUrl.trim() === '') {
+            console.error('[SAVE] ❌ Logo not saved to Firestore');
+            console.error('[SAVE] Expected logoUrl:', formData.logoUrl.substring(0, 100));
+            console.error('[SAVE] Got logoUrl:', verifyData.logoUrl);
+            toast.warning('Logo gagal tersimpan. Silakan coba lagi.');
+            setIsSaving(false);
+            return;
+          }
         }
 
         // Check if other fields saved correctly
         if (verifyData.headerTitle !== formData.headerTitle) {
           console.error('[SAVE] ❌ Header title mismatch');
+          console.error('[SAVE] Expected:', formData.headerTitle);
+          console.error('[SAVE] Got:', verifyData.headerTitle);
           toast.warning('Judul halaman gagal tersimpan. Silakan coba lagi.');
           setIsSaving(false);
           return;

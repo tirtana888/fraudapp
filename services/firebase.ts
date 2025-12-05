@@ -446,9 +446,22 @@ export const resendInviteEmail = async (companyId: string) => {
 };
 
 export const updateCompany = async (id: string, data: Partial<CompanyProfile>) => {
-    if (!db) return;
+    if (!db) {
+        console.error('[UPDATE-COMPANY] Firestore DB not initialized');
+        throw new Error('Database not initialized');
+    }
+
+    console.log('[UPDATE-COMPANY] Updating company:', {
+        id,
+        dataKeys: Object.keys(data),
+        hasLogoUrl: !!data.logoUrl,
+        logoUrlLength: data.logoUrl?.length || 0
+    });
+
     const docRef = doc(db, COLLECTIONS.COMPANIES, id);
     await updateDoc(docRef, data);
+
+    console.log('[UPDATE-COMPANY] ✅ Update successful');
 };
 
 export const updateCompanySubscription = async (id: string, data: any) => {
@@ -475,13 +488,18 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
 };
 
 export const getCompanyById = async (id: string): Promise<CompanyProfile | null> => {
-    if (!id || !db) return null;
+    if (!id || !db) {
+        console.warn('[GET-COMPANY] No ID or DB not initialized');
+        return null;
+    }
+
+    console.log('[GET-COMPANY] Fetching company with ID:', id);
 
     if (id === 'system') {
         return {
             id: 'system',
             name: 'System Admin View',
-            tier: 'Enterprise', 
+            tier: 'Enterprise',
             status: 'Active',
             adminEmail: 'admin@fraudguard.id',
             joinedDate: new Date().toISOString(),
@@ -495,9 +513,19 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
         try {
             const docRef = doc(db, COLLECTIONS.COMPANIES, 'c1');
             const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
-        } catch (e) {}
-        
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                console.log('[GET-COMPANY] c1 found in Firestore:', {
+                    hasLogoUrl: !!data.logoUrl,
+                    logoUrlLength: data.logoUrl?.length || 0
+                });
+                return { id: docSnap.id, ...data } as CompanyProfile;
+            }
+        } catch (e) {
+            console.error('[GET-COMPANY] Error fetching c1:', e);
+        }
+
+        console.log('[GET-COMPANY] Using fallback data for c1');
         return {
             id: 'c1',
             name: 'PT Maju Bersama',
@@ -511,11 +539,19 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
     try {
         const docRef = doc(db, COLLECTIONS.COMPANIES, id);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
-            return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
+            const data = docSnap.data();
+            console.log('[GET-COMPANY] Company found:', {
+                id,
+                hasLogoUrl: !!data.logoUrl,
+                logoUrlLength: data.logoUrl?.length || 0,
+                logoUrlPreview: data.logoUrl?.substring(0, 100),
+                allFields: Object.keys(data)
+            });
+            return { id: docSnap.id, ...data } as CompanyProfile;
         } else {
-            console.warn(`Company ID ${id} not found.`);
+            console.warn(`[GET-COMPANY] Company ID ${id} not found in Firestore`);
             return {
                 id: id,
                 name: 'Perusahaan Terdaftar',
@@ -527,7 +563,7 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
             } as CompanyProfile;
         }
     } catch (e) {
-        console.error("Error fetching company:", e);
+        console.error("[GET-COMPANY] Error fetching company:", e);
         return {
              id: id,
              name: 'Portal Kandidat FraudGuard',
