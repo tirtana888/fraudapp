@@ -22,8 +22,8 @@ const resend = new Resend(RESEND_API_KEY);
 
 // --- EMAIL SENDERS ---
 const EMAIL_SENDERS = {
-  business: "no-reply@hiregoode.one",
-  interview: "interview@hiregoode.one"
+  business: "support@hiregood.one",
+  interview: "interview@hiregood.one"
 };
 
 // --- AI SECRETS ---
