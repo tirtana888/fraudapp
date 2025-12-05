@@ -139,17 +139,27 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   };
 
   const canMoveToStage = (currentStage: string, targetStage: string): boolean => {
+    // HR has full control - they make the final decision regardless of risk score
     if (targetStage === 'rejected') return true;
 
-    const workflowOrder = getWorkflowOrder();
-    const currentIndex = workflowOrder.indexOf(currentStage || 'screening');
-    const targetIndex = workflowOrder.indexOf(targetStage);
+    const stage = currentStage || 'screening';
 
-    if (currentIndex === -1 || targetIndex === -1) return false;
+    // Interview: Always allowed from screening, processing, or review stages
+    if (targetStage === 'interview') {
+      return ['screening', 'processing', 'review'].includes(stage);
+    }
 
-    return targetIndex === currentIndex + 1 ||
-           (currentStage === 'screening' && targetStage === 'interview') ||
-           (currentStage === 'processing' && targetStage === 'interview');
+    // Background Check: Can be done after interview or directly if HR decides
+    if (targetStage === 'bc_check' || targetStage === 'background_check') {
+      return ['interview', 'processing', 'screening', 'review'].includes(stage);
+    }
+
+    // Hired/Approved: Should have at least completed screening/assessment
+    if (targetStage === 'hired' || targetStage === 'approved') {
+      return !['screening'].includes(stage);
+    }
+
+    return true;
   };
 
   const isBackgroundCheckAvailable = (): boolean => {
@@ -163,24 +173,22 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       interview: {
         enabled: canMoveToStage(normalizedStage, 'interview'),
         tooltip: !canMoveToStage(normalizedStage, 'interview')
-          ? 'Selesaikan tahap screening terlebih dahulu'
-          : ''
+          ? 'Lanjutkan kandidat ke tahap wawancara'
+          : 'Lanjutkan ke tahap wawancara'
       },
       bc_check: {
         enabled: canMoveToStage(normalizedStage, 'bc_check') && isBackgroundCheckAvailable(),
         tooltip: !isBackgroundCheckAvailable()
           ? 'Upgrade ke Premium atau Enterprise untuk menggunakan Background Check'
           : !canMoveToStage(normalizedStage, 'bc_check')
-          ? 'Selesaikan tahap wawancara terlebih dahulu'
-          : ''
+          ? 'Lakukan background check'
+          : 'Mulai background check verification'
       },
       hired: {
         enabled: canMoveToStage(normalizedStage, 'hired'),
         tooltip: !canMoveToStage(normalizedStage, 'hired')
-          ? isBackgroundCheckAvailable()
-            ? 'Selesaikan tahap background check terlebih dahulu'
-            : 'Selesaikan tahap wawancara terlebih dahulu'
-          : ''
+          ? 'Kandidat perlu menyelesaikan assessment terlebih dahulu'
+          : 'Terima kandidat dan mark sebagai hired'
       },
       rejected: {
         enabled: true,
