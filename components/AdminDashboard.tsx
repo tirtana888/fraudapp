@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings, Upload } from 'lucide-react';
+import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings, Upload, BarChart3 } from 'lucide-react';
 import { CompanyProfile } from '../types';
 import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';
+import SuperAdminDashboard from './SuperAdminDashboard';
 
 const AdminDashboard: React.FC = () => {
   const toast = useToast();
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'management' | 'analytics'>('management');
   
   // Invite Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,7 +172,41 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10 animate-in fade-in duration-500 min-h-screen" onClick={() => setActiveMenuId(null)}>
-      
+
+      {/* Tab Navigation */}
+      <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-2">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('management')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'management'
+                ? 'bg-brand-orange text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Building2 size={20} />
+            Company Management
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'analytics'
+                ? 'bg-brand-orange text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <BarChart3 size={20} />
+            Analytics Dashboard
+          </button>
+        </div>
+      </div>
+
+      {/* Conditional Content Based on Active Tab */}
+      {activeTab === 'analytics' ? (
+        <SuperAdminDashboard />
+      ) : (
+        <>
+
       {/* Header Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <div className="bg-brand-dark rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
@@ -542,6 +578,9 @@ const AdminDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+        </>
       )}
 
     </div>

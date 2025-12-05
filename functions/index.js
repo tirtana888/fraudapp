@@ -1009,3 +1009,116 @@ exports.createDiditSession = onCall({
     throw new HttpsError('internal', `Failed to create Didit session: ${error.message}`);
   }
 });
+
+// ==========================================
+// FUNGSI 6: STATS AGGREGATION TRIGGER
+// ==========================================
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+
+exports.updateGlobalStats = onDocumentWritten(
+  {
+    document: "interview-sessions/{sessionId}",
+    region: "europe-west1"
+  },
+  async (event) => {
+    try {
+      const before = event.data?.before;
+      const after = event.data?.after;
+
+      // If document was deleted, skip
+      if (!after || !after.exists) {
+        logger.info('[STATS] Session deleted, skipping stats update');
+        return;
+      }
+
+      const beforeData = before?.exists ? before.data() : null;
+      const afterData = after.data();
+
+      const statsRef = db.collection('stats').doc('global_metrics');
+
+      // Get current stats or initialize
+      const statsDoc = await statsRef.get();
+      const currentStats = statsDoc.exists ? statsDoc.data() : {
+        total_assessments: 0,
+        completed_assessments: 0,
+        email_usage: 0,
+        kyc_usage: 0,
+        risk_distribution: {
+          High: 0,
+          Medium: 0,
+          Low: 0
+        },
+        last_updated: new Date().toISOString()
+      };
+
+      let updates = {};
+      let needsUpdate = false;
+
+      // Track new assessment
+      if (!beforeData) {
+        updates.total_assessments = (currentStats.total_assessments || 0) + 1;
+        needsUpdate = true;
+        logger.info('[STATS] New assessment created');
+      }
+
+      // Track completed assessments
+      const wasCompleted = beforeData?.status === 'completed';
+      const isNowCompleted = afterData.status === 'completed';
+
+      if (!wasCompleted && isNowCompleted) {
+        updates.completed_assessments = (currentStats.completed_assessments || 0) + 1;
+        needsUpdate = true;
+        logger.info('[STATS] Assessment completed');
+      }
+
+      // Track risk level changes
+      const beforeRisk = beforeData?.fraudAnalysis?.riskLevel;
+      const afterRisk = afterData?.fraudAnalysis?.riskLevel;
+
+      if (afterRisk && afterRisk !== beforeRisk) {
+        const riskDistribution = { ...currentStats.risk_distribution };
+
+        // Decrement old risk level if exists
+        if (beforeRisk && riskDistribution[beforeRisk] > 0) {
+          riskDistribution[beforeRisk] -= 1;
+        }
+
+        // Increment new risk level
+        riskDistribution[afterRisk] = (riskDistribution[afterRisk] || 0) + 1;
+
+        updates.risk_distribution = riskDistribution;
+        needsUpdate = true;
+        logger.info(`[STATS] Risk level changed: ${beforeRisk} -> ${afterRisk}`);
+      }
+
+      // Track email usage
+      const beforeEmailSent = beforeData?.emailSent;
+      const afterEmailSent = afterData?.emailSent;
+      if (!beforeEmailSent && afterEmailSent) {
+        updates.email_usage = (currentStats.email_usage || 0) + 1;
+        needsUpdate = true;
+        logger.info('[STATS] Email sent tracked');
+      }
+
+      // Track KYC/Background check usage
+      const beforeBgCheck = beforeData?.backgroundCheck?.status;
+      const afterBgCheck = afterData?.backgroundCheck?.status;
+      if ((!beforeBgCheck || beforeBgCheck === 'not_started') &&
+          afterBgCheck && afterBgCheck !== 'not_started') {
+        updates.kyc_usage = (currentStats.kyc_usage || 0) + 1;
+        needsUpdate = true;
+        logger.info('[STATS] KYC check tracked');
+      }
+
+      // Update stats if there are changes
+      if (needsUpdate) {
+        updates.last_updated = new Date().toISOString();
+        await statsRef.set(updates, { merge: true });
+        logger.info('[STATS] Global metrics updated:', updates);
+      }
+
+    } catch (error) {
+      logger.error('[STATS] Error updating global metrics:', error);
+    }
+  }
+);
