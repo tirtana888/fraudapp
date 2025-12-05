@@ -285,9 +285,10 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
                 </div>
               </div>
 
-              <div className="prose prose-slate max-w-none whitespace-pre-wrap">
-                {job.description}
-              </div>
+              <div
+                className="prose prose-slate max-w-none ql-editor"
+                dangerouslySetInnerHTML={{ __html: job.description }}
+              />
 
               {job.enableInstantAssessment && (
                 <div className="mt-8 bg-gradient-to-br from-orange-50 to-blue-50 border-2 border-[#D95D00] rounded-xl p-6">

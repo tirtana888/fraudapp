@@ -3,6 +3,8 @@ import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check } from 'lucide-react'
 import { Job, CompanyProfile } from '../types';
 import { getJobsByCompany, createJob, updateJob, generateSlug } from '../services/firebase';
 import { useToast } from './Toast';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface JobManagerProps {
   currentCompany: CompanyProfile;
@@ -343,15 +345,25 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Deskripsi Lowongan <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Tulis deskripsi lengkap lowongan..."
-                  rows={12}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent transition-all resize-y"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Tip: Gunakan format markdown untuk styling (contoh: **bold**, *italic*, - list)
+                <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#D95D00] focus-within:border-transparent transition-all">
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.description}
+                    onChange={(value) => setFormData({ ...formData, description: value })}
+                    placeholder="Tulis deskripsi lengkap lowongan... Gunakan toolbar untuk formatting (Bold, List, dll)"
+                    modules={{
+                      toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                      ]
+                    }}
+                    style={{ minHeight: '300px' }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 <strong>Tip:</strong> Gunakan toolbar di atas untuk <strong>Bold</strong> kata penting seperti "Underwriter", "Requirements", dll. Tekan <strong>Ctrl+B</strong> untuk bold cepat.
                 </p>
               </div>
 
