@@ -99,6 +99,20 @@ export const handleBackgroundCheckCallback = async (
   console.log('[DIDIT] Processing callback:', { verificationSessionId, status, sessionId });
 
   try {
+    // If sessionId is empty, fetch it from Didit API
+    let actualSessionId = sessionId;
+
+    if (!actualSessionId) {
+      console.log('[DIDIT] Session ID empty, fetching from Didit API...');
+      const sessionData = await getVerificationSession(verificationSessionId);
+      actualSessionId = sessionData.vendor_data;
+      console.log('[DIDIT] Retrieved session ID from API:', actualSessionId);
+    }
+
+    if (!actualSessionId) {
+      throw new Error('Could not determine session ID from vendor_data');
+    }
+
     let mappedStatus: 'pending' | 'approved' | 'declined' | 'in_review' = 'in_review';
 
     if (status.toLowerCase() === 'approved') {
@@ -107,7 +121,7 @@ export const handleBackgroundCheckCallback = async (
       mappedStatus = 'declined';
     }
 
-    await updateDoc(doc(db, COLLECTIONS.SESSIONS, sessionId), {
+    await updateDoc(doc(db, COLLECTIONS.SESSIONS, actualSessionId), {
       'backgroundCheck.status': mappedStatus,
       backgroundCheckStatus: mappedStatus,
       backgroundCheckCompletedAt: new Date().toISOString()
