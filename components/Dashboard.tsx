@@ -10,9 +10,10 @@ interface DashboardProps {
   currentCompany: CompanyProfile;
   onViewSession?: (id: string) => void;
   onReviewSession?: (session: InterviewSession) => void;
+  onViewAll?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession }) => {
+const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll }) => {
   const [copied, setCopied] = useState(false);
 
   // FEATURE GATING
@@ -126,7 +127,12 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                 <span className="flex h-3 w-3 rounded-full bg-brand-orange animate-pulse"></span>
                 Timeline Aktivitas Real-time
             </h3>
-            <button className="text-brand-orange text-sm font-semibold hover:underline">Lihat Semua</button>
+            <button
+              onClick={() => onViewAll && onViewAll()}
+              className="text-brand-orange text-sm font-semibold hover:underline"
+            >
+              Lihat Semua
+            </button>
           </div>
           
           <div className="space-y-4">
@@ -182,12 +188,9 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Asesmen Selesai (Via Link)</p>
                          </div>
                       </div>
-                      <button 
-                         onClick={() => onReviewSession && onReviewSession(session)}
-                         className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
-                      >
-                         Mulai Review
-                      </button>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap self-start sm:self-center">
+                          {new Date(session.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
                   );
                 }
@@ -206,12 +209,9 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                             </p>
                         </div>
                      </div>
-                     <button 
-                        onClick={() => onViewSession && onViewSession(session.id)}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1"
-                     >
-                        <FileCheck size={12} /> Lihat Laporan
-                     </button>
+                     <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap self-start sm:self-center">
+                        {new Date(session.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                     </span>
                    </div>
                 );
               }

@@ -331,6 +331,7 @@ const App: React.FC = () => {
                   currentCompany={currentCompany!}
                   onViewSession={setViewingSessionId}
                   onReviewSession={handleReviewSession}
+                  onViewAll={() => setActiveTab('history')}
                />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
