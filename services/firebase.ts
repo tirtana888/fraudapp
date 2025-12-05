@@ -512,6 +512,22 @@ export const getCompanyById = async (id: string): Promise<CompanyProfile | null>
     console.log('[GET-COMPANY] Fetching company with ID:', id);
 
     if (id === 'system') {
+        try {
+            const docRef = doc(db, COLLECTIONS.COMPANIES, 'system');
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                console.log('[GET-COMPANY] system found in Firestore:', {
+                    hasLogoUrl: !!data.logoUrl,
+                    logoUrlLength: data.logoUrl?.length || 0
+                });
+                return { id: docSnap.id, ...data } as CompanyProfile;
+            }
+        } catch (e) {
+            console.error('[GET-COMPANY] Error fetching system:', e);
+        }
+
+        console.log('[GET-COMPANY] Using fallback data for system');
         return {
             id: 'system',
             name: 'System Admin View',
