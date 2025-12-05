@@ -16,23 +16,20 @@ const { Resend } = require("resend");
 admin.initializeApp();
 const db = getFirestore();
 
-// --- RESEND API KEY ---
-const RESEND_API_KEY = "re_Wiu4xU4c_ELdXgCYQNw9DoXgaDJb4KDYF";
-const resend = new Resend(RESEND_API_KEY);
-
 // --- EMAIL SENDERS ---
 const EMAIL_SENDERS = {
   business: "no-reply@hiregood.one",
   interview: "interview@hiregood.one"
 };
 
-// --- AI SECRETS ---
+// --- SECRETS ---
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const openaiApiKey = defineSecret("OPENAI_API_KEY");
+const resendApiKey = defineSecret("RESEND_API_KEY");
+const diditApiKey = defineSecret("DIDIT_API_KEY");
+const diditWebhookSecret = defineSecret("DIDIT_WEBHOOK_SECRET");
 
 // --- DIDIT CONFIG ---
-const DIDIT_WEBHOOK_SECRET = "wU3IKNEZeXakCk1uYidDcEXlaob5mFPQOWSL1vdTl6I";
-const DIDIT_API_KEY = 'D4zB7mddYLCa_4gCnifsFg3iU3BoMzVQBg3k2_Te910';
 const DIDIT_FLOW_ID = 'f6eb1a67-47c4-4668-960a-1baab821f388';
 
 // ==========================================
@@ -432,7 +429,11 @@ const EMAIL_TEMPLATES = {
 // ==========================================
 // FUNGSI 1: SEND EMAIL (UNIVERSAL)
 // ==========================================
-exports.sendEmail = onCall({ region: "europe-west1", cors: true }, async (request) => {
+exports.sendEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
   const { type, to, data } = request.data;
 
   if (!type || !to) {
@@ -440,6 +441,8 @@ exports.sendEmail = onCall({ region: "europe-west1", cors: true }, async (reques
   }
 
   try {
+    const resend = new Resend(resendApiKey.value());
+
     let emailTemplate;
 
     switch(type) {
@@ -873,7 +876,11 @@ ANDA HARUS MENGANALISIS DATA **SPESIFIK** KANDIDAT INI. JANGAN GUNAKAN RED FLAGS
 // ==========================================
 // FUNGSI 4: DIDIT WEBHOOK
 // ==========================================
-exports.diditWebhook = onRequest({ region: "europe-west1", cors: true }, async (req, res) => {
+exports.diditWebhook = onRequest({
+  region: "europe-west1",
+  cors: true,
+  secrets: [diditWebhookSecret]
+}, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).send('Method Not Allowed');
     return;
@@ -891,7 +898,7 @@ exports.diditWebhook = onRequest({ region: "europe-west1", cors: true }, async (
     }
 
     const expectedSignature = crypto
-      .createHmac('sha256', DIDIT_WEBHOOK_SECRET)
+      .createHmac('sha256', diditWebhookSecret.value())
       .update(rawBody)
       .digest('hex');
 
@@ -948,7 +955,10 @@ exports.diditWebhook = onRequest({ region: "europe-west1", cors: true }, async (
 // ==========================================
 // FUNGSI 5: CREATE DIDIT SESSION
 // ==========================================
-exports.createDiditSession = onCall({ region: "europe-west1" }, async (request) => {
+exports.createDiditSession = onCall({
+  region: "europe-west1",
+  secrets: [diditApiKey]
+}, async (request) => {
   const { sessionId, candidateName, candidateEmail } = request.data;
   if (!sessionId || !candidateName || !candidateEmail) {
     throw new HttpsError('invalid-argument', 'Data tidak lengkap.');
@@ -969,7 +979,7 @@ exports.createDiditSession = onCall({ region: "europe-west1" }, async (request) 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DIDIT_API_KEY}`,
+          'Authorization': `Bearer ${diditApiKey.value()}`,
           'Content-Length': Buffer.byteLength(payload)
         }
       };
