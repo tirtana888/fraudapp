@@ -30,7 +30,7 @@ const diditApiKey = defineSecret("DIDIT_API_KEY");
 const diditWebhookSecret = defineSecret("DIDIT_WEBHOOK_SECRET");
 
 // --- DIDIT CONFIG ---
-const DIDIT_FLOW_ID = 'f6eb1a67-47c4-4668-960a-1baab821f388';
+const DIDIT_FLOW_ID = 'a1387729-c7ef-4ebd-94af-6516553265aa';
 
 // ==========================================
 // EMAIL TEMPLATES
