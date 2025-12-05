@@ -445,7 +445,7 @@ export const resendInviteEmail = async (companyId: string) => {
     }
 };
 
-export const updateCompany = async (id: string, data: Partial<CompanyProfile>) => {
+export const updateCompany = async (id: string, data: Partial<CompanyProfile>, retries = 3) => {
     if (!db) {
         console.error('[UPDATE-COMPANY] Firestore DB not initialized');
         throw new Error('Database not initialized');
@@ -455,13 +455,29 @@ export const updateCompany = async (id: string, data: Partial<CompanyProfile>) =
         id,
         dataKeys: Object.keys(data),
         hasLogoUrl: !!data.logoUrl,
-        logoUrlLength: data.logoUrl?.length || 0
+        logoUrlLength: data.logoUrl?.length || 0,
+        retriesLeft: retries
     });
 
     const docRef = doc(db, COLLECTIONS.COMPANIES, id);
-    await updateDoc(docRef, data);
 
-    console.log('[UPDATE-COMPANY] ✅ Update successful');
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            await updateDoc(docRef, data);
+            console.log('[UPDATE-COMPANY] ✅ Update successful');
+            return;
+        } catch (error: any) {
+            console.error(`[UPDATE-COMPANY] Attempt ${attempt + 1} failed:`, error);
+
+            if (attempt === retries - 1) {
+                throw error;
+            }
+
+            const waitTime = Math.min(1000 * Math.pow(2, attempt), 5000);
+            console.log(`[UPDATE-COMPANY] Retrying in ${waitTime}ms...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    }
 };
 
 export const updateCompanySubscription = async (id: string, data: any) => {
