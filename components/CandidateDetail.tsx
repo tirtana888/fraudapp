@@ -205,35 +205,52 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
     try {
       setIsUpdating(true);
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
 
-      const timeline = candidate.timeline || [];
-      timeline.push({
-        stage: newStage,
-        status: 'completed',
-        date: new Date().toISOString(),
-        note: `Status updated to ${newStage}`
-      });
+      if (newStage === 'bc_check') {
+        const { httpsCallable } = await import('firebase/functions');
+        const { getFunctions } = await import('firebase/functions');
+        const functions = getFunctions();
+        const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
 
-      await updateDoc(sessionRef, {
-        recruitmentStage: newStage,
-        timeline,
-        updatedAt: new Date().toISOString()
-      });
+        const result = await initiateBackgroundCheck({ sessionId });
+        const data = result.data as { success: boolean; message: string };
 
-      await loadCandidateData();
+        if (data.success) {
+          toast.error('Email undangan Background Check berhasil dikirim!');
+          await loadCandidateData();
+        } else {
+          throw new Error(data.message || 'Failed to initiate background check');
+        }
+      } else {
+        const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
 
-      const stageLabels: { [key: string]: string } = {
-        'interview': 'Wawancara',
-        'bc_check': 'Background Check',
-        'hired': 'Rekrut',
-        'rejected': 'Ditolak'
-      };
+        const timeline = candidate.timeline || [];
+        timeline.push({
+          stage: newStage,
+          status: 'completed',
+          date: new Date().toISOString(),
+          note: `Status updated to ${newStage}`
+        });
 
-      toast.error(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
+        await updateDoc(sessionRef, {
+          recruitmentStage: newStage,
+          timeline,
+          updatedAt: new Date().toISOString()
+        });
+
+        await loadCandidateData();
+
+        const stageLabels: { [key: string]: string } = {
+          'interview': 'Wawancara',
+          'hired': 'Rekrut',
+          'rejected': 'Ditolak'
+        };
+
+        toast.error(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
+      }
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Gagal mengupdate status');
+      toast.error(error instanceof Error ? error.message : 'Gagal mengupdate status');
     } finally {
       setIsUpdating(false);
     }

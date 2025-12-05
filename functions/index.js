@@ -423,6 +423,117 @@ const EMAIL_TEMPLATES = {
       </body>
       </html>
     `
+  }),
+
+  // Template untuk Background Check invitation
+  backgroundCheckInvitation: (candidateName, candidateEmail, companyName, verificationLink, role = "") => ({
+    from: EMAIL_SENDERS.interview,
+    subject: `🎉 Congratulations! Next Step: Background Check - ${companyName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%); padding: 40px 30px; text-align: center;">
+                    <div style="font-size: 64px; margin-bottom: 10px;">🎉</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Congratulations!</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.95;">You've Successfully Passed to the Next Round</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Halo, ${candidateName}! 👋</h2>
+
+                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Kami dengan senang hati memberitahukan bahwa Anda telah berhasil melewati tahap wawancara untuk posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>!
+                    </p>
+
+                    <p style="margin: 0 0 25px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Sebagai langkah selanjutnya dalam proses rekrutmen, kami membutuhkan Anda untuk menyelesaikan <strong>Pemeriksaan Latar Belakang (Background Check)</strong> melalui platform verifikasi digital kami yang aman.
+                    </p>
+
+                    <!-- Process Steps -->
+                    <div style="background-color: #F0FDF4; border-left: 4px solid #10B981; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #065F46; font-size: 14px; font-weight: 600;">📋 Proses Verifikasi:</p>
+                      <ol style="margin: 0; padding-left: 20px; color: #047857; font-size: 14px; line-height: 1.8;">
+                        <li>Klik tombol "Mulai Verifikasi" di bawah</li>
+                        <li>Siapkan dokumen identitas resmi (KTP/SIM/Paspor)</li>
+                        <li>Ikuti instruksi untuk mengambil foto dokumen dan selfie</li>
+                        <li>Proses verifikasi memakan waktu 5-10 menit</li>
+                        <li>Hasil akan otomatis terkirim ke tim HR</li>
+                      </ol>
+                    </div>
+
+                    <!-- CTA Button -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                      <tr>
+                        <td align="center">
+                          <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #34D399 100%); color: #ffffff; text-decoration: none; padding: 18px 45px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                            🔒 Mulai Verifikasi Sekarang
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Info -->
+                    <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">🔐 Keamanan & Privasi:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #1E3A8A; font-size: 13px; line-height: 1.8;">
+                        <li>Data Anda dienkripsi dan aman sesuai standar internasional</li>
+                        <li>Verifikasi menggunakan teknologi AI & Liveness Detection</li>
+                        <li>Platform dikelola oleh Didit, partner verifikasi terpercaya</li>
+                        <li>Data hanya digunakan untuk proses rekrutmen</li>
+                      </ul>
+                    </div>
+
+                    <!-- Additional Info -->
+                    <div style="background-color: #F9FAFB; padding: 20px; border-radius: 8px; margin-top: 25px;">
+                      <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">ℹ️ Informasi Penting:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #6B7280; font-size: 13px; line-height: 1.8;">
+                        <li>Link verifikasi berlaku untuk <strong>1x akses</strong></li>
+                        <li>Pastikan foto dokumen jelas dan tidak buram</li>
+                        <li>Lakukan verifikasi di tempat dengan pencahayaan yang baik</li>
+                        <li>Selesaikan dalam <strong>7 hari</strong> untuk melanjutkan proses rekrutmen</li>
+                      </ul>
+                    </div>
+
+                    <p style="margin: 30px 0 0 0; color: #888888; font-size: 14px; line-height: 1.6;">
+                      Jika Anda mengalami kendala teknis, silakan balas email ini atau hubungi tim HR kami.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="margin: 0 0 5px 0; color: #999999; font-size: 12px;">
+                      <strong>${companyName}</strong> menggunakan platform HireGood untuk proses rekrutmen
+                    </p>
+                    <p style="margin: 0; color: #CCCCCC; font-size: 11px;">
+                      © ${new Date().getFullYear()} Powered by HireGood - Secure Verification by Didit
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
   })
 };
 
@@ -1007,6 +1118,143 @@ exports.createDiditSession = onCall({
 
   } catch (error) {
     throw new HttpsError('internal', `Failed to create Didit session: ${error.message}`);
+  }
+});
+
+// ==========================================
+// FUNGSI: INITIATE BACKGROUND CHECK
+// ==========================================
+exports.initiateBackgroundCheck = onCall({
+  region: "europe-west1",
+  secrets: [diditApiKey, resendApiKey]
+}, async (request) => {
+  const { sessionId } = request.data;
+
+  if (!sessionId) {
+    throw new HttpsError('invalid-argument', 'Session ID is required');
+  }
+
+  try {
+    logger.info(`[BG-CHECK] Initiating background check for session: ${sessionId}`);
+
+    // Get candidate data
+    const sessionDoc = await db.collection('interview_sessions').doc(sessionId).get();
+    if (!sessionDoc.exists) {
+      throw new HttpsError('not-found', 'Session not found');
+    }
+
+    const sessionData = sessionDoc.data();
+    const candidateName = sessionData.candidate?.name;
+    const candidateEmail = sessionData.candidate?.email;
+    const candidateRole = sessionData.candidate?.role || '';
+    const companyId = sessionData.companyId;
+
+    if (!candidateName || !candidateEmail) {
+      throw new HttpsError('failed-precondition', 'Candidate information is incomplete');
+    }
+
+    // Get company data
+    const companyDoc = await db.collection('companies').doc(companyId).get();
+    if (!companyDoc.exists) {
+      throw new HttpsError('not-found', 'Company not found');
+    }
+
+    const companyData = companyDoc.data();
+    const companyName = companyData.name;
+
+    // Create Didit verification session
+    const diditPayload = JSON.stringify({
+      workflow_id: DIDIT_FLOW_ID,
+      vendor_data: sessionId,
+      callback: 'https://tirtana888-fraudguar-68hf.bolt.host/background-check-callback',
+      metadata: {
+        candidate_name: candidateName,
+        candidate_email: candidateEmail,
+        session_id: sessionId,
+        company_id: companyId
+      }
+    });
+
+    logger.info(`[BG-CHECK] Creating Didit session for ${candidateEmail}`);
+
+    const diditResponse = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'verification.didit.me',
+        port: 443,
+        path: '/api/v2/verifications',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${diditApiKey.value()}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(diditPayload)
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`Didit API error: ${res.statusCode} - ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => reject(error));
+      req.write(diditPayload);
+      req.end();
+    });
+
+    const verificationLink = diditResponse.verification_url;
+    const diditSessionId = diditResponse.session_id;
+
+    logger.info(`[BG-CHECK] Didit session created: ${diditSessionId}`);
+
+    // Update session with background check info
+    await db.collection('interview_sessions').doc(sessionId).update({
+      'backgroundCheck': {
+        diditSessionId: diditSessionId,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        verificationLink: verificationLink
+      },
+      recruitmentStage: 'bc_check',
+      updatedAt: new Date().toISOString()
+    });
+
+    logger.info(`[BG-CHECK] Sending email to ${candidateEmail}`);
+
+    // Send email with verification link
+    const resend = new Resend(resendApiKey.value());
+    const emailTemplate = EMAIL_TEMPLATES.backgroundCheckInvitation(
+      candidateName,
+      candidateEmail,
+      companyName,
+      verificationLink,
+      candidateRole
+    );
+
+    await resend.emails.send({
+      from: emailTemplate.from,
+      to: candidateEmail,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
+
+    logger.info(`[BG-CHECK] Background check initiated successfully for ${sessionId}`);
+
+    return {
+      success: true,
+      message: 'Background check email sent successfully',
+      verificationLink: verificationLink,
+      diditSessionId: diditSessionId
+    };
+
+  } catch (error) {
+    logger.error(`[BG-CHECK] Error: ${error.message}`);
+    throw new HttpsError('internal', `Failed to initiate background check: ${error.message}`);
   }
 });
 
