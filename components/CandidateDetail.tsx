@@ -33,6 +33,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background'>('overview');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
 
   useEffect(() => {
     loadCandidateData();
@@ -51,6 +52,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       }
 
       const sessionData = { id: sessionSnap.id, ...sessionSnap.data() } as any;
+
+      if (sessionData.companyId) {
+        try {
+          const companyRef = doc(db, COLLECTIONS.COMPANIES, sessionData.companyId);
+          const companySnap = await getDoc(companyRef);
+          if (companySnap.exists()) {
+            const companyData = companySnap.data();
+            setCompanyTier(companyData.tier || 'Basic');
+          }
+        } catch (error) {
+          console.error('Error fetching company:', error);
+        }
+      }
 
       let jobTitle = 'Direct Application';
       let jobLocation = 'Not specified';
@@ -119,8 +133,75 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     return avgScore;
   };
 
+  const getWorkflowOrder = () => {
+    return ['screening', 'processing', 'interview', 'bc_check', 'background_check', 'hired', 'approved'];
+  };
+
+  const canMoveToStage = (currentStage: string, targetStage: string): boolean => {
+    if (targetStage === 'rejected') return true;
+
+    const workflowOrder = getWorkflowOrder();
+    const currentIndex = workflowOrder.indexOf(currentStage || 'screening');
+    const targetIndex = workflowOrder.indexOf(targetStage);
+
+    if (currentIndex === -1 || targetIndex === -1) return false;
+
+    return targetIndex === currentIndex + 1 ||
+           (currentStage === 'screening' && targetStage === 'interview') ||
+           (currentStage === 'processing' && targetStage === 'interview');
+  };
+
+  const isBackgroundCheckAvailable = (): boolean => {
+    return companyTier === 'Premium' || companyTier === 'Enterprise';
+  };
+
+  const getStageButtonConfig = (currentStage: string) => {
+    const normalizedStage = currentStage || 'screening';
+
+    return {
+      interview: {
+        enabled: canMoveToStage(normalizedStage, 'interview'),
+        tooltip: !canMoveToStage(normalizedStage, 'interview')
+          ? 'Selesaikan tahap screening terlebih dahulu'
+          : ''
+      },
+      bc_check: {
+        enabled: canMoveToStage(normalizedStage, 'bc_check') && isBackgroundCheckAvailable(),
+        tooltip: !isBackgroundCheckAvailable()
+          ? 'Upgrade ke Premium atau Enterprise untuk menggunakan Background Check'
+          : !canMoveToStage(normalizedStage, 'bc_check')
+          ? 'Selesaikan tahap wawancara terlebih dahulu'
+          : ''
+      },
+      hired: {
+        enabled: canMoveToStage(normalizedStage, 'hired'),
+        tooltip: !canMoveToStage(normalizedStage, 'hired')
+          ? isBackgroundCheckAvailable()
+            ? 'Selesaikan tahap background check terlebih dahulu'
+            : 'Selesaikan tahap wawancara terlebih dahulu'
+          : ''
+      },
+      rejected: {
+        enabled: true,
+        tooltip: ''
+      }
+    };
+  };
+
   const handleStatusUpdate = async (newStage: string) => {
     if (!candidate) return;
+
+    const currentStage = candidate.recruitmentStage || 'screening';
+
+    if (newStage !== 'rejected' && !canMoveToStage(currentStage, newStage)) {
+      toast.error('Tidak dapat melompat tahap! Selesaikan tahap sebelumnya terlebih dahulu.');
+      return;
+    }
+
+    if (newStage === 'bc_check' && !isBackgroundCheckAvailable()) {
+      toast.error('Background Check hanya tersedia untuk tier Premium dan Enterprise. Silakan upgrade paket Anda.');
+      return;
+    }
 
     try {
       setIsUpdating(true);
@@ -141,10 +222,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       });
 
       await loadCandidateData();
-      toast.error(`Candidate status updated to: ${newStage}`);
+
+      const stageLabels: { [key: string]: string } = {
+        'interview': 'Wawancara',
+        'bc_check': 'Background Check',
+        'hired': 'Rekrut',
+        'rejected': 'Ditolak'
+      };
+
+      toast.error(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Failed to update status');
+      toast.error('Gagal mengupdate status');
     } finally {
       setIsUpdating(false);
     }
@@ -297,45 +386,52 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   {statusBadge.label}
                 </span>
               )}
-              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    onClick={() => handleStatusUpdate('interview')}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <User size={14} />
-                    Wawancara
-                  </button>
+              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
+                const buttonConfig = getStageButtonConfig(candidate.recruitmentStage || 'screening');
+                return (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => handleStatusUpdate('interview')}
+                      disabled={isUpdating || !buttonConfig.interview.enabled}
+                      title={buttonConfig.interview.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <User size={14} />
+                      Wawancara
+                    </button>
 
-                  <button
-                    onClick={() => handleStatusUpdate('bc_check')}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Shield size={14} />
-                    Cek Latar
-                  </button>
+                    <button
+                      onClick={() => handleStatusUpdate('bc_check')}
+                      disabled={isUpdating || !buttonConfig.bc_check.enabled}
+                      title={buttonConfig.bc_check.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Shield size={14} />
+                      Cek Latar
+                    </button>
 
-                  <button
-                    onClick={() => handleStatusUpdate('hired')}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle2 size={14} />
-                    Rekrut
-                  </button>
+                    <button
+                      onClick={() => handleStatusUpdate('hired')}
+                      disabled={isUpdating || !buttonConfig.hired.enabled}
+                      title={buttonConfig.hired.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 size={14} />
+                      Rekrut
+                    </button>
 
-                  <button
-                    onClick={() => handleStatusUpdate('rejected')}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <XCircle size={14} />
-                    Tolak
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={() => handleStatusUpdate('rejected')}
+                      disabled={isUpdating}
+                      title={buttonConfig.rejected.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <XCircle size={14} />
+                      Tolak
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
