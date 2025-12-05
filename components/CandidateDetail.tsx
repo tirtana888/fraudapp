@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info } from 'lucide-react';
 import { InterviewSession } from '../types';
-import { db, COLLECTIONS } from '../services/firebase';
+import { db, COLLECTIONS, functions } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useToast } from './Toast';
 
 interface CandidateDetailProps {
@@ -207,16 +208,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       setIsUpdating(true);
 
       if (newStage === 'bc_check') {
-        const { httpsCallable } = await import('firebase/functions');
-        const { getFunctions } = await import('firebase/functions');
-        const functions = getFunctions();
         const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
 
         const result = await initiateBackgroundCheck({ sessionId });
         const data = result.data as { success: boolean; message: string };
 
         if (data.success) {
-          toast.error('Email undangan Background Check berhasil dikirim!');
+          toast.success('Email undangan Background Check berhasil dikirim!');
           await loadCandidateData();
         } else {
           throw new Error(data.message || 'Failed to initiate background check');
