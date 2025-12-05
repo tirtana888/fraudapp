@@ -1091,7 +1091,7 @@ exports.createDiditSession = onCall({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${diditApiKey.value()}`,
+          'X-Api-Key': diditApiKey.value(),
           'Content-Length': Buffer.byteLength(payload)
         }
       };
@@ -1186,7 +1186,7 @@ exports.initiateBackgroundCheck = onCall({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${diditApiKey.value()}`,
+          'X-Api-Key': diditApiKey.value(),
           'Content-Length': Buffer.byteLength(diditPayload)
         }
       };
