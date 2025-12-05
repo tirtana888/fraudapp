@@ -99,6 +99,15 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
   }, [propCompanyId, inviteData]);
 
+  // Update document title based on company headerTitle
+  useEffect(() => {
+    if (company) {
+      const title = company.headerTitle || company.name || 'Assessment Portal';
+      document.title = title;
+      console.log(`[PUBLIC-ASSESSMENT] Document title updated to: ${title}`);
+    }
+  }, [company]);
+
   const handleVerifyCode = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsVerifyingCode(true);
@@ -382,28 +391,39 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   }
 
   const Header = () => {
-    console.log(`[HEADER] Rendering header with logoUrl:`, {
+    const displayTitle = company?.headerTitle || company?.name || 'Portal Assessment';
+
+    console.log(`[HEADER] Rendering header with:`, {
       hasLogoUrl: !!logoUrl,
       logoLength: logoUrl?.length || 0,
+      logoUrl: logoUrl?.substring(0, 100),
       companyName: company?.name,
-      headerTitle: company?.headerTitle
+      headerTitle: company?.headerTitle,
+      displayTitle
     });
 
     return (
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-center sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 max-w-2xl">
             {logoUrl ? (
               <img
                 src={logoUrl}
-                alt="Logo"
-                className="h-8 object-contain"
-                onLoad={() => console.log(`[HEADER] ✅ Logo image loaded successfully`)}
-                onError={(e) => console.error(`[HEADER] ❌ Logo image failed to load`, e)}
+                alt={displayTitle}
+                className="h-10 max-w-[200px] object-contain"
+                onLoad={() => console.log(`[HEADER] ✅ Logo loaded: ${logoUrl.substring(0, 100)}`)}
+                onError={(e) => {
+                  console.error(`[HEADER] ❌ Logo failed to load:`, {
+                    src: logoUrl,
+                    error: e
+                  });
+                }}
               />
             ) : (
-              <ShieldCheck size={24} style={{ color: brandColor }} />
+              <>
+                <ShieldCheck size={24} style={{ color: brandColor }} />
+                <span className="font-bold text-xl text-gray-900 tracking-tight">{displayTitle}</span>
+              </>
             )}
-            <span className="font-bold text-xl text-gray-900 tracking-tight">{company?.headerTitle || company?.name}</span>
           </div>
       </div>
     );
@@ -449,10 +469,21 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         
         {step === 'welcome' && (
            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center mt-10">
-               <Briefcase size={40} className="mx-auto mb-6 text-orange-600" />
-               <h1 className="text-2xl font-bold text-gray-900 mb-4">Portal Asesmen Kandidat</h1>
-               <p className="text-gray-500 mb-8">{company?.welcomeMessage}</p>
-               <button onClick={() => setStep('profile')} className="w-full text-white py-4 rounded-xl font-bold shadow-lg" style={{ backgroundColor: brandColor }}>Mulai Proses</button>
+               {isAccessDenied ? (
+                 <>
+                   <Lock size={48} className="mx-auto mb-6 text-red-500" />
+                   <h1 className="text-2xl font-bold text-gray-900 mb-4">Akses Terbatas</h1>
+                   <p className="text-gray-600 mb-4">Perusahaan ini menggunakan paket Basic dan belum mengaktifkan fitur link publik.</p>
+                   <p className="text-sm text-gray-500">Hubungi admin perusahaan untuk informasi lebih lanjut.</p>
+                 </>
+               ) : (
+                 <>
+                   <Briefcase size={40} className="mx-auto mb-6" style={{ color: brandColor }} />
+                   <h1 className="text-2xl font-bold text-gray-900 mb-4">{company?.headerTitle || company?.name}</h1>
+                   <p className="text-gray-600 mb-8 leading-relaxed">{company?.welcomeMessage || 'Silakan lengkapi data berikut untuk melanjutkan proses seleksi.'}</p>
+                   <button onClick={() => setStep('profile')} className="w-full text-white py-4 rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: brandColor }}>Mulai Proses</button>
+                 </>
+               )}
            </div>
         )}
 

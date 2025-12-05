@@ -192,66 +192,85 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   };
 
   const handleSave = async () => {
+    if (!hasUnsavedChanges) {
+      console.log('[SAVE] No changes to save');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      console.log("Saving company settings:", {
+      console.log('[SAVE] Starting save process:', {
         companyId: currentCompany.id,
-        logoUrl: formData.logoUrl.substring(0, 100) + '...',
-        logoLength: formData.logoUrl.length,
+        hasLogo: !!formData.logoUrl,
+        logoUrlLength: formData.logoUrl?.length || 0,
         brandColor: formData.brandColor,
         headerTitle: formData.headerTitle,
-        welcomeMessage: formData.welcomeMessage.substring(0, 50) + '...'
+        welcomeMessageLength: formData.welcomeMessage?.length || 0
       });
 
-      await updateCompany(currentCompany.id, formData);
+      // Prepare data to save
+      const dataToSave = {
+        logoUrl: formData.logoUrl || '',
+        brandColor: formData.brandColor,
+        headerTitle: formData.headerTitle,
+        welcomeMessage: formData.welcomeMessage
+      };
 
-      console.log("Save successful!");
+      console.log('[SAVE] Saving to Firestore...');
+      await updateCompany(currentCompany.id, dataToSave);
+      console.log('[SAVE] ✅ Save to Firestore successful');
 
-      // Verify saved data by reading back from Firestore
-      console.log("Verifying saved data...");
+      // Wait a bit for Firestore to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify saved data
+      console.log('[SAVE] Verifying saved data...');
       const { getCompanyById } = await import('../services/firebase');
       const verifyData = await getCompanyById(currentCompany.id);
 
       if (verifyData) {
-        console.log("Verified data from Firestore:", {
+        console.log('[SAVE] Verification result:', {
+          hasLogo: !!verifyData.logoUrl,
           logoUrlLength: verifyData.logoUrl?.length || 0,
           brandColor: verifyData.brandColor,
           headerTitle: verifyData.headerTitle,
-          welcomeMessage: verifyData.welcomeMessage?.substring(0, 50) + '...'
+          welcomeMessageLength: verifyData.welcomeMessage?.length || 0
         });
 
+        // Check if logo was saved correctly
         if (formData.logoUrl && !verifyData.logoUrl) {
-          console.error("❌ VERIFICATION FAILED: Logo was not saved to Firestore!");
-          toast.warning(" Logo gagal tersimpan. Silakan coba lagi atau gunakan logo yang lebih kecil.");
+          console.error('[SAVE] ❌ Logo not saved to Firestore');
+          toast.warning('Logo gagal tersimpan. Silakan coba lagi.');
+          setIsSaving(false);
           return;
         }
 
-        if (formData.logoUrl && verifyData.logoUrl && verifyData.logoUrl !== formData.logoUrl) {
-          console.error("❌ VERIFICATION FAILED: Logo mismatch!");
-          toast.warning(" Logo tersimpan tidak sesuai. Silakan coba lagi.");
+        // Check if other fields saved correctly
+        if (verifyData.headerTitle !== formData.headerTitle) {
+          console.error('[SAVE] ❌ Header title mismatch');
+          toast.warning('Judul halaman gagal tersimpan. Silakan coba lagi.');
+          setIsSaving(false);
           return;
         }
 
-        console.log("✅ Verification successful - all data saved correctly");
+        console.log('[SAVE] ✅ All data verified successfully');
       }
 
       setHasUnsavedChanges(false);
 
-      // Update parent component to refresh company data
-      // Note: This will trigger useEffect but formData should match so no reset
+      // Update parent to refresh company data
       onUpdate();
 
-      toast.success(" Pengaturan Link Asesmen berhasil disimpan dan terverifikasi!");
+      toast.success('Pengaturan berhasil disimpan!');
     } catch (error: any) {
-      console.error("Gagal menyimpan:", error);
+      console.error('[SAVE] ❌ Save failed:', error);
 
-      // Check specific error types
-      if (error.code === 'invalid-argument') {
-        toast.error(" Gagal menyimpan: Data tidak valid.");
-      } else if (error.message && error.message.toLowerCase().includes("permission")) {
-        toast.error(" Gagal menyimpan: Izin akses ditolak. Pastikan Anda login sebagai admin perusahaan ini.");
+      if (error.code === 'permission-denied') {
+        toast.error('Izin ditolak. Pastikan Anda memiliki akses sebagai admin perusahaan.');
+      } else if (error.message?.includes('network')) {
+        toast.error('Koneksi internet bermasalah. Silakan coba lagi.');
       } else {
-        toast.error(` Terjadi kesalahan saat menyimpan: ${error.message || 'Unknown error'}`);
+        toast.error(`Gagal menyimpan: ${error.message || 'Kesalahan tidak diketahui'}`);
       }
     } finally {
       setIsSaving(false);
@@ -433,9 +452,20 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
                 <div className="absolute top-0 w-full h-full overflow-y-auto bg-gray-50 pb-10 scrollbar-hide">
                     <div className="bg-white px-5 py-4 border-b flex items-center justify-center sticky top-0 z-10 shadow-sm min-h-[60px]">
                         {formData.logoUrl ? (
-                            <img src={formData.logoUrl} alt="Logo" className="h-8 object-contain" />
+                            <img
+                              src={formData.logoUrl}
+                              alt="Logo Preview"
+                              className="h-8 max-w-[180px] object-contain"
+                              onError={(e) => {
+                                console.error('[PREVIEW] Logo failed to load:', formData.logoUrl);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
                         ) : (
-                            <span className="font-bold text-sm truncate" style={{ color: formData.brandColor }}>{formData.headerTitle}</span>
+                            <div className="flex items-center gap-2">
+                              <RefreshCw size={18} style={{ color: formData.brandColor }} />
+                              <span className="font-bold text-sm truncate" style={{ color: formData.brandColor }}>{formData.headerTitle}</span>
+                            </div>
                         )}
                     </div>
                     <div className="p-5 space-y-5">
