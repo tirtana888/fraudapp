@@ -457,18 +457,25 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
 
       {/* Footer - Powered by HireGood */}
       <footer className="bg-white border-t border-gray-200 mt-16 py-6">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-sm text-gray-600">
-            Powered by{' '}
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-sm text-gray-600">Powered by</p>
             <a
               href="https://hiregood.one"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-[#D95D00] hover:text-[#B14D00] transition-colors"
+              className="flex items-center gap-2 group"
             >
-              HireGood
+              <img
+                src="/gemini_generated_image_isid5qisid5qisid.png"
+                alt="HireGood Logo"
+                className="h-6 w-6 object-contain"
+              />
+              <span className="font-semibold text-[#D95D00] group-hover:text-[#B14D00] transition-colors">
+                HireGood.one
+              </span>
             </a>
-          </p>
+          </div>
         </div>
       </footer>
     </div>

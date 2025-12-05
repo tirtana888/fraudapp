@@ -345,9 +345,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   const Watermark = () => (
     <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 py-3 px-4 z-50 shadow-lg">
       <div className="max-w-2xl mx-auto flex items-center justify-center gap-2">
-        <ShieldCheck size={16} className="text-orange-600" />
+        <img
+          src="/gemini_generated_image_isid5qisid5qisid.png"
+          alt="HireGood Logo"
+          className="h-4 w-4 object-contain"
+        />
         <span className="text-xs text-gray-600 font-medium">
-          Powered by <span className="font-bold text-orange-600">goodhire.one</span>
+          Powered by <span className="font-bold text-orange-600">hiregood.one</span>
         </span>
       </div>
     </div>

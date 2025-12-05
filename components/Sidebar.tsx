@@ -43,10 +43,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
       ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
     `}>
       <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-slate-700">
-        <div className="flex items-center space-x-2">
-            <div className="bg-brand-orange p-2 rounded-lg text-white shadow-md shadow-orange-100 dark:shadow-none">
-            <ShieldAlert size={24} />
-            </div>
+        <div className="flex items-center space-x-3">
+            <img
+              src="/gemini_generated_image_isid5qisid5qisid.png"
+              alt="HireGood Logo"
+              className="h-10 w-10 object-contain"
+            />
             <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight font-sans">HireGood.one</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider truncate max-w-[120px]">{companyName}</p>
