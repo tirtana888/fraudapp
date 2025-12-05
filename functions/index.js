@@ -1126,6 +1126,7 @@ exports.createDiditSession = onCall({
 // ==========================================
 exports.initiateBackgroundCheck = onCall({
   region: "europe-west1",
+  cors: true,
   secrets: [diditApiKey, resendApiKey]
 }, async (request) => {
   const { sessionId } = request.data;
