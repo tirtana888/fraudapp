@@ -550,114 +550,64 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     <div className="min-h-screen bg-slate-50">
       {showBgCheckModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-fade-in">
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 rounded-t-2xl">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] p-6 rounded-t-2xl">
               <div className="flex items-center gap-3 text-white">
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                   <Shield size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Background Check Verification</h3>
-                  <p className="text-sm opacity-90">Pemeriksaan Latar Belakang via Didit</p>
+                  <h3 className="text-xl font-bold">Kirim Background Check</h3>
+                  <p className="text-sm opacity-90">Verifikasi via Didit KYC</p>
                 </div>
               </div>
             </div>
 
             <div className="p-6">
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
-                <p className="text-sm text-blue-900 leading-relaxed">
-                  <strong className="block mb-2">Email verifikasi akan dikirim ke:</strong>
-                  <span className="font-mono text-blue-700">{candidate?.candidate.email}</span>
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <User size={16} className="text-purple-600" />
-                  Detail Kandidat
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600 block mb-1">Nama:</span>
-                    <span className="font-semibold text-gray-800">{candidate?.candidate.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 block mb-1">Posisi:</span>
-                    <span className="font-semibold text-gray-800">{candidate?.jobTitle}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <div className="bg-orange-50 border-l-4 border-[#D95D00] p-4 rounded-lg mb-5">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <DollarSign size={20} className="text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-purple-900 mb-1">Biaya Kredit KYC</h4>
-                    <p className="text-sm text-purple-800 leading-relaxed">
-                      Proses Background Check akan menggunakan <strong className="text-lg">3 Kredit KYC</strong> dari akun Anda.
-                    </p>
-                    <div className="mt-3 bg-white rounded-lg p-3 border border-purple-200">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Kredit Tersisa:</span>
-                        <span className="font-bold text-purple-600 text-lg">∞</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">*Konfigurasi sistem kredit akan datang</p>
-                    </div>
+                  <User size={20} className="text-[#D95D00] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-gray-900 mb-1">{candidate?.candidate.name}</p>
+                    <p className="text-sm text-gray-600 mb-2">{candidate?.candidate.email}</p>
+                    <p className="text-xs text-gray-500">{candidate?.jobTitle}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <div className="flex gap-2">
-                  <Info size={18} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-yellow-800 leading-relaxed">
-                    <p className="font-semibold mb-2">Yang akan dilakukan:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
-                      <li>Mengirim email verifikasi ke kandidat</li>
-                      <li>Kandidat melakukan verifikasi identitas via Didit</li>
-                      <li>Status berubah menjadi "Background Check"</li>
-                      <li>Menggunakan 3 Kredit KYC dari akun</li>
-                    </ul>
-                    <div className="bg-yellow-100 rounded-lg p-3 border border-yellow-300">
-                      <p className="font-semibold flex items-center gap-2 mb-1">
-                        <Clock size={14} />
-                        Batas Waktu Verifikasi
-                      </p>
-                      <p className="text-xs">
-                        Kandidat memiliki waktu <strong>maksimal 2 x 24 jam (48 jam)</strong> untuk menyelesaikan proses verifikasi KYC sejak email dikirim.
-                      </p>
-                    </div>
-                  </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock size={16} className="text-blue-600" />
+                  <p className="font-semibold text-blue-900 text-sm">Batas Waktu</p>
                 </div>
-              </div>
-
-              <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg mb-6">
-                <p className="text-xs text-green-800 leading-relaxed">
-                  <strong className="block mb-1 flex items-center gap-1">
-                    <CheckCircle2 size={14} />
-                    Verifikasi yang Akan Dilakukan:
-                  </strong>
-                  <span className="block ml-5">• Verifikasi Identitas (KTP/SIM/Paspor)</span>
-                  <span className="block ml-5">• Liveness Detection (Foto Selfie)</span>
-                  <span className="block ml-5">• Face Matching dengan Dokumen ID</span>
-                  <span className="block ml-5">• AML Screening & Watchlist Check</span>
+                <p className="text-sm text-blue-800">
+                  Kandidat harus menyelesaikan verifikasi dalam <strong>48 jam</strong> setelah email dikirim.
                 </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-600">Biaya Verifikasi:</span>
+                  <span className="font-bold text-[#D95D00] text-lg">3 Kredit KYC</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Kredit Tersisa:</span>
+                  <span className="font-bold text-gray-800 text-lg">∞</span>
+                </div>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowBgCheckModal(false)}
                   disabled={isUpdating}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleBackgroundCheck}
                   disabled={isUpdating}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#D95D00] to-[#FF6B35] text-white rounded-lg hover:shadow-lg transition-all font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isUpdating ? (
                     <>
@@ -666,8 +616,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     </>
                   ) : (
                     <>
-                      <Shield size={18} />
-                      Kirim Verifikasi
+                      <Mail size={18} />
+                      Kirim Email
                     </>
                   )}
                 </button>

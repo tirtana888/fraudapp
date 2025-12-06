@@ -596,77 +596,54 @@ const EMAIL_TEMPLATES = {
 
                 <!-- Header -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%); padding: 40px 30px; text-align: center;">
-                    <div style="font-size: 64px; margin-bottom: 10px;">🎉</div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Congratulations!</h1>
-                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.95;">You've Successfully Passed to the Next Round</p>
+                  <td style="background: linear-gradient(135deg, #D95D00 0%, #FF6B35 100%); padding: 40px 30px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">🔒</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Background Check Required</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.95;">Verifikasi Latar Belakang via Didit KYC</p>
                   </td>
                 </tr>
 
                 <!-- Content -->
                 <tr>
                   <td style="padding: 40px 30px;">
-                    <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Halo, ${candidateName}! 👋</h2>
+                    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">Halo <strong>${candidateName}</strong>,</p>
 
-                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
-                      Kami dengan senang hati memberitahukan bahwa Anda telah berhasil melewati tahap wawancara untuk posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>!
+                    <p style="margin: 0 0 25px 0; color: #555555; font-size: 15px; line-height: 1.6;">
+                      Sebagai bagian dari proses rekrutmen untuk posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>,
+                      kami membutuhkan Anda untuk menyelesaikan verifikasi latar belakang melalui Didit KYC.
                     </p>
-
-                    <p style="margin: 0 0 25px 0; color: #555555; font-size: 16px; line-height: 1.6;">
-                      Sebagai langkah selanjutnya dalam proses rekrutmen, kami membutuhkan Anda untuk menyelesaikan <strong>Pemeriksaan Latar Belakang (Background Check)</strong> melalui platform verifikasi digital kami yang aman.
-                    </p>
-
-                    <!-- Process Steps -->
-                    <div style="background-color: #F0FDF4; border-left: 4px solid #10B981; padding: 20px; margin: 25px 0; border-radius: 4px;">
-                      <p style="margin: 0 0 10px 0; color: #065F46; font-size: 14px; font-weight: 600;">📋 Proses Verifikasi:</p>
-                      <ol style="margin: 0; padding-left: 20px; color: #047857; font-size: 14px; line-height: 1.8;">
-                        <li>Klik tombol "Mulai Verifikasi" di bawah</li>
-                        <li>Siapkan dokumen identitas resmi (KTP/SIM/Paspor)</li>
-                        <li>Ikuti instruksi untuk mengambil foto dokumen dan selfie</li>
-                        <li>Proses verifikasi memakan waktu 5-10 menit</li>
-                        <li>Hasil akan otomatis terkirim ke tim HR</li>
-                      </ol>
-                    </div>
 
                     <!-- CTA Button -->
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                       <tr>
                         <td align="center">
-                          <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #34D399 100%); color: #ffffff; text-decoration: none; padding: 18px 45px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
-                            🔒 Mulai Verifikasi Sekarang
+                          <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #D95D00 0%, #FF6B35 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(217, 93, 0, 0.3);">
+                            Mulai Verifikasi →
                           </a>
                         </td>
                       </tr>
                     </table>
 
-                    <!-- Security Info -->
-                    <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 20px; margin: 25px 0; border-radius: 4px;">
-                      <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">🔐 Keamanan & Privasi:</p>
-                      <ul style="margin: 0; padding-left: 20px; color: #1E3A8A; font-size: 13px; line-height: 1.8;">
-                        <li>Data Anda dienkripsi dan aman sesuai standar internasional</li>
-                        <li>Verifikasi menggunakan teknologi AI & Liveness Detection</li>
-                        <li>Platform dikelola oleh Didit, partner verifikasi terpercaya</li>
-                        <li>Data hanya digunakan untuk proses rekrutmen</li>
-                      </ul>
+                    <!-- Deadline Warning - Prominent -->
+                    <div style="background-color: #FEF2F2; border: 2px solid #DC2626; padding: 20px; margin: 25px 0; border-radius: 8px; text-align: center;">
+                      <p style="margin: 0 0 8px 0; color: #991B1B; font-size: 16px; font-weight: 700;">⏰ BATAS WAKTU: 48 JAM</p>
+                      <p style="margin: 0; color: #7F1D1D; font-size: 14px; line-height: 1.6;">
+                        Selesaikan verifikasi dalam <strong>maksimal 48 jam</strong> sejak email ini dikirim.
+                        Link akan expired setelah batas waktu.
+                      </p>
                     </div>
 
-                    <!-- Additional Info -->
-                    <div style="background-color: #F9FAFB; padding: 20px; border-radius: 8px; margin-top: 25px;">
-                      <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">ℹ️ Informasi Penting:</p>
-                      <ul style="margin: 0; padding-left: 20px; color: #6B7280; font-size: 13px; line-height: 1.8;">
-                        <li>Link verifikasi berlaku untuk <strong>1x akses</strong></li>
-                        <li>Pastikan foto dokumen jelas dan tidak buram</li>
-                        <li>Lakukan verifikasi di tempat dengan pencahayaan yang baik</li>
-                        <li style="color: #DC2626; font-weight: 600;">Selesaikan dalam <strong>maksimal 2 x 24 jam (48 jam)</strong> sejak email ini dikirim</li>
+                    <!-- Process Steps -->
+                    <div style="background-color: #FFF7ED; border-left: 4px solid #D95D00; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 12px 0; color: #9A3412; font-size: 14px; font-weight: 600;">Yang Perlu Anda Siapkan:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #9A3412; font-size: 14px; line-height: 1.8;">
+                        <li>Dokumen identitas resmi (KTP/SIM/Paspor)</li>
+                        <li>Smartphone atau laptop dengan kamera</li>
+                        <li>Pencahayaan yang baik</li>
+                        <li>Koneksi internet stabil</li>
                       </ul>
-                    </div>
-
-                    <!-- Deadline Warning -->
-                    <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
-                      <p style="margin: 0 0 10px 0; color: #991B1B; font-size: 14px; font-weight: 600;">⏰ Batas Waktu Verifikasi:</p>
-                      <p style="margin: 0; color: #7F1D1D; font-size: 13px; line-height: 1.8;">
-                        Anda memiliki waktu <strong>maksimal 48 jam</strong> untuk menyelesaikan proses verifikasi KYC ini.
-                        Jika melewati batas waktu, link verifikasi akan expired dan Anda perlu menghubungi tim HR untuk link baru.
+                      <p style="margin: 15px 0 0 0; color: #9A3412; font-size: 13px;">
+                        ⏱️ Proses verifikasi memakan waktu sekitar <strong>5-10 menit</strong>
                       </p>
                     </div>
 
