@@ -56,8 +56,14 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       const sessionsSnapshot = await getDocs(sessionsQuery);
       console.log('[CANDIDATES-AUTO] Found all job application sessions:', sessionsSnapshot.docs.length);
 
+      const autoCandidateSessions = sessionsSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.status !== 'pending_review';
+      });
+      console.log('[CANDIDATES-AUTO] Filtered to auto-complete only (excluding pending_review):', autoCandidateSessions.length);
+
       const candidatesWithDetails: AutoCandidate[] = await Promise.all(
-        sessionsSnapshot.docs.map(async (docSnap) => {
+        autoCandidateSessions.map(async (docSnap) => {
           const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
 
           let jobTitle = 'Unknown Position';
