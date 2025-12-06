@@ -67,8 +67,8 @@ const SuperAdminDashboard: React.FC = () => {
         });
         setJobsOpen(openJobs.length);
 
-        const applicationsSnapshot = await getDocs(collection(db, 'job_applications'));
-        setTotalApplications(applicationsSnapshot.size);
+        const candidatesSnapshot = await getDocs(collection(db, 'candidates'));
+        setTotalApplications(candidatesSnapshot.size);
       } catch (error) {
         console.error('Error fetching jobs data:', error);
       }
