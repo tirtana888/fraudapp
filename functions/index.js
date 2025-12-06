@@ -1419,11 +1419,11 @@ exports.diditWebhook = onRequest({
           updateData['backgroundCheckCompletedAt'] = new Date().toISOString();
         }
 
-        await db.collection('interview-sessions').doc(vendor_data).update(updateData);
+        await db.collection('interview_sessions').doc(vendor_data).update(updateData);
       }
     } else if (webhook_type === 'data.updated') {
        if (vendor_data) {
-        await db.collection('interview-sessions').doc(vendor_data).update({
+        await db.collection('interview_sessions').doc(vendor_data).update({
           'backgroundCheck.dataUpdated': true,
           'backgroundCheck.lastDataUpdate': new Date().toISOString(),
           'backgroundCheck.decision': decision || null
@@ -1485,7 +1485,7 @@ exports.createDiditSession = onCall({
       req.end();
     });
 
-    await db.collection('interview-sessions').doc(sessionId).update({
+    await db.collection('interview_sessions').doc(sessionId).update({
       'backgroundCheck.diditSessionId': response.session_id,
       'backgroundCheck.status': 'pending',
       'backgroundCheck.createdAt': new Date().toISOString()
@@ -1652,7 +1652,7 @@ exports.sendRejectionEmail = onCall({
   try {
     logger.info(`[REJECTION-EMAIL] Sending rejection email for session: ${sessionId}`);
 
-    const sessionDoc = await db.collection('interview-sessions').doc(sessionId).get();
+    const sessionDoc = await db.collection('interview_sessions').doc(sessionId).get();
     if (!sessionDoc.exists) {
       throw new HttpsError('not-found', 'Session not found');
     }
@@ -1720,7 +1720,7 @@ exports.sendHireEmail = onCall({
   try {
     logger.info(`[HIRE-EMAIL] Sending hire email for session: ${sessionId}`);
 
-    const sessionDoc = await db.collection('interview-sessions').doc(sessionId).get();
+    const sessionDoc = await db.collection('interview_sessions').doc(sessionId).get();
     if (!sessionDoc.exists) {
       throw new HttpsError('not-found', 'Session not found');
     }
@@ -1782,7 +1782,7 @@ const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 
 exports.updateGlobalStats = onDocumentWritten(
   {
-    document: "interview-sessions/{sessionId}",
+    document: "interview_sessions/{sessionId}",
     region: "europe-west1"
   },
   async (event) => {
