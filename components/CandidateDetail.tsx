@@ -424,62 +424,92 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              {statusBadge && (
+                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border ${statusBadge.color}`}>
+                  {statusBadge.icon}
+                  {statusBadge.label}
+                </span>
+              )}
+              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
+                const buttonConfig = getStageButtonConfig(candidate.recruitmentStage || 'screening');
+                return (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => handleStatusUpdate('interview')}
+                      disabled={isUpdating || !buttonConfig.interview.enabled}
+                      title={buttonConfig.interview.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <User size={14} />
+                      Wawancara
+                    </button>
+
+                    <button
+                      onClick={() => handleStatusUpdate('bc_check')}
+                      disabled={isUpdating || !buttonConfig.bc_check.enabled}
+                      title={buttonConfig.bc_check.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Shield size={14} />
+                      Cek Latar
+                    </button>
+
+                    <button
+                      onClick={() => handleStatusUpdate('hired')}
+                      disabled={isUpdating || !buttonConfig.hired.enabled}
+                      title={buttonConfig.hired.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 size={14} />
+                      Rekrut
+                    </button>
+
+                    <button
+                      onClick={() => handleStatusUpdate('rejected')}
+                      disabled={isUpdating}
+                      title={buttonConfig.rejected.tooltip}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <XCircle size={14} />
+                      Tolak
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           {/* Progress Stepper */}
           <div className="mt-6 mb-2">
             <div className="flex items-center justify-between max-w-5xl mx-auto">
               {[
-                { id: 'screening', label: 'Aplikasi', icon: FileText, stage: 'screening' },
-                { id: 'review', label: 'Test Integritas', icon: Shield, stage: 'review' },
-                { id: 'interview', label: 'Interview', icon: User, stage: 'interview' },
-                { id: 'bc_check', label: 'KYC', icon: Scan, stage: 'bc_check' },
-                { id: 'hired', label: 'Approved', icon: CheckCircle2, stage: 'hired' }
+                { id: 'screening', label: 'Aplikasi', icon: FileText },
+                { id: 'review', label: 'Test Integritas', icon: Shield },
+                { id: 'interview', label: 'Interview', icon: User },
+                { id: 'bc_check', label: 'KYC', icon: Scan },
+                { id: 'hired', label: 'Approved', icon: CheckCircle2 }
               ].map((step, index, array) => {
                 const currentStage = candidate.recruitmentStage || 'screening';
                 const isActive = currentStage === step.id ||
                   (step.id === 'screening' && (currentStage === 'processing' || currentStage === 'screening')) ||
-                  (step.id === 'hired' && currentStage === 'approved') ||
-                  (step.id === 'review' && currentStage === 'processing');
+                  (step.id === 'hired' && currentStage === 'approved');
                 const StepIcon = step.icon;
-                const buttonConfig = getStageButtonConfig(currentStage);
-
-                // Determine if clickable based on stage and current status
-                const isClickable = candidate.recruitmentStage !== 'rejected' &&
-                                   candidate.recruitmentStage !== 'approved' &&
-                                   candidate.recruitmentStage !== 'hired' &&
-                                   !isActive &&
-                                   ((step.stage === 'interview' && buttonConfig.interview.enabled) ||
-                                    (step.stage === 'bc_check' && buttonConfig.bc_check.enabled) ||
-                                    (step.stage === 'hired' && buttonConfig.hired.enabled));
 
                 return (
                   <React.Fragment key={step.id}>
                     <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => isClickable ? handleStatusUpdate(step.stage) : null}
-                        disabled={isUpdating || !isClickable}
-                        className={`
-                          w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all
-                          ${isActive
-                            ? 'bg-[#D95D00] border-[#D95D00] text-white'
-                            : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-slate-800 dark:border-slate-600'
-                          }
-                          ${isClickable ? 'cursor-pointer hover:border-[#D95D00] hover:bg-orange-50' : 'cursor-default'}
-                          disabled:opacity-50
-                        `}
-                        title={
-                          step.stage === 'bc_check' && !isBackgroundCheckAvailable()
-                            ? 'Upgrade ke Premium/Enterprise untuk Background Check'
-                            : isClickable
-                            ? `Klik untuk pindah ke ${step.label}`
-                            : ''
+                      <div className={`
+                        w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all
+                        ${isActive
+                          ? 'bg-[#D95D00] border-[#D95D00] text-white'
+                          : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-slate-800 dark:border-slate-600'
                         }
-                      >
+                      `}>
                         <StepIcon size={20} />
-                      </button>
+                      </div>
                       <span className={`text-xs font-medium whitespace-nowrap ${
-                        isActive ? 'text-[#D95D00] font-bold' : 'text-gray-500 dark:text-gray-400'
+                        isActive ? 'text-[#D95D00]' : 'text-gray-500 dark:text-gray-400'
                       }`}>
                         {step.label}
                       </span>
@@ -491,29 +521,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 );
               })}
             </div>
-
-            {/* Action Buttons */}
-            {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (
-              <div className="flex items-center justify-center gap-3 mt-6">
-                <button
-                  onClick={() => handleStatusUpdate('rejected')}
-                  disabled={isUpdating}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <XCircle size={16} />
-                  Tolak
-                </button>
-                <button
-                  onClick={() => handleStatusUpdate('hired')}
-                  disabled={isUpdating || !getStageButtonConfig(candidate.recruitmentStage || 'screening').hired.enabled}
-                  className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                  title={getStageButtonConfig(candidate.recruitmentStage || 'screening').hired.tooltip}
-                >
-                  <CheckCircle2 size={16} />
-                  Rekrut
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-1 mt-4 border-b border-gray-200 overflow-x-auto">
