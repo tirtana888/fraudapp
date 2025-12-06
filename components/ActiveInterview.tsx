@@ -15,10 +15,21 @@ interface ActiveInterviewProps {
 const Watermark: React.FC = () => (
   <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 py-3 px-4 z-50 shadow-lg dark:bg-gray-800/95 dark:border-gray-700">
     <div className="max-w-5xl mx-auto flex items-center justify-center gap-2">
-      <ShieldCheck size={16} className="text-orange-600" />
-      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-        Powered by <span className="font-bold text-orange-600">goodhire.one</span>
-      </span>
+      <a
+        href="https://hiregood.one"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 group"
+      >
+        <img
+          src="/untitled_design_(43).png"
+          alt="HireGood Logo"
+          className="h-5 w-5 object-contain"
+        />
+        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+          Powered by <span className="font-bold text-orange-600 group-hover:text-orange-700 transition-colors">hiregood.one</span>
+        </span>
+      </a>
     </div>
   </div>
 );

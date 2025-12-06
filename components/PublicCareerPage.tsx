@@ -287,8 +287,22 @@ const PublicCareerPage: React.FC = () => {
       <div className="border-t border-gray-200 dark:border-slate-700 mt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-gray-600 dark:text-gray-400">
-            <p className="mb-2">© {new Date().getFullYear()} {company.name}. All rights reserved.</p>
-            <p className="text-sm">Powered by HireGood</p>
+            <p className="mb-4">© {new Date().getFullYear()} {company.name}. All rights reserved.</p>
+            <a
+              href="https://hiregood.one"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 group"
+            >
+              <img
+                src="/untitled_design_(43).png"
+                alt="HireGood Logo"
+                className="h-5 w-5 object-contain"
+              />
+              <span className="text-sm font-medium">
+                Powered by <span className="font-bold text-orange-600 group-hover:text-orange-700 transition-colors">hiregood.one</span>
+              </span>
+            </a>
           </div>
         </div>
       </div>
