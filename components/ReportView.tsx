@@ -83,8 +83,8 @@ const DynamicFraudTriangle: React.FC<{
 
       {/* Vertices with labels */}
       {/* Pressure (Top) */}
-      <circle cx={pressureX} cy={pressureY} r="6" fill="#ef4444" stroke="#fff" strokeWidth="2" />
-      <text x={pressureX} y={pressureY - 15} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#f87171' : '#dc2626'}>
+      <circle cx={pressureX} cy={pressureY} r="6" fill="#D95D00" stroke="#fff" strokeWidth="2" />
+      <text x={pressureX} y={pressureY - 15} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#D95D00'}>
         Tekanan: {pressure}
       </text>
 
@@ -95,8 +95,8 @@ const DynamicFraudTriangle: React.FC<{
       </text>
 
       {/* Rationalization (Bottom Left) */}
-      <circle cx={rationalizationX} cy={rationalizationY} r="6" fill="#eab308" stroke="#fff" strokeWidth="2" />
-      <text x={rationalizationX - 15} y={rationalizationY + 5} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#facc15' : '#ca8a04'}>
+      <circle cx={rationalizationX} cy={rationalizationY} r="6" fill="#D95D00" stroke="#fff" strokeWidth="2" />
+      <text x={rationalizationX - 15} y={rationalizationY + 5} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#D95D00'}>
         Rasionalisasi: {rationalization}
       </text>
 
@@ -278,25 +278,25 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
                 />
             </div>
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mt-4 text-center">
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-900/30">
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border-2 border-orange-200 dark:border-orange-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Tekanan</p>
-                    <p className="text-2xl font-black text-red-700 dark:text-red-400">{scores.pressure}</p>
-                    <div className="mt-1 h-1.5 bg-red-200 dark:bg-red-900/40 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-600 dark:bg-red-500 rounded-full" style={{ width: `${scores.pressure}%` }}></div>
+                    <p className="text-2xl font-black text-brand-orange dark:text-orange-400">{scores.pressure}</p>
+                    <div className="mt-1 h-1.5 bg-orange-200 dark:bg-orange-900/40 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-orange dark:bg-orange-500 rounded-full" style={{ width: `${scores.pressure}%` }}></div>
                     </div>
                 </div>
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Peluang</p>
-                    <p className="text-2xl font-black text-blue-700 dark:text-blue-400">{scores.opportunity}</p>
+                    <p className="text-2xl font-black text-brand-blue dark:text-blue-400">{scores.opportunity}</p>
                     <div className="mt-1 h-1.5 bg-blue-200 dark:bg-blue-900/40 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 dark:bg-blue-500 rounded-full" style={{ width: `${scores.opportunity}%` }}></div>
+                      <div className="h-full bg-brand-blue dark:bg-blue-500 rounded-full" style={{ width: `${scores.opportunity}%` }}></div>
                     </div>
                 </div>
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-2 border-yellow-200 dark:border-yellow-900/30">
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border-2 border-orange-200 dark:border-orange-900/30">
                     <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1 truncate">Rasionalisasi</p>
-                    <p className="text-2xl font-black text-yellow-700 dark:text-yellow-400">{scores.rationalization}</p>
-                    <div className="mt-1 h-1.5 bg-yellow-200 dark:bg-yellow-900/40 rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-600 dark:bg-yellow-500 rounded-full" style={{ width: `${scores.rationalization}%` }}></div>
+                    <p className="text-2xl font-black text-brand-orange dark:text-orange-400">{scores.rationalization}</p>
+                    <div className="mt-1 h-1.5 bg-orange-200 dark:bg-orange-900/40 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-orange dark:bg-orange-500 rounded-full" style={{ width: `${scores.rationalization}%` }}></div>
                     </div>
                 </div>
             </div>
