@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check } from 'lucide-react';
+import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check, Share2, Globe } from 'lucide-react';
 import { Job, CompanyProfile } from '../types';
 import { getJobsByCompany, createJob, updateJob, generateSlug } from '../services/firebase';
 import { useToast } from './Toast';
@@ -17,6 +17,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [copiedCareerPage, setCopiedCareerPage] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -143,6 +144,18 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
     return `${window.location.origin}/jobs/${companySlug}/${job.slug}`;
   };
 
+  const getCareerPageLink = () => {
+    return `${window.location.origin}/careers/${currentCompany.id}`;
+  };
+
+  const handleCopyCareerPageLink = () => {
+    const link = getCareerPageLink();
+    navigator.clipboard.writeText(link);
+    setCopiedCareerPage(true);
+    toast.success('Link Laman Karir disalin ke clipboard!');
+    setTimeout(() => setCopiedCareerPage(false), 2000);
+  };
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex items-center justify-between mb-8">
@@ -163,6 +176,69 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
           <Plus className="w-5 h-5" />
           Buat Lowongan Baru
         </button>
+      </div>
+
+      {/* Career Page Card */}
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-2xl p-6 mb-8 border-2 border-orange-200 dark:border-orange-900/30 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1">
+            <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-lg">
+              <Globe className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                Laman Karir Perusahaan
+                <span className="px-2 py-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-full">
+                  BARU
+                </span>
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+                Halaman khusus yang menampilkan <strong>semua lowongan aktif</strong> perusahaan Anda dalam satu link.
+                Bagikan link ini di <strong>Bio Instagram</strong>, <strong>LinkedIn</strong>, atau media sosial lainnya untuk menarik kandidat berkualitas.
+              </p>
+              <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-orange-300 dark:border-orange-700 group hover:border-orange-500 dark:hover:border-orange-500 transition-all">
+                <code className="flex-1 text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
+                  {getCareerPageLink()}
+                </code>
+                <button
+                  onClick={handleCopyCareerPageLink}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+                >
+                  {copiedCareerPage ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Disalin!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Salin Link
+                    </>
+                  )}
+                </button>
+                <a
+                  href={getCareerPageLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold border-2 border-gray-200 dark:border-slate-600 shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Preview
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-900/30">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <Share2 className="w-4 h-4" />
+            <span>
+              <strong className="text-gray-900 dark:text-white">Tips:</strong> Tambahkan logo perusahaan dan brand color di menu{' '}
+              <strong>Pengaturan → Profil Perusahaan</strong> untuk tampilan yang lebih profesional
+            </span>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (

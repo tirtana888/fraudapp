@@ -16,6 +16,7 @@ import CandidatesAutoView from './components/CandidatesAutoView';
 import CandidatesReviewInvite from './components/CandidatesReviewInvite';
 import JobManager from './components/JobManager';
 import PublicJobPage from './components/PublicJobPage';
+import PublicCareerPage from './components/PublicCareerPage';
 import CandidateList from './components/CandidateList';
 import CandidateDetail from './components/CandidateDetail';
 import BackgroundCheckCallback from './components/BackgroundCheckCallback';
@@ -35,7 +36,7 @@ const App: React.FC = () => {
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const pathname = window.location.pathname;
-    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname === '/background-check-callback';
+    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname === '/background-check-callback';
   });
 
   const [isBackgroundCheckCallback, setIsBackgroundCheckCallback] = useState(() => {
@@ -60,6 +61,12 @@ const App: React.FC = () => {
       return { companySlug: careerPageMatch[1], jobSlug: undefined };
     }
     return null;
+  });
+
+  const [publicCareerRoute, setPublicCareerRoute] = useState<string | null>(() => {
+    const pathname = window.location.pathname;
+    const careerMatch = pathname.match(/^\/careers\/([^/]+)\/?$/);
+    return careerMatch ? careerMatch[1] : null;
   });
 
   // App State
@@ -274,6 +281,13 @@ const App: React.FC = () => {
             companySlug={publicJobRoute.companySlug}
             jobSlug={publicJobRoute.jobSlug}
           />
+        </ToastProvider>
+      );
+    }
+    if (publicCareerRoute) {
+      return (
+        <ToastProvider>
+          <PublicCareerPage />
         </ToastProvider>
       );
     }
