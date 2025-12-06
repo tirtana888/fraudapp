@@ -657,8 +657,17 @@ const EMAIL_TEMPLATES = {
                         <li>Link verifikasi berlaku untuk <strong>1x akses</strong></li>
                         <li>Pastikan foto dokumen jelas dan tidak buram</li>
                         <li>Lakukan verifikasi di tempat dengan pencahayaan yang baik</li>
-                        <li>Selesaikan dalam <strong>7 hari</strong> untuk melanjutkan proses rekrutmen</li>
+                        <li style="color: #DC2626; font-weight: 600;">Selesaikan dalam <strong>maksimal 2 x 24 jam (48 jam)</strong> sejak email ini dikirim</li>
                       </ul>
+                    </div>
+
+                    <!-- Deadline Warning -->
+                    <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #991B1B; font-size: 14px; font-weight: 600;">⏰ Batas Waktu Verifikasi:</p>
+                      <p style="margin: 0; color: #7F1D1D; font-size: 13px; line-height: 1.8;">
+                        Anda memiliki waktu <strong>maksimal 48 jam</strong> untuk menyelesaikan proses verifikasi KYC ini.
+                        Jika melewati batas waktu, link verifikasi akan expired dan Anda perlu menghubungi tim HR untuk link baru.
+                      </p>
                     </div>
 
                     <p style="margin: 30px 0 0 0; color: #888888; font-size: 14px; line-height: 1.6;">

@@ -42,6 +42,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [interviewTime, setInterviewTime] = useState('');
   const [interviewLink, setInterviewLink] = useState('');
   const [interviewLocation, setInterviewLocation] = useState('');
+  const [showBgCheckModal, setShowBgCheckModal] = useState(false);
 
   useEffect(() => {
     loadCandidateData();
@@ -335,11 +336,46 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     }
   };
 
+  const handleBackgroundCheck = async () => {
+    if (!candidate) return;
+
+    try {
+      setIsUpdating(true);
+      setShowBgCheckModal(false);
+
+      const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
+
+      const result = await initiateBackgroundCheck({ sessionId });
+      const data = result.data as { success: boolean; message: string };
+
+      if (data.success) {
+        toast.success('Email undangan Background Check berhasil dikirim ke kandidat!');
+        await loadCandidateData();
+      } else {
+        throw new Error(data.message || 'Failed to initiate background check');
+      }
+    } catch (error) {
+      console.error('Error initiating background check:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal mengirim undangan Background Check');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleStatusUpdate = async (newStage: string) => {
     if (!candidate) return;
 
     if (newStage === 'interview') {
       await handleOpenInterviewModal();
+      return;
+    }
+
+    if (newStage === 'bc_check') {
+      if (!isBackgroundCheckAvailable()) {
+        toast.error('Background Check hanya tersedia untuk tier Premium dan Enterprise. Silakan upgrade paket Anda.');
+        return;
+      }
+      setShowBgCheckModal(true);
       return;
     }
 
@@ -350,27 +386,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       return;
     }
 
-    if (newStage === 'bc_check' && !isBackgroundCheckAvailable()) {
-      toast.error('Background Check hanya tersedia untuk tier Premium dan Enterprise. Silakan upgrade paket Anda.');
-      return;
-    }
-
     try {
       setIsUpdating(true);
-
-      if (newStage === 'bc_check') {
-        const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
-
-        const result = await initiateBackgroundCheck({ sessionId });
-        const data = result.data as { success: boolean; message: string };
-
-        if (data.success) {
-          toast.success('Email undangan Background Check berhasil dikirim!');
-          await loadCandidateData();
-        } else {
-          throw new Error(data.message || 'Failed to initiate background check');
-        }
-      } else {
         const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
         const now = new Date().toISOString();
 
@@ -405,7 +422,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         };
 
         toast.success(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
-      }
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(error instanceof Error ? error.message : 'Gagal mengupdate status');
@@ -532,6 +548,135 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {showBgCheckModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-fade-in">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Background Check Verification</h3>
+                  <p className="text-sm opacity-90">Pemeriksaan Latar Belakang via Didit</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
+                <p className="text-sm text-blue-900 leading-relaxed">
+                  <strong className="block mb-2">Email verifikasi akan dikirim ke:</strong>
+                  <span className="font-mono text-blue-700">{candidate?.candidate.email}</span>
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <User size={16} className="text-purple-600" />
+                  Detail Kandidat
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600 block mb-1">Nama:</span>
+                    <span className="font-semibold text-gray-800">{candidate?.candidate.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 block mb-1">Posisi:</span>
+                    <span className="font-semibold text-gray-800">{candidate?.jobTitle}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <DollarSign size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-purple-900 mb-1">Biaya Kredit KYC</h4>
+                    <p className="text-sm text-purple-800 leading-relaxed">
+                      Proses Background Check akan menggunakan <strong className="text-lg">3 Kredit KYC</strong> dari akun Anda.
+                    </p>
+                    <div className="mt-3 bg-white rounded-lg p-3 border border-purple-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Kredit Tersisa:</span>
+                        <span className="font-bold text-purple-600 text-lg">∞</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">*Konfigurasi sistem kredit akan datang</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex gap-2">
+                  <Info size={18} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-yellow-800 leading-relaxed">
+                    <p className="font-semibold mb-2">Yang akan dilakukan:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
+                      <li>Mengirim email verifikasi ke kandidat</li>
+                      <li>Kandidat melakukan verifikasi identitas via Didit</li>
+                      <li>Status berubah menjadi "Background Check"</li>
+                      <li>Menggunakan 3 Kredit KYC dari akun</li>
+                    </ul>
+                    <div className="bg-yellow-100 rounded-lg p-3 border border-yellow-300">
+                      <p className="font-semibold flex items-center gap-2 mb-1">
+                        <Clock size={14} />
+                        Batas Waktu Verifikasi
+                      </p>
+                      <p className="text-xs">
+                        Kandidat memiliki waktu <strong>maksimal 2 x 24 jam (48 jam)</strong> untuk menyelesaikan proses verifikasi KYC sejak email dikirim.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg mb-6">
+                <p className="text-xs text-green-800 leading-relaxed">
+                  <strong className="block mb-1 flex items-center gap-1">
+                    <CheckCircle2 size={14} />
+                    Verifikasi yang Akan Dilakukan:
+                  </strong>
+                  <span className="block ml-5">• Verifikasi Identitas (KTP/SIM/Paspor)</span>
+                  <span className="block ml-5">• Liveness Detection (Foto Selfie)</span>
+                  <span className="block ml-5">• Face Matching dengan Dokumen ID</span>
+                  <span className="block ml-5">• AML Screening & Watchlist Check</span>
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBgCheckModal(false)}
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleBackgroundCheck}
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      <Shield size={18} />
+                      Kirim Verifikasi
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showInterviewModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full animate-fade-in my-8">
