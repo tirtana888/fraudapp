@@ -7,13 +7,14 @@ import { useToast } from './Toast';
 
 interface PublicJobPageProps {
   companySlug: string;
-  jobSlug: string;
+  jobSlug?: string;
 }
 
 const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) => {
   const toast = useToast();
   const [job, setJob] = useState<Job | null>(null);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -42,13 +43,21 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
 
       setCompany(companyData);
 
-      const jobData = await getJobBySlug(companyData.id, jobSlug);
-      if (!jobData) {
-        console.error('[PUBLIC-JOB] Job not found');
-        return;
+      if (jobSlug) {
+        const jobData = await getJobBySlug(companyData.id, jobSlug);
+        if (!jobData) {
+          console.error('[PUBLIC-JOB] Job not found');
+          return;
+        }
+        setJob(jobData);
+      } else {
+        const jobsQuery = query(collection(db, COLLECTIONS.JOBS));
+        const jobsSnapshot = await getDocs(jobsQuery);
+        const allJobs = jobsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Job))
+          .filter(j => j.companyId === companyData.id && j.status === 'Active');
+        setJobs(allJobs);
       }
-
-      setJob(jobData);
     } catch (error) {
       console.error('[PUBLIC-JOB] Error loading job:', error);
     } finally {
@@ -226,7 +235,108 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
     );
   }
 
-  if (!job || !company) {
+  if (!company) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Perusahaan Tidak Ditemukan</h1>
+          <p className="text-gray-600">Perusahaan yang Anda cari tidak tersedia</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!jobSlug) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="flex items-center gap-4 mb-6">
+              {company.logoUrl && (
+                <img src={company.logoUrl} alt={company.name} className="h-16 w-auto object-contain" />
+              )}
+              <div>
+                <h1 className="text-3xl font-bold text-[#0F172A]">{company.name}</h1>
+                <p className="text-gray-600 mt-1">Temukan karir impian Anda bersama kami</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <h2 className="text-2xl font-bold text-[#0F172A] mb-8">Lowongan Tersedia</h2>
+
+          {jobs.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <Briefcase className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Belum Ada Lowongan</h3>
+              <p className="text-gray-600">Saat ini belum ada lowongan yang tersedia. Silakan cek kembali nanti.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {jobs.map((j) => (
+                <a
+                  key={j.id}
+                  href={`/jobs/${companySlug}/${j.slug}`}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-[#D95D00] transition-all group"
+                >
+                  <h3 className="text-xl font-bold text-[#0F172A] mb-3 group-hover:text-[#D95D00] transition-colors">
+                    {j.title}
+                  </h3>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-gray-600 text-sm">
+                      <MapPin className="w-4 h-4" style={{ color: '#D95D00' }} />
+                      <span>{j.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600 text-sm">
+                      <Briefcase className="w-4 h-4" style={{ color: '#D95D00' }} />
+                      <span>{j.jobType}</span>
+                    </div>
+                  </div>
+                  {j.enableInstantAssessment && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-orange-100 to-blue-100 text-[#D95D00] rounded-full text-xs font-semibold">
+                      <CheckCircle className="w-3 h-3" />
+                      Zero-Touch Screening
+                    </div>
+                  )}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <span className="text-sm font-semibold text-[#D95D00] group-hover:underline">
+                      Lihat Detail →
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <footer className="bg-white border-t border-gray-200 mt-16 py-6">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-sm text-gray-600">Powered by</p>
+              <a
+                href="https://hiregood.one"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 group"
+              >
+                <img
+                  src="/untitled_design_(43).png"
+                  alt="HireGood Logo"
+                  className="h-6 w-6 object-contain"
+                />
+                <span className="font-semibold text-[#D95D00] group-hover:text-[#B14D00] transition-colors">
+                  HireGood.one
+                </span>
+              </a>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  if (!job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -48,11 +48,15 @@ const App: React.FC = () => {
     return params.get('cid');
   });
 
-  const [publicJobRoute, setPublicJobRoute] = useState<{companySlug: string; jobSlug: string} | null>(() => {
+  const [publicJobRoute, setPublicJobRoute] = useState<{companySlug: string; jobSlug?: string} | null>(() => {
     const pathname = window.location.pathname;
-    const match = pathname.match(/^\/jobs\/([^/]+)\/([^/]+)$/);
-    if (match) {
-      return { companySlug: match[1], jobSlug: match[2] };
+    const jobPageMatch = pathname.match(/^\/jobs\/([^/]+)\/([^/]+)$/);
+    if (jobPageMatch) {
+      return { companySlug: jobPageMatch[1], jobSlug: jobPageMatch[2] };
+    }
+    const careerPageMatch = pathname.match(/^\/jobs\/([^/]+)\/?$/);
+    if (careerPageMatch) {
+      return { companySlug: careerPageMatch[1], jobSlug: undefined };
     }
     return null;
   });
@@ -262,7 +266,10 @@ const App: React.FC = () => {
     if (publicJobRoute) {
       return (
         <ToastProvider>
-          <PublicJobPage companySlug={publicJobRoute.companySlug} jobSlug={publicJobRoute.jobSlug} />
+          <PublicJobPage
+            companySlug={publicJobRoute.companySlug}
+            jobSlug={publicJobRoute.jobSlug}
+          />
         </ToastProvider>
       );
     }
