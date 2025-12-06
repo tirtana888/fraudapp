@@ -462,7 +462,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
               className="flex items-center gap-2 group"
             >
               <img
-                src="/gemini_generated_image_isid5qisid5qisid.png"
+                src="/untitled_design_(43).png"
                 alt="HireGood Logo"
                 className="h-6 w-6 object-contain"
               />

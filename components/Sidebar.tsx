@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
       <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-slate-700">
         <div className="flex items-center space-x-3">
             <img
-              src="/gemini_generated_image_isid5qisid5qisid.png"
+              src="/untitled_design_(43).png"
               alt="HireGood Logo"
               className="h-10 w-10 object-contain"
             />
