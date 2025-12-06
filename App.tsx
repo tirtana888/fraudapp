@@ -195,6 +195,7 @@ const App: React.FC = () => {
   const handleInterviewComplete = () => {
     setActiveTab('history');
     setViewingSessionId(null);
+    setViewingCandidateId(null);
     setReviewingSession(null);
   };
 
@@ -214,14 +215,16 @@ const App: React.FC = () => {
     setTimelineEvents([]);
     setCurrentCompany(null);
     setViewingSessionId(null);
+    setViewingCandidateId(null);
     setReviewingSession(null);
     setActiveTab('dashboard');
   };
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
-    setViewingSessionId(null); 
-    setReviewingSession(null); 
+    setViewingSessionId(null);
+    setViewingCandidateId(null);
+    setReviewingSession(null);
     setIsMobileMenuOpen(false);
     if (tabId === 'settings') setSettingsTab('profile');
   };
@@ -360,7 +363,20 @@ const App: React.FC = () => {
           }}
         />;
       case 'candidates-manual':
-        return <CandidatesManualInvite currentCompany={currentCompany!} />;
+        if (viewingCandidateId) {
+          return <CandidateDetail
+            sessionId={viewingCandidateId}
+            onBack={() => {
+              setViewingCandidateId(null);
+            }}
+          />;
+        }
+        return <CandidatesManualInvite
+          currentCompany={currentCompany!}
+          onViewSession={(sessionId) => {
+            setViewingCandidateId(sessionId);
+          }}
+        />;
       case 'candidates-review':
         return <CandidatesReviewInvite companyId={currentCompany!.id} onViewSession={(sessionId) => {
           const session = sessions.find(s => s.id === sessionId);
