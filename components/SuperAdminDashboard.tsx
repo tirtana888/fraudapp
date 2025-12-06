@@ -30,36 +30,15 @@ const SuperAdminDashboard: React.FC = () => {
   const [companiesLoading, setCompaniesLoading] = useState(true);
   const [jobsOpen, setJobsOpen] = useState(0);
   const [totalApplications, setTotalApplications] = useState(0);
+  const [totalAssessments, setTotalAssessments] = useState(0);
+  const [completedAssessments, setCompletedAssessments] = useState(0);
+  const [totalCompaniesCount, setTotalCompaniesCount] = useState(0);
 
-  // Real-time listener for global metrics
+  // Fetch ALL data from ALL companies
   useEffect(() => {
-    const statsRef = doc(db, 'stats', 'global_metrics');
-
-    const unsubscribe = onSnapshot(statsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setMetrics(snapshot.data() as GlobalMetrics);
-      } else {
-        setMetrics({
-          total_assessments: 0,
-          completed_assessments: 0,
-          jobs_open: 0,
-          total_applications: 0,
-          last_updated: new Date().toISOString()
-        });
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error('Error listening to stats:', error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch jobs and applications data
-  useEffect(() => {
-    const fetchJobsData = async () => {
+    const fetchAllData = async () => {
       try {
+        // Fetch ALL jobs from ALL companies
         const jobsSnapshot = await getDocs(collection(db, 'jobs'));
         const openJobs = jobsSnapshot.docs.filter(doc => {
           const data = doc.data();
@@ -67,20 +46,56 @@ const SuperAdminDashboard: React.FC = () => {
         });
         setJobsOpen(openJobs.length);
 
+        // Fetch ALL candidates from ALL companies
         const candidatesSnapshot = await getDocs(collection(db, 'candidates'));
         setTotalApplications(candidatesSnapshot.size);
+
+        // Calculate total assessments and completed assessments from ALL candidates
+        let totalAssess = 0;
+        let completedAssess = 0;
+
+        candidatesSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          // Count as assessment if candidate has been invited/started
+          if (data.status) {
+            totalAssess++;
+          }
+          // Count as completed if status is 'Completed' or has assessment results
+          if (data.status === 'Completed' || (data.assessmentResults && Object.keys(data.assessmentResults).length > 0)) {
+            completedAssess++;
+          }
+        });
+
+        setTotalAssessments(totalAssess);
+        setCompletedAssessments(completedAssess);
+
+        setMetrics({
+          total_assessments: totalAssess,
+          completed_assessments: completedAssess,
+          jobs_open: openJobs.length,
+          total_applications: candidatesSnapshot.size,
+          last_updated: new Date().toISOString()
+        });
+
       } catch (error) {
-        console.error('Error fetching jobs data:', error);
+        console.error('Error fetching global data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchJobsData();
+    fetchAllData();
   }, []);
 
   // Fetch recent companies
   useEffect(() => {
     const fetchRecentCompanies = async () => {
       try {
+        // Get total count of ALL companies
+        const allCompaniesSnapshot = await getDocs(collection(db, 'companies'));
+        setTotalCompaniesCount(allCompaniesSnapshot.size);
+
+        // Get recent 5 companies for display
         const q = query(
           collection(db, 'companies'),
           orderBy('joinedDate', 'desc'),
@@ -101,8 +116,6 @@ const SuperAdminDashboard: React.FC = () => {
 
     fetchRecentCompanies();
   }, []);
-
-  const totalCompaniesCount = companies.length;
 
   const formatDate = (dateString: string) => {
     try {
