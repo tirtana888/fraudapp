@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -24,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
     { id: 'history', label: 'Riwayat Audit', icon: History },
     { id: 'settings', label: 'Pengaturan', icon: Settings },
+    { id: 'documentation', label: 'Dokumentasi', icon: BookOpen },
   ];
 
   const candidateSubMenus = [
