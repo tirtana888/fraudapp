@@ -95,28 +95,28 @@ const SuperAdminDashboard: React.FC = () => {
   }, []);
 
   // Calculate derived metrics
-  const highRiskPercentage = metrics ?
+  const highRiskPercentage = (metrics && metrics.risk_distribution) ?
     (metrics.completed_assessments > 0
       ? ((metrics.risk_distribution.High / metrics.completed_assessments) * 100).toFixed(1)
       : '0.0')
     : '0.0';
 
-  const totalCompaniesCount = companies.length; // Could be fetched separately for exact count
+  const totalCompaniesCount = companies.length;
 
   // Estimated revenue (example calculation: $50 per completed assessment)
   const estimatedRevenue = metrics ? (metrics.completed_assessments * 50).toLocaleString() : '0';
 
   // Prepare chart data
-  const riskChartData = metrics ? [
-    { name: 'Low Risk', value: metrics.risk_distribution.Low, color: CHART_COLORS.Low },
-    { name: 'Medium Risk', value: metrics.risk_distribution.Medium, color: CHART_COLORS.Medium },
-    { name: 'High Risk', value: metrics.risk_distribution.High, color: CHART_COLORS.High },
+  const riskChartData = (metrics && metrics.risk_distribution) ? [
+    { name: 'Low Risk', value: metrics.risk_distribution.Low || 0, color: CHART_COLORS.Low },
+    { name: 'Medium Risk', value: metrics.risk_distribution.Medium || 0, color: CHART_COLORS.Medium },
+    { name: 'High Risk', value: metrics.risk_distribution.High || 0, color: CHART_COLORS.High },
   ] : [];
 
-  const fraudIndicatorsData = metrics ? [
-    { name: 'Email Sent', count: metrics.email_usage },
-    { name: 'KYC Checks', count: metrics.kyc_usage },
-    { name: 'High Risk', count: metrics.risk_distribution.High },
+  const fraudIndicatorsData = (metrics && metrics.risk_distribution) ? [
+    { name: 'Email Sent', count: metrics.email_usage || 0 },
+    { name: 'KYC Checks', count: metrics.kyc_usage || 0 },
+    { name: 'High Risk', count: metrics.risk_distribution.High || 0 },
   ] : [];
 
   const formatDate = (dateString: string) => {
@@ -211,7 +211,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
           <div className="space-y-1">
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {metrics?.risk_distribution.High || 0}
+              {(metrics?.risk_distribution?.High) || 0}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">High Risk Detected</p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
