@@ -1,38 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
   Activity,
-  AlertTriangle,
   Building2,
   TrendingUp,
   Users,
-  Mail,
-  Shield,
+  Briefcase,
+  UserPlus,
   Loader2,
   Calendar
 } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { db } from '../services/firebase';
-import { collection, doc, onSnapshot, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
 import { CompanyProfile } from '../types';
 
 const BRAND_ORANGE = '#CC5500';
-const BRAND_BLUE = '#ADD8E6';
-const CHART_COLORS = {
-  High: '#EF4444',
-  Medium: '#F59E0B',
-  Low: '#10B981',
-};
 
 interface GlobalMetrics {
   total_assessments: number;
   completed_assessments: number;
-  email_usage: number;
-  kyc_usage: number;
-  risk_distribution: {
-    High: number;
-    Medium: number;
-    Low: number;
-  };
+  jobs_open: number;
+  total_applications: number;
   last_updated: string;
 }
 
@@ -41,6 +28,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [jobsOpen, setJobsOpen] = useState(0);
+  const [totalApplications, setTotalApplications] = useState(0);
 
   // Real-time listener for global metrics
   useEffect(() => {
@@ -50,13 +39,11 @@ const SuperAdminDashboard: React.FC = () => {
       if (snapshot.exists()) {
         setMetrics(snapshot.data() as GlobalMetrics);
       } else {
-        // Initialize with zeros if no data
         setMetrics({
           total_assessments: 0,
           completed_assessments: 0,
-          email_usage: 0,
-          kyc_usage: 0,
-          risk_distribution: { High: 0, Medium: 0, Low: 0 },
+          jobs_open: 0,
+          total_applications: 0,
           last_updated: new Date().toISOString()
         });
       }
@@ -67,6 +54,27 @@ const SuperAdminDashboard: React.FC = () => {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Fetch jobs and applications data
+  useEffect(() => {
+    const fetchJobsData = async () => {
+      try {
+        const jobsSnapshot = await getDocs(collection(db, 'jobs'));
+        const openJobs = jobsSnapshot.docs.filter(doc => {
+          const data = doc.data();
+          return data.status !== 'Closed';
+        });
+        setJobsOpen(openJobs.length);
+
+        const applicationsSnapshot = await getDocs(collection(db, 'job_applications'));
+        setTotalApplications(applicationsSnapshot.size);
+      } catch (error) {
+        console.error('Error fetching jobs data:', error);
+      }
+    };
+
+    fetchJobsData();
   }, []);
 
   // Fetch recent companies
@@ -94,30 +102,7 @@ const SuperAdminDashboard: React.FC = () => {
     fetchRecentCompanies();
   }, []);
 
-  // Calculate derived metrics
-  const highRiskPercentage = (metrics && metrics.risk_distribution) ?
-    (metrics.completed_assessments > 0
-      ? ((metrics.risk_distribution.High / metrics.completed_assessments) * 100).toFixed(1)
-      : '0.0')
-    : '0.0';
-
   const totalCompaniesCount = companies.length;
-
-  // Estimated revenue (example calculation: $50 per completed assessment)
-  const estimatedRevenue = metrics ? (metrics.completed_assessments * 50).toLocaleString() : '0';
-
-  // Prepare chart data
-  const riskChartData = (metrics && metrics.risk_distribution) ? [
-    { name: 'Low Risk', value: metrics.risk_distribution.Low || 0, color: CHART_COLORS.Low },
-    { name: 'Medium Risk', value: metrics.risk_distribution.Medium || 0, color: CHART_COLORS.Medium },
-    { name: 'High Risk', value: metrics.risk_distribution.High || 0, color: CHART_COLORS.High },
-  ] : [];
-
-  const fraudIndicatorsData = (metrics && metrics.risk_distribution) ? [
-    { name: 'Email Sent', count: metrics.email_usage || 0 },
-    { name: 'KYC Checks', count: metrics.kyc_usage || 0 },
-    { name: 'High Risk', count: metrics.risk_distribution.High || 0 },
-  ] : [];
 
   const formatDate = (dateString: string) => {
     try {
@@ -201,21 +186,42 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* High Risk Detected */}
+        {/* Jobs Open */}
         <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-lg">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Briefcase className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="text-sm text-red-600 dark:text-red-400 font-medium">{highRiskPercentage}%</span>
+            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+              <TrendingUp className="w-4 h-4 inline" />
+            </span>
           </div>
           <div className="space-y-1">
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {(metrics?.risk_distribution?.High) || 0}
+              {jobsOpen.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">High Risk Detected</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Jobs Open</p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              Requires immediate review
+              Active job postings
+            </p>
+          </div>
+        </div>
+
+        {/* Total Applications */}
+        <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <UserPlus className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <span className="text-sm text-green-600 dark:text-green-400 font-medium">Total</span>
+          </div>
+          <div className="space-y-1">
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              {totalApplications.toLocaleString()}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Candidate Applications</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+              All time applications
             </p>
           </div>
         </div>
@@ -223,108 +229,22 @@ const SuperAdminDashboard: React.FC = () => {
         {/* Companies Onboarded */}
         <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Building2 className="w-6 h-6 text-blue-600 dark:text-brand-blue" />
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Building2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
-            <span className="text-sm text-blue-600 dark:text-brand-blue font-medium">
+            <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
               <TrendingUp className="w-4 h-4 inline" />
             </span>
           </div>
           <div className="space-y-1">
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {totalCompaniesCount}
+              {totalCompaniesCount.toLocaleString()}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Companies Onboarded</p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
               Active clients
             </p>
           </div>
-        </div>
-
-        {/* Estimated Revenue */}
-        <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <span className="text-sm text-green-600 dark:text-green-400 font-medium">Est.</span>
-          </div>
-          <div className="space-y-1">
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              ${estimatedRevenue}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Estimated Revenue</p>
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              Based on completed assessments
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Risk Distribution Pie Chart */}
-        <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-brand-orange" />
-            Integrity Risk Distribution
-          </h2>
-          {riskChartData.some(d => d.value > 0) ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={riskChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value, percent }) =>
-                    `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                  }
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {riskChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400">
-              <div className="text-center">
-                <Shield className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p>No risk data available yet</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Fraud Indicators Bar Chart */}
-        <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-brand-orange" />
-            System Usage Metrics
-          </h2>
-          {fraudIndicatorsData.some(d => d.count > 0) ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={fraudIndicatorsData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill={BRAND_ORANGE} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400">
-              <div className="text-center">
-                <Activity className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p>No usage data available yet</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
