@@ -6,6 +6,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
+import FraudTriangleVisualization from './FraudTriangleVisualization';
 
 interface CandidateDetailProps {
   sessionId: string;
@@ -1653,7 +1654,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   </div>
                   <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
                     <CheckCircle2 size={14} />
-                    RESIKO LOW
+                    RESIKO {candidate.analysis?.riskLevel?.toUpperCase() || 'LOW'}
                   </div>
                 </div>
                 <div className="text-right">
@@ -1664,146 +1665,37 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="font-bold text-gray-800 mb-4">Visualisasi Fraud Triangle</h3>
-                <div className="relative h-56 flex items-center justify-center mb-4">
-                  <svg width="240" height="220" viewBox="0 0 240 220">
-                    <polygon
-                      points="120,30 200,180 40,180"
-                      fill="none"
-                      stroke="#e5e7eb"
-                      strokeWidth="2"
-                    />
-                    <polygon
-                      points="120,30 200,180 40,180"
-                      fill="#D95D00"
-                      fillOpacity="0.15"
-                      stroke="#D95D00"
-                      strokeWidth="2"
-                    />
-                    <text x="120" y="20" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Tekanan</text>
-                    <text x="30" y="195" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Peluang</text>
-                    <text x="210" y="195" textAnchor="middle" className="text-xs fill-gray-600" fontSize="12" fontWeight="500">Rasionalisasi</text>
-                  </svg>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Tekanan</div>
-                    <div className="text-2xl font-black text-red-600">{candidate.fraudTriangle?.pressure || 35}</div>
-                  </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Peluang</div>
-                    <div className="text-2xl font-black text-blue-600">{candidate.fraudTriangle?.opportunity || 15}</div>
-                  </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                    <div className="text-xs text-gray-600 mb-1 uppercase font-semibold">Rasionalisasi</div>
-                    <div className="text-2xl font-black text-orange-600">{candidate.fraudTriangle?.rationalization || 25}</div>
-                  </div>
-                </div>
-              </div>
+            <FraudTriangleVisualization
+              pressure={candidate.fraudTriangle?.pressure || candidate.analysis?.scores?.pressure || 35}
+              opportunity={candidate.fraudTriangle?.opportunity || candidate.analysis?.scores?.opportunity || 15}
+              rationalization={candidate.fraudTriangle?.rationalization || candidate.analysis?.scores?.rationalization || 25}
+              consistencyScore={85}
+              sentimentScore={75}
+              benchmarkAvg={45}
+              industryAvg={52}
+            />
 
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <CheckCircle2 size={20} className="text-blue-600" />
-                    <h3 className="font-bold text-gray-800">Ringkasan Analisis AI</h3>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                    {candidate.analysis?.summary || (
-                      <>
-                        Kandidat menunjukkan <span className="font-semibold text-blue-600">profil risiko rendah</span> yang ditandai dengan <span className="font-semibold">kepatuhan kuat terhadap pemisahan tugas</span> dan <span className="font-semibold">rasionalisasi rendah untuk fraud</span>. Meskipun ada <span className="font-semibold text-orange-600">indikator tingkat menengah</span> terkait tekanan finansial (tingkat stres: {candidate.fraudTriangle?.pressure || 35}), jawaban kandidat secara konsisten menolak peluang fraudulen dan rasionalisasi tidak etis. Konsistensi antara penilaian diri dan skenario SJT tinggi.
-                      </>
-                    )}
-                  </p>
-                  <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                    <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
-                    <p className="text-sm text-blue-800">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 size={20} className="text-blue-600" />
+                <h3 className="font-bold text-gray-800">Ringkasan Analisis AI</h3>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                {candidate.analysis?.summary || (
+                  <>
+                    Kandidat menunjukkan <span className="font-semibold text-blue-600">profil risiko rendah</span> yang ditandai dengan <span className="font-semibold">kepatuhan kuat terhadap pemisahan tugas</span> dan <span className="font-semibold">rasionalisasi rendah untuk fraud</span>. Meskipun ada <span className="font-semibold text-orange-600">indikator tingkat menengah</span> terkait tekanan finansial (tingkat stres: {candidate.fraudTriangle?.pressure || 35}), jawaban kandidat secara konsisten menolak peluang fraudulen dan rasionalisasi tidak etis. Konsistensi antara penilaian diri dan skenario SJT tinggi.
+                  </>
+                )}
+              </p>
+              <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
+                <p className="text-sm text-blue-800">
+                  {candidate.analysis?.recommendation || (
+                    <>
                       <span className="font-semibold">Direkomendasikan untuk direkrut.</span> Kandidat menunjukkan kompas etika yang kuat dan pemahaman kontrol internal. Indikator tekanan finansial minor diimbangi oleh skor integritas tinggi.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Activity size={20} className="text-cyan-600" />
-                    <h3 className="font-bold text-gray-800">Benchmarking Risiko</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-600 mb-1">Kandidat</div>
-                        <div className="h-7 bg-orange-500 rounded flex items-center justify-end pr-2" style={{ width: `${Math.min(100, (candidate.riskScore || 25) * 2)}%` }}>
-                          <span className="text-xs font-bold text-white">{candidate.riskScore || 25}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-600 mb-1">Rata-rata Perusahaan</div>
-                        <div className="h-7 bg-blue-500 rounded flex items-center justify-end pr-2" style={{ width: '60%' }}>
-                          <span className="text-xs font-bold text-white">45</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-600 mb-1">Industri Sejenis</div>
-                        <div className="h-7 bg-gray-400 rounded flex items-center justify-end pr-2" style={{ width: '75%' }}>
-                          <span className="text-xs font-bold text-white">52</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-4">Membandingkan skor agregat kandidat dengan database internal.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle2 size={20} className="text-orange-600" />
-                  <h3 className="font-bold text-gray-800">Skor Konsistensi</h3>
-                </div>
-                <div className="text-center mb-4">
-                  <div className="text-5xl font-black text-orange-600">0.92%</div>
-                  <div className="text-sm text-gray-500 mt-1">Akurasi Jawaban</div>
-                </div>
-                <div className="h-3 bg-orange-200 rounded-full mb-4">
-                  <div className="h-3 bg-orange-500 rounded-full" style={{ width: '92%' }}></div>
-                </div>
-                <p className="text-sm text-gray-600">Mengukur konsistensi antara tes tertulis dan wawancara.</p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <MessageSquare size={20} className="text-teal-600" />
-                  <h3 className="font-bold text-gray-800">Sentimen Analisis</h3>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-medium text-green-700">Positif</span>
-                      <span className="font-bold text-gray-800">0%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-green-500 rounded-full" style={{ width: '0%' }}></div></div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-medium text-gray-700">Netral</span>
-                      <span className="font-bold text-gray-800">1%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-gray-400 rounded-full" style={{ width: '1%' }}></div></div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-medium text-red-700">Negatif</span>
-                      <span className="font-bold text-gray-800">0%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-red-500 rounded-full" style={{ width: '0%' }}></div></div>
-                  </div>
-                </div>
+                    </>
+                  )}
+                </p>
               </div>
             </div>
 
