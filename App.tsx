@@ -20,6 +20,7 @@ import CandidateList from './components/CandidateList';
 import CandidateDetail from './components/CandidateDetail';
 import BackgroundCheckCallback from './components/BackgroundCheckCallback';
 import CompanyProfileSettings from './components/CompanyProfileSettings';
+import HistoryView from './components/HistoryView';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
@@ -380,73 +381,15 @@ const App: React.FC = () => {
                     onUpdate={handleCompanyUpdate} 
                 />;
       case 'history':
-        return (
-          <div className="space-y-6 animate-in fade-in">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Daftar Riwayat Audit</h2>
-            <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[600px]">
-                  <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    <tr>
-                      <th className="p-5 font-bold">Kandidat</th>
-                      <th className="p-5 font-bold">Tanggal</th>
-                      <th className="p-5 font-bold">Tingkat Risiko</th>
-                      <th className="p-5 font-bold text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {sessions.map(s => (
-                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group">
-                        <td className="p-5">
-                          <p className="font-bold text-gray-800 dark:text-gray-200 text-sm group-hover:text-brand-orange transition-colors">{s.candidate.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{s.candidate.role}</p>
-                        </td>
-                        <td className="p-5 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                          {new Date(s.date).toLocaleDateString('id-ID')}
-                        </td>
-                        <td className="p-5">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap
-                            ${s.status === 'pending_review' ? 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' :
-                              s.analysis?.riskLevel === 'High' || s.analysis?.riskLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30' : 
-                              s.analysis?.riskLevel === 'Medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900/30' :
-                              'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30'}`}>
-                            {s.status === 'pending_review' ? 'Perlu Review' : s.analysis?.riskLevel}
-                          </span>
-                        </td>
-                        <td className="p-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                              <button 
-                                onClick={() => s.status === 'pending_review' ? handleReviewSession(s) : setViewingSessionId(s.id)}
-                                className="text-brand-dark dark:text-gray-200 bg-gray-100 dark:bg-slate-700 hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue dark:hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
-                              >
-                                {s.status === 'pending_review' ? 'Mulai Review' : 'Lihat Laporan'}
-                              </button>
-                              {s.status === 'completed' && (
-                                  <button
-                                    onClick={() => handleReviewSession(s)}
-                                    className="p-2 text-gray-500 hover:text-brand-orange hover:bg-orange-50 rounded-lg transition-all"
-                                    title="Ulas Ulang / Edit"
-                                  >
-                                    <RefreshCw size={16} />
-                                  </button>
-                              )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {sessions.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="p-10 text-center text-gray-400 dark:text-gray-500 italic">
-                          Belum ada data di database untuk perusahaan ini.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
+        if (viewingCandidateId) {
+          return <CandidateDetail
+            sessionId={viewingCandidateId}
+            onBack={() => {
+              setViewingCandidateId(null);
+            }}
+          />;
+        }
+        return <HistoryView companyId={currentCompany!.id} onViewCandidate={setViewingCandidateId} />;
       case 'admin-panel':
         return <AdminDashboard />;
       case 'settings':
