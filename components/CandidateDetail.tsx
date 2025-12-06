@@ -480,6 +480,49 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </div>
           </div>
 
+          {/* Progress Stepper */}
+          <div className="mt-6 mb-2">
+            <div className="flex items-center justify-between max-w-5xl mx-auto">
+              {[
+                { id: 'screening', label: 'Aplikasi', icon: FileText },
+                { id: 'review', label: 'Test Integritas', icon: Shield },
+                { id: 'interview', label: 'Interview', icon: User },
+                { id: 'bc_check', label: 'KYC', icon: Scan },
+                { id: 'hired', label: 'Approved', icon: CheckCircle2 }
+              ].map((step, index, array) => {
+                const currentStage = candidate.recruitmentStage || 'screening';
+                const isActive = currentStage === step.id ||
+                  (step.id === 'screening' && (currentStage === 'processing' || currentStage === 'screening')) ||
+                  (step.id === 'hired' && currentStage === 'approved');
+                const StepIcon = step.icon;
+
+                return (
+                  <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                      <div className={`
+                        w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all
+                        ${isActive
+                          ? 'bg-[#D95D00] border-[#D95D00] text-white'
+                          : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-slate-800 dark:border-slate-600'
+                        }
+                      `}>
+                        <StepIcon size={20} />
+                      </div>
+                      <span className={`text-xs font-medium whitespace-nowrap ${
+                        isActive ? 'text-[#D95D00]' : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
+                    {index < array.length - 1 && (
+                      <div className="flex-1 h-0.5 bg-gray-300 dark:bg-slate-600 mx-2 mt-[-20px]"></div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center gap-1 mt-4 border-b border-gray-200 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
