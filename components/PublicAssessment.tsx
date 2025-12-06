@@ -173,13 +173,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           { speaker: 'ai', text: `Halo ${candidateName}, saya Alex. Terima kasih sudah mengisi survei awal. Saya ingin menggali lebih dalam tentang beberapa aspek dari jawaban Anda. Kita punya waktu sekitar 10 menit untuk berbincang. Siap untuk mulai?` }
       ];
 
-      // Determine source based on invite data
+      const now = new Date().toISOString();
       const isJobApplication = !!(inviteData?.jobId || inviteData?.applicationId);
       const sessionSource = isJobApplication ? 'job_application' : 'public_link';
 
       const sessionData: any = {
           candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
-          date: new Date().toISOString(),
+          date: now,
           status: 'active',
           recruitmentStage: 'screening',
           structuredAssessment: ftAnswers,
@@ -187,7 +187,15 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           sjtResults: sjtAnswers,
           transcript: initialHistory,
           companyId: companyId || 'unknown',
-          source: sessionSource
+          source: sessionSource,
+          timeline: [
+            {
+              stage: 'assessment_started',
+              status: 'current' as const,
+              date: now,
+              note: `${candidateName} memulai assessment`
+            }
+          ]
       };
 
       // Add job-related fields if this is a job application
@@ -298,20 +306,47 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      const sessionSnap = await getDoc(sessionRef);
+      let existingTimeline: any[] = [];
+
+      if (sessionSnap.exists()) {
+        const sessionData = sessionSnap.data();
+        existingTimeline = sessionData.timeline || [];
+      }
+
+      const now = new Date().toISOString();
+      const updatedTimeline = [
+        ...existingTimeline.map((event: any) => ({
+          ...event,
+          status: event.status === 'current' ? 'completed' : event.status
+        })),
+        {
+          stage: 'assessment_completed',
+          status: 'completed' as const,
+          date: now,
+          note: `Assessment selesai dengan skor risiko: ${finalAnalysis.riskLevel}`
+        },
+        {
+          stage: 'review',
+          status: 'current' as const,
+          date: now,
+          note: `Menunggu review HR`
+        }
+      ];
+
       await updateSessionInDB(sessionId, {
         status: 'completed',
         recruitmentStage: 'review',
         analysis: finalAnalysis,
-        transcript: chatHistory
-        // source field is NOT updated here to preserve original source set during session creation
+        transcript: chatHistory,
+        timeline: updatedTimeline
       });
 
-      // Update invite status to COMPLETED
       if (inviteData?.access_code) {
           await markAccessCodeUsed(inviteData.access_code, 'COMPLETED', sessionId);
       }
 
-      // Send email notification
       await sendAssessmentCompleteEmail(candidateName, candidateEmail, company?.name || 'Perusahaan');
 
       setStep('done');

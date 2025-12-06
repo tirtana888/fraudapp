@@ -1136,6 +1136,8 @@ export const createInterviewSessionFromApplication = async (
   applicationData: Omit<JobApplication, 'id' | 'createdAt'>
 ): Promise<string> => {
   try {
+    const now = new Date().toISOString();
+
     const session = {
       candidate: {
         id: applicationId,
@@ -1143,13 +1145,33 @@ export const createInterviewSessionFromApplication = async (
         email: applicationData.email,
         role: 'Applicant'
       },
-      date: new Date().toISOString(),
+      date: now,
       status: 'pending_review' as const,
       recruitmentStage: 'screening',
       transcript: [
         {
           speaker: 'ai' as const,
           text: `Aplikasi diterima dari ${applicationData.fullName} via Job Portal. CV: ${applicationData.cvUrl}`
+        }
+      ],
+      timeline: [
+        {
+          stage: 'applied',
+          status: 'completed' as const,
+          date: now,
+          note: `Kandidat melamar via Job Portal`
+        },
+        {
+          stage: 'cv_uploaded',
+          status: 'completed' as const,
+          date: now,
+          note: `CV berhasil diunggah`
+        },
+        {
+          stage: 'screening',
+          status: 'current' as const,
+          date: now,
+          note: `Menunggu review HR`
         }
       ],
       companyId: applicationData.companyId,

@@ -5,6 +5,7 @@ import { db, COLLECTIONS, functions } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from './Toast';
+import CandidateActivityTimeline from './CandidateActivityTimeline';
 
 interface CandidateDetailProps {
   sessionId: string;
@@ -229,19 +230,26 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         }
       } else {
         const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+        const now = new Date().toISOString();
 
-        const timeline = candidate.timeline || [];
-        timeline.push({
-          stage: newStage,
-          status: 'completed',
-          date: new Date().toISOString(),
-          note: `Status updated to ${newStage}`
-        });
+        const existingTimeline = candidate.timeline || [];
+        const updatedTimeline = [
+          ...existingTimeline.map(event => ({
+            ...event,
+            status: event.status === 'current' ? 'completed' as const : event.status
+          })),
+          {
+            stage: newStage,
+            status: (newStage === 'rejected' || newStage === 'hired' || newStage === 'approved') ? 'completed' as const : 'current' as const,
+            date: now,
+            note: getStageNote(newStage, candidate.candidate.name)
+          }
+        ];
 
         await updateDoc(sessionRef, {
           recruitmentStage: newStage,
-          timeline,
-          updatedAt: new Date().toISOString()
+          timeline: updatedTimeline,
+          updatedAt: now
         });
 
         await loadCandidateData();
@@ -249,10 +257,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         const stageLabels: { [key: string]: string } = {
           'interview': 'Wawancara',
           'hired': 'Rekrut',
-          'rejected': 'Ditolak'
+          'rejected': 'Ditolak',
+          'bc_check': 'Background Check',
+          'background_check': 'Background Check'
         };
 
-        toast.error(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
+        toast.success(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -260,6 +270,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const getStageNote = (stage: string, candidateName: string): string => {
+    const noteMap: { [key: string]: string } = {
+      'interview': `${candidateName} dipanggil untuk tahap wawancara`,
+      'bc_check': `Background check dimulai untuk ${candidateName}`,
+      'background_check': `Background check dimulai untuk ${candidateName}`,
+      'hired': `${candidateName} diterima dan hired`,
+      'approved': `${candidateName} diterima dan hired`,
+      'rejected': `${candidateName} ditolak dari proses rekrutmen`
+    };
+    return noteMap[stage] || `Status diupdate ke ${stage}`;
   };
 
   const getStatusBadge = () => {
@@ -458,10 +480,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </div>
           </div>
 
-          <div className="flex items-center gap-1 mt-4 border-b border-gray-200">
+          <div className="flex items-center gap-1 mt-4 border-b border-gray-200 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'overview'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
@@ -471,7 +493,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </button>
             <button
               onClick={() => setActiveTab('documents')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'documents'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
@@ -481,7 +503,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </button>
             <button
               onClick={() => setActiveTab('integrity')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'integrity'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
@@ -491,7 +513,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </button>
             <button
               onClick={() => setActiveTab('interview')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'interview'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
@@ -501,7 +523,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </button>
             <button
               onClick={() => setActiveTab('background')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'background'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
@@ -523,8 +545,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'overview' && candidate.status === 'completed' && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6">
+            <CandidateActivityTimeline
+              timeline={candidate.timeline}
+              candidateName={candidate.candidate.name}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                   <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -793,6 +821,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 </div>
               </div>
             </div>
+          </div>
           </div>
         )}
 
