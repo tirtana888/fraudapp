@@ -33,7 +33,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const toast = useToast();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background' | 'activity'>('overview');
   const [isUpdating, setIsUpdating] = useState(false);
   const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
 
@@ -531,6 +531,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             >
               Pemeriksaan Latar Belakang
             </button>
+            <button
+              onClick={() => setActiveTab('activity')}
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'activity'
+                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Riwayat Aktivitas
+            </button>
           </div>
         </div>
       </div>
@@ -545,13 +555,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'overview' && candidate.status === 'completed' && (
-          <div className="space-y-6">
-            <CandidateActivityTimeline
-              timeline={candidate.timeline}
-              candidateName={candidate.candidate.name}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -822,7 +826,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
           </div>
-          </div>
+        )}
+
+        {activeTab === 'activity' && (
+          <CandidateActivityTimeline
+            timeline={candidate.timeline}
+            candidateName={candidate.candidate.name}
+          />
         )}
 
         {activeTab === 'documents' && (
