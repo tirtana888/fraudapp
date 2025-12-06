@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Mail, Phone, MapPin, Save, ExternalLink, AlertCircle } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Save, ExternalLink } from 'lucide-react';
 import { CompanyProfile } from '../types';
 import { updateCompany, generateSlug } from '../services/firebase';
 import { useToast } from './Toast';
@@ -180,12 +180,6 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
               placeholder="PT Nama Perusahaan"
             />
           </div>
-          {formData.name && (
-            <div className="mt-2 flex items-start gap-2 text-xs text-gray-500 dark:text-slate-400">
-              <AlertCircle size={14} className="mt-0.5" />
-              <span>URL akan menjadi: <strong>{getCareerPageUrl()}</strong></span>
-            </div>
-          )}
         </div>
 
         <div>
