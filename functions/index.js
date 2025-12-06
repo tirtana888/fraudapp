@@ -425,6 +425,158 @@ const EMAIL_TEMPLATES = {
     `
   }),
 
+  // Template untuk interview invitation
+  interviewInvitation: (candidateName, candidateEmail, companyName, role = "", interviewDate = "", interviewTime = "", interviewLocation = "") => ({
+    from: EMAIL_SENDERS.interview,
+    subject: `Undangan Wawancara - ${companyName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #D95D00 0%, #FF6B35 100%); padding: 40px 30px; text-align: center;">
+                    <div style="font-size: 64px; margin-bottom: 10px;">🎉</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Selamat!</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.95;">Anda lolos ke tahap Wawancara</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Halo, ${candidateName}! 👋</h2>
+
+                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Kami dengan senang hati memberitahukan bahwa Anda telah <strong>lolos tahap screening</strong> untuk posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>!
+                    </p>
+
+                    <p style="margin: 0 0 25px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Kami mengundang Anda untuk mengikuti <strong>tahap wawancara</strong> sebagai bagian dari proses seleksi kami.
+                    </p>
+
+                    <!-- Interview Details -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0; border: 2px solid #D95D00; border-radius: 12px; overflow: hidden;">
+                      <tr>
+                        <td style="background-color: #FFF4ED; padding: 20px; border-bottom: 1px solid #FFE5D3;">
+                          <p style="margin: 0 0 5px 0; color: #CC5500; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Detail Wawancara</p>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #ffffff;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #D95D00; font-size: 20px; margin-right: 12px;">📅</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Tanggal</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${interviewDate || 'Akan dijadwalkan'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #FAFAFA;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #D95D00; font-size: 20px; margin-right: 12px;">⏰</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Waktu</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${interviewTime || 'Akan dikonfirmasi'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #ffffff;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #D95D00; font-size: 20px; margin-right: 12px;">📍</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Lokasi</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${interviewLocation || 'Online / Office (akan dikonfirmasi)'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #FAFAFA;">
+                        <td style="padding: 15px 20px;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #D95D00; font-size: 20px; margin-right: 12px;">👤</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Pewawancara</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">Tim HR ${companyName}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Instructions -->
+                    <div style="background-color: #EFF6FF; border-left: 4px solid #2563EB; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">📋 Persiapan Wawancara:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #1E3A8A; font-size: 14px; line-height: 1.8;">
+                        <li>Pelajari profil perusahaan dan posisi yang dilamar</li>
+                        <li>Siapkan pertanyaan untuk pewawancara</li>
+                        <li>Pastikan penampilan profesional dan rapi</li>
+                        <li>Datang 10-15 menit lebih awal (untuk wawancara offline)</li>
+                        <li>Bawa dokumen pendukung (CV, portfolio, sertifikat)</li>
+                      </ul>
+                    </div>
+
+                    <!-- Tips -->
+                    <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #92400E; font-size: 14px; font-weight: 600;">💡 Tips Wawancara:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #78350F; font-size: 14px; line-height: 1.8;">
+                        <li>Jawab pertanyaan dengan jelas dan ringkas</li>
+                        <li>Berikan contoh konkret dari pengalaman Anda</li>
+                        <li>Tunjukkan antusiasme dan sikap positif</li>
+                        <li>Dengarkan pertanyaan dengan baik sebelum menjawab</li>
+                        <li>Jangan ragu untuk meminta klarifikasi jika perlu</li>
+                      </ul>
+                    </div>
+
+                    <!-- Confirmation Request -->
+                    <div style="background-color: #F9FAFB; padding: 20px; border-radius: 8px; margin-top: 25px; border: 1px solid #E5E7EB;">
+                      <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">✉️ Konfirmasi Kehadiran:</p>
+                      <p style="margin: 0; color: #6B7280; font-size: 13px; line-height: 1.8;">
+                        Mohon balas email ini untuk mengkonfirmasi kehadiran Anda. Jika ada halangan atau perlu reschedule,
+                        segera hubungi tim HR kami minimal <strong>2 hari sebelumnya</strong>.
+                      </p>
+                    </div>
+
+                    <p style="margin: 30px 0 0 0; color: #888888; font-size: 14px; line-height: 1.6;">
+                      Kami sangat menantikan wawancara dengan Anda. Semoga sukses!
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="margin: 0 0 5px 0; color: #999999; font-size: 12px;">
+                      <strong>${companyName}</strong> menggunakan platform HireGood untuk proses rekrutmen
+                    </p>
+                    <p style="margin: 0; color: #CCCCCC; font-size: 11px;">
+                      © ${new Date().getFullYear()} Powered by HireGood - Integrity-First Hiring
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+  }),
+
   // Template untuk Background Check invitation
   backgroundCheckInvitation: (candidateName, candidateEmail, companyName, verificationLink, role = "") => ({
     from: EMAIL_SENDERS.interview,
@@ -590,6 +742,18 @@ exports.sendEmail = onCall({
           data.candidateName,
           data.tempPassword,
           data.loginUrl
+        );
+        break;
+
+      case 'interview_invitation':
+        emailTemplate = EMAIL_TEMPLATES.interviewInvitation(
+          data.candidateName,
+          data.candidateEmail,
+          data.companyName,
+          data.role,
+          data.interviewDate,
+          data.interviewTime,
+          data.interviewLocation
         );
         break;
 
