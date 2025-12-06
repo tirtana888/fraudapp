@@ -97,19 +97,22 @@ export interface UserProfile {
 export interface CompanyProfile {
   id: string;
   name: string;
-  tier: 'Basic' | 'Premium' | 'Enterprise'; 
+  tier: 'Basic' | 'Premium' | 'Enterprise';
   status: 'Active' | 'Pending' | 'Suspended' | 'Past Due';
   adminEmail: string;
   joinedDate: string;
   usersCount?: number;
   createdAt?: any;
   logoUrl?: string;
-  brandColor?: string; 
+  brandColor?: string;
   headerTitle?: string;
   welcomeMessage?: string;
   subscription_ends_at?: string;
   custom_candidate_limit?: number;
   verification_credits?: number;
+  companySlug?: string;
+  whatsapp?: string;
+  address?: string;
 }
 
 export interface SelfAssessmentAnswers {

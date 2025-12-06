@@ -19,6 +19,7 @@ import PublicJobPage from './components/PublicJobPage';
 import CandidateList from './components/CandidateList';
 import CandidateDetail from './components/CandidateDetail';
 import BackgroundCheckCallback from './components/BackgroundCheckCallback';
+import CompanyProfileSettings from './components/CompanyProfileSettings';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
@@ -33,7 +34,7 @@ const App: React.FC = () => {
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const pathname = window.location.pathname;
-    return params.get('mode') === 'assess' || pathname.startsWith('/careers/') || pathname === '/background-check-callback';
+    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname === '/background-check-callback';
   });
 
   const [isBackgroundCheckCallback, setIsBackgroundCheckCallback] = useState(() => {
@@ -49,7 +50,7 @@ const App: React.FC = () => {
 
   const [publicJobRoute, setPublicJobRoute] = useState<{companySlug: string; jobSlug: string} | null>(() => {
     const pathname = window.location.pathname;
-    const match = pathname.match(/^\/careers\/([^/]+)\/([^/]+)$/);
+    const match = pathname.match(/^\/jobs\/([^/]+)\/([^/]+)$/);
     if (match) {
       return { companySlug: match[1], jobSlug: match[2] };
     }
@@ -470,20 +471,31 @@ const App: React.FC = () => {
 
              {/* Tab Content */}
              {settingsTab === 'profile' ? (
-                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
-                  
-                  <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
-                        {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
-                        <div>
-                          <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
-                          <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
-                          <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
-                        </div>
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
+
+                    <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
+                          {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
+                          <div>
+                            <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
+                          </div>
+                    </div>
                   </div>
-                  <div className="mt-6">
-                      <p className="text-gray-500 dark:text-gray-400 text-sm italic">Pengaturan profil lebih lanjut akan tersedia di pembaruan berikutnya.</p>
-                  </div>
+
+                  {currentCompany && (
+                    <CompanyProfileSettings
+                      company={currentCompany}
+                      onUpdate={async () => {
+                        if (currentUser?.companyId) {
+                          const updated = await getCompanyById(currentUser.companyId);
+                          setCurrentCompany(updated);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
              ) : (
                 <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">

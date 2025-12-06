@@ -503,6 +503,42 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
     }
 };
 
+export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | null> => {
+    if (!slug || !db) {
+        console.warn('[GET-COMPANY] No slug or DB not initialized');
+        return null;
+    }
+
+    try {
+        const q = query(
+            collection(db, COLLECTIONS.COMPANIES),
+            where('companySlug', '==', slug),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            return { id: doc.id, ...doc.data() } as CompanyProfile;
+        }
+
+        const companies = await getDocs(collection(db, COLLECTIONS.COMPANIES));
+        const matchedCompany = companies.docs.find(doc => {
+            const generatedSlug = generateSlug(doc.data().name);
+            return generatedSlug === slug;
+        });
+
+        if (matchedCompany) {
+            return { id: matchedCompany.id, ...matchedCompany.data() } as CompanyProfile;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('[GET-COMPANY] Error fetching company by slug:', error);
+        return null;
+    }
+};
+
 export const getCompanyById = async (id: string): Promise<CompanyProfile | null> => {
     if (!id || !db) {
         console.warn('[GET-COMPANY] No ID or DB not initialized');

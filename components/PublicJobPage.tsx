@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile, AssessmentInvite } from '../types';
-import { getJobBySlug, createApplication, uploadCV, db, sendEmailViaCloudFunction, COLLECTIONS } from '../services/firebase';
+import { getJobBySlug, createApplication, uploadCV, db, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug } from '../services/firebase';
 import { collection, getDocs, query, addDoc } from 'firebase/firestore';
 import { useToast } from './Toast';
 
@@ -33,18 +33,13 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
     try {
       setIsLoading(true);
 
-      const companies = await getDocs(query(collection(db, 'companies')));
-      const matchedCompany = companies.docs.find(doc => {
-        const name = doc.data().name.toLowerCase().replace(/\s+/g, '-');
-        return name === companySlug;
-      });
+      const companyData = await getCompanyBySlug(companySlug);
 
-      if (!matchedCompany) {
-        console.error('[PUBLIC-JOB] Company not found');
+      if (!companyData) {
+        console.error('[PUBLIC-JOB] Company not found for slug:', companySlug);
         return;
       }
 
-      const companyData = { id: matchedCompany.id, ...matchedCompany.data() } as CompanyProfile;
       setCompany(companyData);
 
       const jobData = await getJobBySlug(companyData.id, jobSlug);

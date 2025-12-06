@@ -131,16 +131,16 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   };
 
   const handleCopyLink = (job: Job) => {
-    const companySlug = currentCompany.name.toLowerCase().replace(/\s+/g, '-');
-    const link = `${window.location.origin}/careers/${companySlug}/${job.slug}`;
+    const companySlug = currentCompany.companySlug || generateSlug(currentCompany.name);
+    const link = `${window.location.origin}/jobs/${companySlug}/${job.slug}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(job.id!);
     setTimeout(() => setCopiedLink(null), 2000);
   };
 
   const getJobLink = (job: Job) => {
-    const companySlug = currentCompany.name.toLowerCase().replace(/\s+/g, '-');
-    return `${window.location.origin}/careers/${companySlug}/${job.slug}`;
+    const companySlug = currentCompany.companySlug || generateSlug(currentCompany.name);
+    return `${window.location.origin}/jobs/${companySlug}/${job.slug}`;
   };
 
   return (
