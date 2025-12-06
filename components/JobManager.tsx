@@ -179,64 +179,55 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
       </div>
 
       {/* Career Page Card */}
-      <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-2xl p-6 mb-8 border-2 border-orange-200 dark:border-orange-900/30 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 flex-1">
-            <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-lg">
-              <Globe className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                Laman Karir Perusahaan
-                <span className="px-2 py-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-full">
-                  BARU
-                </span>
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
-                Halaman khusus yang menampilkan <strong>semua lowongan aktif</strong> perusahaan Anda dalam satu link.
-                Bagikan link ini di <strong>Bio Instagram</strong>, <strong>LinkedIn</strong>, atau media sosial lainnya untuk menarik kandidat berkualitas.
-              </p>
-              <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-orange-300 dark:border-orange-700 group hover:border-orange-500 dark:hover:border-orange-500 transition-all">
-                <code className="flex-1 text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
-                  {getCareerPageLink()}
-                </code>
-                <button
-                  onClick={handleCopyCareerPageLink}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
-                >
-                  {copiedCareerPage ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Disalin!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Salin Link
-                    </>
-                  )}
-                </button>
-                <a
-                  href={getCareerPageLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold border-2 border-gray-200 dark:border-slate-600 shadow-sm hover:shadow-md transition-all whitespace-nowrap"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Preview
-                </a>
-              </div>
-            </div>
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-xl p-4 mb-8 border border-orange-200 dark:border-orange-900/30">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg">
+            <Globe className="w-5 h-5 text-white" />
           </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-900/30">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Share2 className="w-4 h-4" />
-            <span>
-              <strong className="text-gray-900 dark:text-white">Tips:</strong> Tambahkan logo perusahaan dan brand color di menu{' '}
-              <strong>Pengaturan → Profil Perusahaan</strong> untuk tampilan yang lebih profesional
-            </span>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+              Laman Karir Perusahaan
+              <span className="px-1.5 py-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded">
+                BARU
+              </span>
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Halaman yang menampilkan semua lowongan aktif perusahaan Anda. Bagikan link ini di Bio Instagram, LinkedIn, atau media sosial lainnya.
+            </p>
+            <div className="flex items-center gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-orange-300 dark:border-orange-700">
+              <code className="flex-1 text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
+                {getCareerPageLink()}
+              </code>
+              <button
+                onClick={handleCopyCareerPageLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm rounded-lg font-medium transition-all whitespace-nowrap"
+              >
+                {copiedCareerPage ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Disalin!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Salin Link
+                  </>
+                )}
+              </button>
+              <a
+                href={getCareerPageLink()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                title="Preview"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <Share2 className="w-3 h-3 inline mr-1" />
+              Tips: Tambahkan logo di <strong>Pengaturan → Profil Perusahaan</strong>
+            </p>
           </div>
         </div>
       </div>
