@@ -37,6 +37,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [isUpdating, setIsUpdating] = useState(false);
   const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [interviewType, setInterviewType] = useState<'online' | 'offline'>('online');
+  const [interviewDate, setInterviewDate] = useState('');
+  const [interviewTime, setInterviewTime] = useState('');
+  const [interviewLink, setInterviewLink] = useState('');
+  const [interviewLocation, setInterviewLocation] = useState('');
 
   useEffect(() => {
     loadCandidateData();
@@ -202,9 +207,23 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const handleInterviewInvitation = async () => {
     if (!candidate) return;
 
+    if (interviewType === 'online' && !interviewLink.trim()) {
+      toast.error('Link wawancara online wajib diisi!');
+      return;
+    }
+
+    if (interviewType === 'offline' && !interviewLocation.trim()) {
+      toast.error('Lokasi wawancara wajib diisi!');
+      return;
+    }
+
+    if (!interviewDate || !interviewTime) {
+      toast.error('Tanggal dan waktu wawancara wajib diisi!');
+      return;
+    }
+
     try {
       setIsUpdating(true);
-      setShowInterviewModal(false);
 
       const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
       const companySnap = await getDoc(companyRef);
@@ -216,6 +235,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       const companyData = companySnap.data();
       const companyName = companyData.name || 'Our Company';
 
+      const formattedDate = new Date(interviewDate).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      const locationText = interviewType === 'online'
+        ? `Online via ${interviewLink}`
+        : interviewLocation;
+
       const sendEmail = httpsCallable(functions, 'sendEmail');
 
       const emailData = {
@@ -226,9 +256,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           candidateEmail: candidate.candidate.email,
           companyName: companyName,
           role: candidate.candidate.role || candidate.jobTitle || '',
-          interviewDate: 'akan segera dijadwalkan',
-          interviewTime: '',
-          interviewLocation: 'Online / Office (akan dikonfirmasi)'
+          interviewDate: formattedDate,
+          interviewTime: interviewTime,
+          interviewLocation: locationText,
+          interviewType: interviewType
         }
       };
 
@@ -247,7 +278,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           stage: 'interview',
           status: 'current' as const,
           date: now,
-          note: `${candidate.candidate.name} dipanggil untuk tahap wawancara`
+          note: `${candidate.candidate.name} dipanggil untuk tahap wawancara ${interviewType === 'online' ? 'online' : 'offline'} pada ${formattedDate} pukul ${interviewTime}`
         }
       ];
 
@@ -256,8 +287,23 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         timeline: updatedTimeline,
         updatedAt: now,
         interviewEmailSent: true,
-        interviewEmailSentAt: now
+        interviewEmailSentAt: now,
+        interviewSchedule: {
+          type: interviewType,
+          date: interviewDate,
+          time: interviewTime,
+          location: interviewType === 'offline' ? interviewLocation : null,
+          link: interviewType === 'online' ? interviewLink : null,
+          scheduledAt: now
+        }
       });
+
+      setShowInterviewModal(false);
+      setInterviewDate('');
+      setInterviewTime('');
+      setInterviewLink('');
+      setInterviewLocation('');
+      setInterviewType('online');
 
       await loadCandidateData();
       toast.success('Undangan wawancara berhasil dikirim ke kandidat!');
@@ -270,11 +316,30 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     }
   };
 
+  const handleOpenInterviewModal = async () => {
+    setShowInterviewModal(true);
+
+    if (!interviewLocation && candidate) {
+      try {
+        const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
+        const companySnap = await getDoc(companyRef);
+
+        if (companySnap.exists()) {
+          const companyData = companySnap.data();
+          const defaultLocation = companyData.address || companyData.location || '';
+          setInterviewLocation(defaultLocation);
+        }
+      } catch (error) {
+        console.error('Error loading company address:', error);
+      }
+    }
+  };
+
   const handleStatusUpdate = async (newStage: string) => {
     if (!candidate) return;
 
     if (newStage === 'interview') {
-      setShowInterviewModal(true);
+      await handleOpenInterviewModal();
       return;
     }
 
@@ -468,21 +533,21 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   return (
     <div className="min-h-screen bg-slate-50">
       {showInterviewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full animate-fade-in my-8">
             <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] p-6 rounded-t-2xl">
               <div className="flex items-center gap-3 text-white">
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                   <Mail size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Kirim Undangan Wawancara</h3>
-                  <p className="text-sm opacity-90">Konfirmasi pengiriman email</p>
+                  <h3 className="text-xl font-bold">Jadwalkan Wawancara</h3>
+                  <p className="text-sm opacity-90">Atur detail undangan wawancara</p>
                 </div>
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
               <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
                 <p className="text-sm text-blue-900 leading-relaxed">
                   <strong className="block mb-2">Email akan dikirim ke:</strong>
@@ -492,25 +557,131 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
               <div className="bg-gray-50 p-4 rounded-lg mb-6">
                 <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <FileText size={16} className="text-[#D95D00]" />
+                  <User size={16} className="text-[#D95D00]" />
                   Detail Kandidat
                 </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Nama:</span>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600 block mb-1">Nama:</span>
                     <span className="font-semibold text-gray-800">{candidate?.candidate.name}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Posisi:</span>
+                  <div>
+                    <span className="text-gray-600 block mb-1">Posisi:</span>
                     <span className="font-semibold text-gray-800">{candidate?.jobTitle}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Stage Saat Ini:</span>
-                    <span className="font-semibold text-gray-800">
-                      {candidate?.recruitmentStage || 'Screening'}
-                    </span>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Tipe Wawancara
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setInterviewType('online')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        interviewType === 'online'
+                          ? 'border-[#D95D00] bg-orange-50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          interviewType === 'online' ? 'bg-[#D95D00]' : 'bg-gray-200'
+                        }`}>
+                          <Globe size={20} className={interviewType === 'online' ? 'text-white' : 'text-gray-600'} />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold text-gray-800">Online</div>
+                          <div className="text-xs text-gray-500">Video Call</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInterviewType('offline')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        interviewType === 'offline'
+                          ? 'border-[#D95D00] bg-orange-50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          interviewType === 'offline' ? 'bg-[#D95D00]' : 'bg-gray-200'
+                        }`}>
+                          <MapPin size={20} className={interviewType === 'offline' ? 'text-white' : 'text-gray-600'} />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold text-gray-800">Offline</div>
+                          <div className="text-xs text-gray-500">Di Kantor</div>
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Tanggal Wawancara <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={interviewDate}
+                      onChange={(e) => setInterviewDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Waktu <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={interviewTime}
+                      onChange={(e) => setInterviewTime(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                {interviewType === 'online' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Link Meeting (Google Meet / Zoom) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={interviewLink}
+                      onChange={(e) => setInterviewLink(e.target.value)}
+                      placeholder="https://meet.google.com/xxx atau https://zoom.us/j/xxx"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Masukkan link lengkap untuk video call wawancara
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Alamat Kantor <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={interviewLocation}
+                      onChange={(e) => setInterviewLocation(e.target.value)}
+                      placeholder="Masukkan alamat lengkap kantor untuk wawancara"
+                      rows={3}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent outline-none resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Alamat ini akan dikirim ke kandidat dalam email undangan
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
@@ -519,9 +690,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="text-xs text-yellow-800 leading-relaxed">
                     <p className="font-semibold mb-1">Yang akan dilakukan:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Mengirim email undangan wawancara</li>
-                      <li>Mengubah status menjadi "Interview"</li>
-                      <li>Mencatat aktivitas di timeline</li>
+                      <li>Mengirim email undangan dengan detail wawancara</li>
+                      <li>Mengubah status kandidat menjadi "Interview"</li>
+                      <li>Mencatat jadwal wawancara di sistem</li>
                     </ul>
                   </div>
                 </div>
@@ -529,7 +700,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowInterviewModal(false)}
+                  onClick={() => {
+                    setShowInterviewModal(false);
+                    setInterviewDate('');
+                    setInterviewTime('');
+                    setInterviewLink('');
+                    setInterviewLocation('');
+                    setInterviewType('online');
+                  }}
                   disabled={isUpdating}
                   className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
