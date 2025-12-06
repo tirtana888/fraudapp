@@ -672,6 +672,232 @@ const EMAIL_TEMPLATES = {
       </body>
       </html>
     `
+  }),
+
+  // Template untuk Rejection Email
+  rejectionEmail: (candidateName, companyName, role = "", customMessage = "") => ({
+    from: EMAIL_SENDERS.interview,
+    subject: `Update Aplikasi - ${companyName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #64748B 0%, #94A3B8 100%); padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">${companyName}</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.95;">Update Status Aplikasi Anda</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Halo, ${candidateName}</h2>
+
+                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Terima kasih atas minat dan waktu Anda untuk melamar posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>.
+                    </p>
+
+                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Setelah mempertimbangkan dengan cermat, kami harus memberitahu bahwa kami memutuskan untuk melanjutkan dengan kandidat lain yang lebih sesuai dengan kebutuhan posisi saat ini.
+                    </p>
+
+                    ${customMessage ? `
+                    <div style="background-color: #F8FAFC; border-left: 4px solid #64748B; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0; color: #475569; font-size: 15px; line-height: 1.8;">${customMessage}</p>
+                    </div>
+                    ` : ''}
+
+                    <p style="margin: 25px 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Kami sangat menghargai ketertarikan Anda terhadap perusahaan kami dan berharap Anda sukses dalam pencarian karier Anda.
+                    </p>
+
+                    <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">Tetap Terhubung</p>
+                      <p style="margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.8;">
+                        Kami akan menyimpan profil Anda untuk peluang di masa mendatang yang mungkin lebih sesuai dengan kualifikasi Anda.
+                      </p>
+                    </div>
+
+                    <p style="margin: 30px 0 0 0; color: #888888; font-size: 14px; line-height: 1.6;">
+                      Terima kasih sekali lagi atas waktu dan perhatian Anda.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="margin: 0 0 5px 0; color: #999999; font-size: 12px;">
+                      <strong>${companyName}</strong>
+                    </p>
+                    <p style="margin: 0; color: #CCCCCC; font-size: 11px;">
+                      © ${new Date().getFullYear()} Powered by HireGood
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+  }),
+
+  // Template untuk Hire/Congratulations Email
+  hireEmail: (candidateName, companyName, role = "", startDate = "", startTime = "", contactPerson = "", contactPhone = "", additionalInfo = "") => ({
+    from: EMAIL_SENDERS.interview,
+    subject: `🎉 Selamat! Anda Diterima di ${companyName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%); padding: 40px 30px; text-align: center;">
+                    <div style="font-size: 64px; margin-bottom: 15px;">🎉</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700;">SELAMAT!</h1>
+                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.95;">Anda Resmi Bergabung dengan Tim Kami</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Halo, ${candidateName}! 🎊</h2>
+
+                    <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Kami dengan senang hati memberitahukan bahwa Anda telah <strong>resmi diterima</strong> untuk posisi ${role ? `<strong>${role}</strong>` : ''} di <strong>${companyName}</strong>!
+                    </p>
+
+                    <p style="margin: 0 0 25px 0; color: #555555; font-size: 16px; line-height: 1.6;">
+                      Selamat datang di keluarga besar kami. Kami sangat menantikan kontribusi Anda dalam tim.
+                    </p>
+
+                    <!-- First Day Details -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0; border: 2px solid #10B981; border-radius: 12px; overflow: hidden;">
+                      <tr>
+                        <td style="background-color: #ECFDF5; padding: 20px; border-bottom: 1px solid #D1FAE5;">
+                          <p style="margin: 0 0 5px 0; color: #065F46; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Detail Hari Pertama Kerja</p>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #ffffff;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #10B981; font-size: 20px; margin-right: 12px;">📅</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Tanggal Mulai</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${startDate || 'Akan dikonfirmasi'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #FAFAFA;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #10B981; font-size: 20px; margin-right: 12px;">⏰</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Jam Masuk</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${startTime || 'Akan dikonfirmasi'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr style="background-color: #ffffff;">
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #F5F5F5;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #10B981; font-size: 20px; margin-right: 12px;">👤</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">Contact Person</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${contactPerson || 'HR Team'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      ${contactPhone ? `
+                      <tr style="background-color: #FAFAFA;">
+                        <td style="padding: 15px 20px;">
+                          <div style="display: flex; align-items: start;">
+                            <span style="color: #10B981; font-size: 20px; margin-right: 12px;">📱</span>
+                            <div>
+                              <p style="margin: 0 0 3px 0; color: #999999; font-size: 13px;">No. Telepon</p>
+                              <p style="margin: 0; color: #333333; font-size: 16px; font-weight: 600;">${contactPhone}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      ` : ''}
+                    </table>
+
+                    ${additionalInfo ? `
+                    <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #92400E; font-size: 14px; font-weight: 600;">📌 Informasi Tambahan:</p>
+                      <p style="margin: 0; color: #78350F; font-size: 14px; line-height: 1.8;">${additionalInfo}</p>
+                    </div>
+                    ` : ''}
+
+                    <!-- Preparation Checklist -->
+                    <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                      <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">✅ Yang Perlu Dibawa:</p>
+                      <ul style="margin: 0; padding-left: 20px; color: #1E3A8A; font-size: 14px; line-height: 1.8;">
+                        <li>KTP asli dan fotokopi</li>
+                        <li>Ijazah terakhir dan fotokopi</li>
+                        <li>Pas foto terbaru (3x4)</li>
+                        <li>NPWP (jika ada)</li>
+                        <li>Buku rekening untuk slip gaji</li>
+                      </ul>
+                    </div>
+
+                    <p style="margin: 30px 0 0 0; color: #888888; font-size: 14px; line-height: 1.6;">
+                      Jika ada pertanyaan, jangan ragu untuk menghubungi tim HR kami.
+                    </p>
+
+                    <p style="margin: 15px 0 0 0; color: #10B981; font-size: 16px; font-weight: 600;">
+                      Selamat datang di tim! 🚀
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="margin: 0 0 5px 0; color: #999999; font-size: 12px;">
+                      <strong>${companyName}</strong>
+                    </p>
+                    <p style="margin: 0; color: #CCCCCC; font-size: 11px;">
+                      © ${new Date().getFullYear()} Powered by HireGood
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
   })
 };
 
@@ -1406,6 +1632,146 @@ exports.initiateBackgroundCheck = onCall({
   } catch (error) {
     logger.error(`[BG-CHECK] Error: ${error.message}`);
     throw new HttpsError('internal', `Failed to initiate background check: ${error.message}`);
+  }
+});
+
+// ==========================================
+// FUNGSI: SEND REJECTION EMAIL
+// ==========================================
+exports.sendRejectionEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
+  const { sessionId, customMessage } = request.data;
+
+  if (!sessionId) {
+    throw new HttpsError('invalid-argument', 'Session ID is required');
+  }
+
+  try {
+    logger.info(`[REJECTION-EMAIL] Sending rejection email for session: ${sessionId}`);
+
+    const sessionDoc = await db.collection('interview-sessions').doc(sessionId).get();
+    if (!sessionDoc.exists) {
+      throw new HttpsError('not-found', 'Session not found');
+    }
+
+    const sessionData = sessionDoc.data();
+    const candidateName = sessionData.candidate?.name;
+    const candidateEmail = sessionData.candidate?.email;
+    const candidateRole = sessionData.candidate?.role || '';
+    const companyId = sessionData.companyId;
+
+    if (!candidateName || !candidateEmail) {
+      throw new HttpsError('failed-precondition', 'Candidate information is incomplete');
+    }
+
+    const companyDoc = await db.collection('companies').doc(companyId).get();
+    if (!companyDoc.exists) {
+      throw new HttpsError('not-found', 'Company not found');
+    }
+
+    const companyData = companyDoc.data();
+    const companyName = companyData.name;
+
+    const resend = new Resend(resendApiKey.value());
+    const emailTemplate = EMAIL_TEMPLATES.rejectionEmail(
+      candidateName,
+      companyName,
+      candidateRole,
+      customMessage || ''
+    );
+
+    await resend.emails.send({
+      from: emailTemplate.from,
+      to: candidateEmail,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
+
+    logger.info(`[REJECTION-EMAIL] Email sent successfully to ${candidateEmail}`);
+
+    return {
+      success: true,
+      message: 'Rejection email sent successfully'
+    };
+
+  } catch (error) {
+    logger.error(`[REJECTION-EMAIL] Error: ${error.message}`);
+    throw new HttpsError('internal', `Failed to send rejection email: ${error.message}`);
+  }
+});
+
+// ==========================================
+// FUNGSI: SEND HIRE EMAIL
+// ==========================================
+exports.sendHireEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
+  const { sessionId, startDate, startTime, contactPerson, contactPhone, additionalInfo } = request.data;
+
+  if (!sessionId) {
+    throw new HttpsError('invalid-argument', 'Session ID is required');
+  }
+
+  try {
+    logger.info(`[HIRE-EMAIL] Sending hire email for session: ${sessionId}`);
+
+    const sessionDoc = await db.collection('interview-sessions').doc(sessionId).get();
+    if (!sessionDoc.exists) {
+      throw new HttpsError('not-found', 'Session not found');
+    }
+
+    const sessionData = sessionDoc.data();
+    const candidateName = sessionData.candidate?.name;
+    const candidateEmail = sessionData.candidate?.email;
+    const candidateRole = sessionData.candidate?.role || '';
+    const companyId = sessionData.companyId;
+
+    if (!candidateName || !candidateEmail) {
+      throw new HttpsError('failed-precondition', 'Candidate information is incomplete');
+    }
+
+    const companyDoc = await db.collection('companies').doc(companyId).get();
+    if (!companyDoc.exists) {
+      throw new HttpsError('not-found', 'Company not found');
+    }
+
+    const companyData = companyDoc.data();
+    const companyName = companyData.name;
+
+    const resend = new Resend(resendApiKey.value());
+    const emailTemplate = EMAIL_TEMPLATES.hireEmail(
+      candidateName,
+      companyName,
+      candidateRole,
+      startDate || '',
+      startTime || '',
+      contactPerson || '',
+      contactPhone || '',
+      additionalInfo || ''
+    );
+
+    await resend.emails.send({
+      from: emailTemplate.from,
+      to: candidateEmail,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
+
+    logger.info(`[HIRE-EMAIL] Email sent successfully to ${candidateEmail}`);
+
+    return {
+      success: true,
+      message: 'Hire email sent successfully'
+    };
+
+  } catch (error) {
+    logger.error(`[HIRE-EMAIL] Error: ${error.message}`);
+    throw new HttpsError('internal', `Failed to send hire email: ${error.message}`);
   }
 });
 

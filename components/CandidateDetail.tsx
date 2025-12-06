@@ -406,12 +406,27 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         }
       });
 
+      try {
+        const sendHireEmailFn = httpsCallable(functions, 'sendHireEmail');
+        await sendHireEmailFn({
+          sessionId: sessionId,
+          startDate: hireDate,
+          startTime: hireTime,
+          contactPerson: contactPerson,
+          contactPhone: '',
+          additionalInfo: ''
+        });
+        toast.success('Kandidat berhasil direkrut dan email selamat telah dikirim!');
+      } catch (emailError) {
+        console.error('Error sending hire email:', emailError);
+        toast.success('Kandidat berhasil direkrut (email gagal dikirim)');
+      }
+
       setHireDate('');
       setHireTime('');
       setContactPerson('');
 
       await loadCandidateData();
-      toast.success('Kandidat berhasil direkrut!');
 
     } catch (error) {
       console.error('Error hiring candidate:', error);
@@ -455,7 +470,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       });
 
       if (sendRejectionEmail) {
-        toast.success('Kandidat ditolak dan email notifikasi akan dikirim');
+        try {
+          const sendRejectionEmailFn = httpsCallable(functions, 'sendRejectionEmail');
+          await sendRejectionEmailFn({
+            sessionId: sessionId,
+            customMessage: ''
+          });
+          toast.success('Kandidat ditolak dan email penolakan telah dikirim');
+        } catch (emailError) {
+          console.error('Error sending rejection email:', emailError);
+          toast.success('Kandidat ditolak (email gagal dikirim)');
+        }
       } else {
         toast.success('Kandidat ditolak (tanpa email)');
       }
