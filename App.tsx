@@ -378,13 +378,21 @@ const App: React.FC = () => {
           }}
         />;
       case 'candidates-review':
-        return <CandidatesReviewInvite companyId={currentCompany!.id} onViewSession={(sessionId) => {
-          const session = sessions.find(s => s.id === sessionId);
-          if (session) {
-            setReviewingSession(session);
-            setActiveTab('new-interview');
-          }
-        }} />;
+        if (viewingCandidateId) {
+          return <CandidateDetail
+            sessionId={viewingCandidateId}
+            onBack={() => {
+              setViewingCandidateId(null);
+            }}
+          />;
+        }
+        return <CandidatesReviewInvite
+          companyId={currentCompany!.id}
+          companyName={currentCompany!.name}
+          onViewSession={(sessionId) => {
+            setViewingCandidateId(sessionId);
+          }}
+        />;
       case 'new-interview':
         return <ActiveInterview 
                   onComplete={handleInterviewComplete} 

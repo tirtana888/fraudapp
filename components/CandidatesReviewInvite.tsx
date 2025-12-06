@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock, UserPlus, Briefcase, Eye, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
-import { db, COLLECTIONS } from '../services/firebase';
+import { db, COLLECTIONS, sendIntegrityTestInvitation } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from './Toast';
 
 interface CandidatesReviewInviteProps {
   companyId: string;
+  companyName?: string;
   onViewSession: (sessionId: string) => void;
 }
 
@@ -40,7 +41,7 @@ interface TimelineItem {
   note?: string;
 }
 
-const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ companyId, onViewSession }) => {
+const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ companyId, companyName = 'Company', onViewSession }) => {
   const toast = useToast();
   const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
   const [completedCandidates, setCompletedCandidates] = useState<ApplicationWithDetails[]>([]);
@@ -53,6 +54,7 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -189,6 +191,29 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
       console.error('[JOB-APPLICATIONS] Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendInvitation = async (app: ApplicationWithDetails) => {
+    try {
+      setSendingInvite(app.id);
+
+      await sendIntegrityTestInvitation(
+        app.candidate.name,
+        app.candidate.email,
+        companyName,
+        app.jobTitle || 'Position',
+        app.id
+      );
+
+      await updateRecruitmentStage(app.id, app.applicationId, 'integrity_test', 'Undangan test integritas telah dikirim via email');
+
+      toast.success(`Undangan test berhasil dikirim ke ${app.candidate.email}`);
+    } catch (error: any) {
+      console.error('[SEND-INVITE] Error:', error);
+      toast.error(`Gagal mengirim undangan: ${error.message}`);
+    } finally {
+      setSendingInvite(null);
     }
   };
 
@@ -646,14 +671,33 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
 
                     <div className="flex flex-wrap gap-2 mb-4">
                       {app.recruitmentStage !== 'rejected' && app.recruitmentStage !== 'integrity_test' && (
-                        <button
-                          onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'integrity_test', 'Kandidat diminta mengikuti test integritas')}
-                          disabled={isUpdating}
-                          className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium border border-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Shield size={16} />
-                          Lanjut Test Integritas
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleSendInvitation(app)}
+                            disabled={sendingInvite === app.id || isUpdating}
+                            className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {sendingInvite === app.id ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                Mengirim...
+                              </>
+                            ) : (
+                              <>
+                                <Mail size={16} />
+                                Kirim Undangan Test
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'integrity_test', 'Kandidat diminta mengikuti test integritas')}
+                            disabled={isUpdating}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium border border-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Shield size={16} />
+                            Tandai: Undang Test
+                          </button>
+                        </>
                       )}
 
                       {app.recruitmentStage === 'integrity_test' && (

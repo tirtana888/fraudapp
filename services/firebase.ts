@@ -88,6 +88,51 @@ export const sendAssessmentCompleteEmail = async (candidateName: string, candida
   );
 };
 
+// Send integrity test invitation to candidate from Review & Invite
+export const sendIntegrityTestInvitation = async (
+  candidateName: string,
+  candidateEmail: string,
+  companyName: string,
+  jobTitle: string,
+  sessionId: string
+): Promise<boolean> => {
+  try {
+    const accessCode = Math.random().toString(36).slice(2, 7).toUpperCase();
+    const assessmentLink = `${window.location.origin}?mode=assess&code=${accessCode}`;
+
+    await sendEmailViaCloudFunction(
+      "candidate_invitation",
+      candidateEmail,
+      {
+        candidateName,
+        candidateEmail,
+        companyName,
+        accessCode,
+        assessmentLink,
+        role: jobTitle
+      }
+    );
+
+    const inviteData: AssessmentInvite = {
+      access_code: accessCode,
+      name: candidateName,
+      email: candidateEmail,
+      role: jobTitle,
+      companyId: sessionId,
+      status: 'PENDING',
+      sessionId: sessionId,
+      createdAt: new Date().toISOString()
+    };
+
+    await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
+
+    return true;
+  } catch (error) {
+    console.error('[INTEGRITY-INVITE] Error:', error);
+    throw error;
+  }
+};
+
 // --- REAL AUTHENTICATION SERVICE ---
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
   if (!db) throw new Error("Koneksi Database terputus.");
