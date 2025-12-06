@@ -83,20 +83,20 @@ const DynamicFraudTriangle: React.FC<{
 
       {/* Vertices with labels */}
       {/* Pressure (Top) */}
-      <circle cx={pressureX} cy={pressureY} r="6" fill="#D95D00" stroke="#fff" strokeWidth="2" />
-      <text x={pressureX} y={pressureY - 15} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#D95D00'}>
+      <circle cx={pressureX} cy={pressureY} r="6" fill="#CC5500" stroke="#fff" strokeWidth="2" />
+      <text x={pressureX} y={pressureY - 15} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#CC5500'}>
         Tekanan: {pressure}
       </text>
 
       {/* Opportunity (Bottom Right) */}
-      <circle cx={opportunityX} cy={opportunityY} r="6" fill="#3b82f6" stroke="#fff" strokeWidth="2" />
-      <text x={opportunityX + 15} y={opportunityY + 5} textAnchor="start" className="text-xs font-bold" fill={isDarkMode ? '#60a5fa' : '#2563eb'}>
+      <circle cx={opportunityX} cy={opportunityY} r="6" fill="#ADD8E6" stroke="#fff" strokeWidth="2" />
+      <text x={opportunityX + 15} y={opportunityY + 5} textAnchor="start" className="text-xs font-bold" fill={isDarkMode ? '#ADD8E6' : '#1e90ff'}>
         Peluang: {opportunity}
       </text>
 
       {/* Rationalization (Bottom Left) */}
-      <circle cx={rationalizationX} cy={rationalizationY} r="6" fill="#D95D00" stroke="#fff" strokeWidth="2" />
-      <text x={rationalizationX - 15} y={rationalizationY + 5} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#D95D00'}>
+      <circle cx={rationalizationX} cy={rationalizationY} r="6" fill="#CC5500" stroke="#fff" strokeWidth="2" />
+      <text x={rationalizationX - 15} y={rationalizationY + 5} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#fb923c' : '#CC5500'}>
         Rasionalisasi: {rationalization}
       </text>
 
