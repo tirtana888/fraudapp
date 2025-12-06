@@ -43,6 +43,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [interviewLink, setInterviewLink] = useState('');
   const [interviewLocation, setInterviewLocation] = useState('');
   const [showBgCheckModal, setShowBgCheckModal] = useState(false);
+  const [showHireModal, setShowHireModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [hireDate, setHireDate] = useState('');
+  const [hireTime, setHireTime] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [sendRejectionEmail, setSendRejectionEmail] = useState(true);
 
   useEffect(() => {
     loadCandidateData();
@@ -357,6 +363,109 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     } catch (error) {
       console.error('Error initiating background check:', error);
       toast.error(error instanceof Error ? error.message : 'Gagal mengirim undangan Background Check');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleHire = async () => {
+    if (!candidate || !hireDate || !hireTime || !contactPerson) {
+      toast.error('Mohon lengkapi semua field');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setShowHireModal(false);
+
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      const now = new Date().toISOString();
+
+      const existingTimeline = candidate.timeline || [];
+      const updatedTimeline = [
+        ...existingTimeline.map(event => ({
+          ...event,
+          status: event.status === 'current' ? 'completed' as const : event.status
+        })),
+        {
+          stage: 'hired',
+          status: 'current' as const,
+          date: now,
+          note: `${candidate.candidate.name} direkrut! Hadir: ${hireDate} ${hireTime}, CP: ${contactPerson}`
+        }
+      ];
+
+      await updateDoc(sessionRef, {
+        recruitmentStage: 'hired',
+        timeline: updatedTimeline,
+        hireDetails: {
+          date: hireDate,
+          time: hireTime,
+          contactPerson: contactPerson,
+          hiredAt: now
+        }
+      });
+
+      setHireDate('');
+      setHireTime('');
+      setContactPerson('');
+
+      await loadCandidateData();
+      toast.success('Kandidat berhasil direkrut!');
+
+    } catch (error) {
+      console.error('Error hiring candidate:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal merekrut kandidat');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!candidate) return;
+
+    try {
+      setIsUpdating(true);
+      setShowRejectModal(false);
+
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      const now = new Date().toISOString();
+
+      const existingTimeline = candidate.timeline || [];
+      const updatedTimeline = [
+        ...existingTimeline.map(event => ({
+          ...event,
+          status: event.status === 'current' ? 'completed' as const : event.status
+        })),
+        {
+          stage: 'rejected',
+          status: 'current' as const,
+          date: now,
+          note: `${candidate.candidate.name} tidak lolos seleksi`
+        }
+      ];
+
+      await updateDoc(sessionRef, {
+        recruitmentStage: 'rejected',
+        timeline: updatedTimeline,
+        rejectionDetails: {
+          sendEmail: sendRejectionEmail,
+          rejectedAt: now
+        }
+      });
+
+      if (sendRejectionEmail) {
+        toast.success('Kandidat ditolak dan email notifikasi akan dikirim');
+      } else {
+        toast.success('Kandidat ditolak (tanpa email)');
+      }
+
+      setSendRejectionEmail(true);
+      await loadCandidateData();
+
+    } catch (error) {
+      console.error('Error rejecting candidate:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal menolak kandidat');
     } finally {
       setIsUpdating(false);
     }
@@ -831,6 +940,191 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         </div>
       )}
 
+      {showHireModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Rekrut Kandidat</h3>
+                  <p className="text-sm opacity-90">Jadwal Hari Pertama Kerja</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-5">
+                <p className="text-sm text-gray-600 mb-2">Kandidat:</p>
+                <p className="font-semibold text-gray-800 text-lg">{candidate?.candidate.name}</p>
+                <p className="text-sm text-gray-500">{candidate?.candidate.email}</p>
+              </div>
+
+              <div className="space-y-4 mb-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tanggal Hadir <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={hireDate}
+                    onChange={(e) => setHireDate(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Jam Hadir <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={hireTime}
+                    onChange={(e) => setHireTime(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contactPerson}
+                    onChange={(e) => setContactPerson(e.target.value)}
+                    placeholder="Contoh: Bu Sarah (HR Manager) - 0812-3456-7890"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded-lg mb-6">
+                <p className="text-xs text-green-800">
+                  Kandidat akan direkrut dan status berubah menjadi "Hired"
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowHireModal(false);
+                    setHireDate('');
+                    setHireTime('');
+                    setContactPerson('');
+                  }}
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleHire}
+                  disabled={isUpdating || !hireDate || !hireTime || !contactPerson}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Merekrut...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} />
+                      Rekrut
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <XCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Tolak Kandidat</h3>
+                  <p className="text-sm opacity-90">Konfirmasi Penolakan</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-5">
+                <p className="text-sm text-gray-600 mb-2">Kandidat:</p>
+                <p className="font-semibold text-gray-800 text-lg">{candidate?.candidate.name}</p>
+                <p className="text-sm text-gray-500">{candidate?.candidate.email}</p>
+              </div>
+
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-5">
+                <p className="text-sm text-red-900 font-semibold mb-2">
+                  Kandidat akan ditolak dan status berubah menjadi "Rejected"
+                </p>
+                <p className="text-xs text-red-800">
+                  Tindakan ini tidak dapat dibatalkan
+                </p>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-5">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendRejectionEmail}
+                    onChange={(e) => setSendRejectionEmail(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Kirim Email Penolakan</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Kandidat akan menerima notifikasi email bahwa mereka tidak lolos seleksi
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setSendRejectionEmail(true);
+                  }}
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Menolak...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={18} />
+                      Tolak Kandidat
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-4">
@@ -897,7 +1191,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     </button>
 
                     <button
-                      onClick={() => handleStatusUpdate('hired')}
+                      onClick={() => setShowHireModal(true)}
                       disabled={isUpdating || !buttonConfig.hired.enabled}
                       title={buttonConfig.hired.tooltip}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
@@ -907,7 +1201,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     </button>
 
                     <button
-                      onClick={() => handleStatusUpdate('rejected')}
+                      onClick={() => setShowRejectModal(true)}
                       disabled={isUpdating}
                       title={buttonConfig.rejected.tooltip}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
