@@ -46,22 +46,23 @@ const SuperAdminDashboard: React.FC = () => {
         });
         setJobsOpen(openJobs.length);
 
-        // Fetch ALL candidates from ALL companies
-        const candidatesSnapshot = await getDocs(collection(db, 'candidates'));
-        setTotalApplications(candidatesSnapshot.size);
+        // Fetch ALL job applications from portal (interview_sessions with source = 'job_application')
+        const applicationsQuery = query(
+          collection(db, 'interview_sessions'),
+          where('source', '==', 'job_application')
+        );
+        const applicationsSnapshot = await getDocs(applicationsQuery);
+        setTotalApplications(applicationsSnapshot.size);
 
-        // Calculate total assessments and completed assessments from ALL candidates
-        let totalAssess = 0;
+        // Calculate total assessments and completed assessments from ALL companies
+        const allSessionsSnapshot = await getDocs(collection(db, 'interview_sessions'));
+        let totalAssess = allSessionsSnapshot.size;
         let completedAssess = 0;
 
-        candidatesSnapshot.docs.forEach(doc => {
+        allSessionsSnapshot.docs.forEach(doc => {
           const data = doc.data();
-          // Count as assessment if candidate has been invited/started
-          if (data.status) {
-            totalAssess++;
-          }
-          // Count as completed if status is 'Completed' or has assessment results
-          if (data.status === 'Completed' || (data.assessmentResults && Object.keys(data.assessmentResults).length > 0)) {
+          // Count as completed if status is 'COMPLETED'
+          if (data.status === 'COMPLETED') {
             completedAssess++;
           }
         });
@@ -73,7 +74,7 @@ const SuperAdminDashboard: React.FC = () => {
           total_assessments: totalAssess,
           completed_assessments: completedAssess,
           jobs_open: openJobs.length,
-          total_applications: candidatesSnapshot.size,
+          total_applications: applicationsSnapshot.size,
           last_updated: new Date().toISOString()
         });
 
