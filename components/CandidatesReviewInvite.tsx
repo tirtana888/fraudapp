@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock, UserPlus, Briefcase } from 'lucide-react';
-import { InterviewSession, Job } from '../types';
+import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock, UserPlus, Briefcase, Eye, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { InterviewSession, Job, RiskLevel } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from './Toast';
@@ -10,7 +10,7 @@ interface CandidatesReviewInviteProps {
   onViewSession: (sessionId: string) => void;
 }
 
-interface ApplicationWithDetails extends InterviewSession {
+interface ApplicationWithDetails extends Omit<InterviewSession, 'analysis'> {
   jobTitle?: string;
   jobLocation?: string;
   applicationStatus?: string;
@@ -18,6 +18,19 @@ interface ApplicationWithDetails extends InterviewSession {
   applicationId?: string;
   recruitmentStage?: string;
   timeline?: TimelineItem[];
+  completedAt?: string;
+  analysis?: {
+    riskLevel?: string;
+    riskScore?: number;
+    scores?: {
+      pressure?: number;
+      opportunity?: number;
+      rationalization?: number;
+    };
+    summary?: string;
+    redFlags?: string[];
+    recommendation?: string;
+  };
 }
 
 interface TimelineItem {
@@ -30,16 +43,72 @@ interface TimelineItem {
 const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ companyId, onViewSession }) => {
   const toast = useToast();
   const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
+  const [completedCandidates, setCompletedCandidates] = useState<ApplicationWithDetails[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCompleted, setIsLoadingCompleted] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [stageFilter, setStageFilter] = useState<string>('all');
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+    loadCompletedCandidates();
   }, [companyId]);
+
+  const loadCompletedCandidates = async () => {
+    try {
+      setIsLoadingCompleted(true);
+      console.log('[REVIEW-INVITE] Loading completed candidates for company:', companyId);
+
+      const completedQuery = query(
+        collection(db, COLLECTIONS.SESSIONS),
+        where('companyId', '==', companyId),
+        where('source', '==', 'job_application'),
+        where('status', '==', 'COMPLETED')
+      );
+      const completedSnapshot = await getDocs(completedQuery);
+      console.log('[REVIEW-INVITE] Found completed candidates:', completedSnapshot.docs.length);
+
+      const candidatesWithDetails: ApplicationWithDetails[] = await Promise.all(
+        completedSnapshot.docs.map(async (docSnap) => {
+          const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
+
+          let jobTitle = 'Unknown Position';
+          let jobLocation = 'Unknown Location';
+
+          if (sessionData.jobId) {
+            const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, sessionData.jobId));
+            if (jobDoc.exists()) {
+              const job = jobDoc.data();
+              jobTitle = job.title;
+              jobLocation = job.location;
+            }
+          }
+
+          return {
+            ...sessionData,
+            jobTitle,
+            jobLocation
+          } as ApplicationWithDetails;
+        })
+      );
+
+      candidatesWithDetails.sort((a, b) => {
+        return new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime();
+      });
+
+      setCompletedCandidates(candidatesWithDetails);
+      console.log('[REVIEW-INVITE] ✅ Total completed candidates loaded:', candidatesWithDetails.length);
+    } catch (error) {
+      console.error('[REVIEW-INVITE] Error loading completed candidates:', error);
+    } finally {
+      setIsLoadingCompleted(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -171,6 +240,104 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
     return true;
   });
 
+  const filteredCompletedCandidates = completedCandidates.filter(candidate => {
+    if (riskFilter !== 'all') {
+      const risk = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
+      if (riskFilter !== risk) return false;
+    }
+    if (stageFilter !== 'all') {
+      let stage = candidate.recruitmentStage || 'screening';
+      if (stage === 'background_check') stage = 'bc_check';
+      if (stage === 'approved') stage = 'hired';
+      if (stageFilter !== stage) return false;
+    }
+    return true;
+  });
+
+  const getRiskScoreBadge = (candidate: ApplicationWithDetails) => {
+    const riskLevel = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
+    const riskScore = candidate.analysis?.riskScore || 0;
+
+    const styles = {
+      critical: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+      high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+      medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+      low: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+    };
+
+    const icons = {
+      critical: AlertCircle,
+      high: AlertTriangle,
+      medium: AlertTriangle,
+      low: CheckCircle2
+    };
+
+    const Icon = icons[riskLevel as keyof typeof icons] || CheckCircle2;
+    const style = styles[riskLevel as keyof typeof styles] || styles.low;
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${style}`}>
+          <Icon size={14} />
+          {candidate.analysis?.riskLevel || 'Low'}
+        </span>
+        <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+          {riskScore}%
+        </span>
+      </div>
+    );
+  };
+
+  const getStageBadge = (candidate: ApplicationWithDetails) => {
+    const recruitmentStage = candidate.recruitmentStage || 'screening';
+    const stageMap: Record<string, { label: string; color: string }> = {
+      'screening': {
+        label: 'Screening',
+        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+      },
+      'review': {
+        label: 'Review',
+        color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'
+      },
+      'interview': {
+        label: 'Interview',
+        color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+      },
+      'bc_check': {
+        label: 'BC Check',
+        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800'
+      },
+      'background_check': {
+        label: 'BC Check',
+        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800'
+      },
+      'hired': {
+        label: 'Hired',
+        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+      },
+      'approved': {
+        label: 'Hired',
+        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+      },
+      'rejected': {
+        label: 'Rejected',
+        color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+      }
+    };
+
+    const stage = stageMap[recruitmentStage] || stageMap['screening'];
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border ${stage.color}`}>
+        {stage.label}
+      </span>
+    );
+  };
+
+  const getAvatarInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   const getStageInfo = (stage?: string) => {
     switch (stage) {
       case 'application':
@@ -202,9 +369,10 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* HEADER */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-[#D95D00]/10 rounded-xl">
               <ClipboardCheck className="text-[#D95D00]" size={28} />
@@ -214,21 +382,167 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
               <p className="text-sm text-gray-500">Review CV kandidat dari portal (Instant OFF) dan undang untuk test</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={loadData}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <button
+            onClick={() => {
+              loadData();
+              loadCompletedCandidates();
+            }}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* DASHBOARD KANDIDAT YANG SUDAH COMPLETE */}
+      {completedCandidates.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white">Dashboard Kandidat</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Kandidat yang sudah menyelesaikan assessment
+              </p>
+            </div>
+            <div className="bg-white dark:bg-brand-slate-850 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+              <span className="text-2xl font-bold text-gray-800 dark:text-white">{filteredCompletedCandidates.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">Kandidat</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-brand-slate-850 p-4 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
+            <select
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
             >
-              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
-            <div className="bg-[#D95D00]/10 border border-[#D95D00]/20 rounded-xl px-4 py-2">
-              <div className="flex items-center gap-2">
-                <Users size={20} className="text-[#D95D00]" />
-                <span className="font-bold text-[#D95D00]">{filteredApplications.length}</span>
-                <span className="text-sm text-gray-600">Aplikasi</span>
+              <option value="all">Semua Stage</option>
+              <option value="screening">Screening</option>
+              <option value="review">Review</option>
+              <option value="interview">Interview</option>
+              <option value="bc_check">BC Check</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+            >
+              <option value="all">Semua Risk Level</option>
+              <option value="low">Low Risk</option>
+              <option value="medium">Medium Risk</option>
+              <option value="high">High Risk</option>
+              <option value="critical">Critical Risk</option>
+            </select>
+          </div>
+
+          {isLoadingCompleted ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-10 h-10 text-brand-orange animate-spin mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">Loading candidates...</p>
+            </div>
+          ) : filteredCompletedCandidates.length === 0 ? (
+            <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-12 text-center">
+              <UserPlus className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">Tidak Ada Data</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-500">
+                Tidak ada kandidat yang sesuai dengan filter
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Kandidat
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Posisi
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Stage
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Risk Score
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                    {filteredCompletedCandidates.map((candidate) => (
+                      <tr
+                        key={candidate.id}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                              {getAvatarInitials(candidate.candidate.name)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-white">
+                                {candidate.candidate.name}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {candidate.candidate.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
+                            <Briefcase size={14} className="text-brand-blue" />
+                            {candidate.jobTitle}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                            <MapPin size={12} />
+                            {candidate.jobLocation}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStageBadge(candidate)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {getRiskScoreBadge(candidate)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => onViewSession(candidate.id)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium shadow-sm"
+                          >
+                            <Eye size={16} />
+                            Lihat Detail
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* APLIKASI PENDING REVIEW */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">Aplikasi Pending Review</h3>
+            <p className="text-sm text-gray-500 mt-1">Kandidat yang menunggu untuk di-review dan diundang test</p>
+          </div>
+          <div className="bg-[#D95D00]/10 border border-[#D95D00]/20 rounded-xl px-4 py-2">
+            <div className="flex items-center gap-2">
+              <Users size={20} className="text-[#D95D00]" />
+              <span className="font-bold text-[#D95D00]">{filteredApplications.length}</span>
+              <span className="text-sm text-gray-600">Aplikasi</span>
             </div>
           </div>
         </div>
