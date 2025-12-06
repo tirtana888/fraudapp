@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Calendar, TrendingUp, User, Briefcase, ChevronRight } from 'lucide-react';
+import { Search, FileText, Calendar, User, Briefcase, ChevronRight } from 'lucide-react';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { InterviewSession } from '../types';
+import { InterviewSession, AssessmentInvite } from '../types';
 
 interface HistoryViewProps {
   companyId: string;
@@ -29,17 +29,29 @@ const HistoryView: React.FC<HistoryViewProps> = ({ companyId, onViewCandidate })
     try {
       setIsLoading(true);
 
+      const invitesRef = collection(db, COLLECTIONS.INVITES);
+      const invitesQuery = query(invitesRef, where('companyId', '==', companyId));
+      const invitesSnapshot = await getDocs(invitesQuery);
+
+      const sessionToAccessCode: Record<string, string> = {};
+      invitesSnapshot.forEach((doc) => {
+        const invite = doc.data() as AssessmentInvite;
+        if (invite.sessionId) {
+          sessionToAccessCode[invite.sessionId] = invite.access_code;
+        }
+      });
+
       const sessionsRef = collection(db, COLLECTIONS.SESSIONS);
-      const q = query(
+      const sessionsQuery = query(
         sessionsRef,
         where('companyId', '==', companyId),
         orderBy('date', 'desc')
       );
 
-      const snapshot = await getDocs(q);
+      const sessionsSnapshot = await getDocs(sessionsQuery);
       const allCandidates: CandidateHistory[] = [];
 
-      snapshot.forEach((doc) => {
+      sessionsSnapshot.forEach((doc) => {
         const data = doc.data() as InterviewSession;
 
         const riskScore = data.analysis?.scores
@@ -49,7 +61,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ companyId, onViewCandidate })
         allCandidates.push({
           ...data,
           id: doc.id,
-          assessmentCode: doc.id.substring(0, 8).toUpperCase(),
+          assessmentCode: sessionToAccessCode[doc.id] || '-',
           riskScore,
           recruitmentStage: data.recruitmentStage || 'assessment_complete'
         });
