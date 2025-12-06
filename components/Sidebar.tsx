@@ -24,7 +24,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
     { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
     { id: 'history', label: 'Riwayat Audit', icon: History },
     { id: 'settings', label: 'Pengaturan', icon: Settings },
-    { id: 'documentation', label: 'Dokumentasi', icon: BookOpen },
   ];
 
   const candidateSubMenus = [
@@ -144,6 +143,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             </div>
           )}
         </div>
+
+        {/* Documentation Menu */}
+        <button
+          onClick={() => setActiveTab('documentation')}
+          className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+            activeTab === 'documentation'
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <BookOpen size={20} className={activeTab === 'documentation' ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+          <span>Dokumentasi</span>
+        </button>
       </nav>
 
       <div className="p-4 border-t border-gray-100 dark:border-slate-700 space-y-2">

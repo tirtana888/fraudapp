@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   BookOpen,
   Briefcase,
@@ -38,6 +38,7 @@ interface DocContent {
 const Documentation: React.FC = () => {
   const [expandedSection, setExpandedSection] = useState<string>('jobs');
   const [searchQuery, setSearchQuery] = useState('');
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const sections: DocSection[] = [
     {
@@ -317,7 +318,19 @@ const Documentation: React.FC = () => {
   ];
 
   const toggleSection = (sectionId: string) => {
-    setExpandedSection(expandedSection === sectionId ? '' : sectionId);
+    if (expandedSection === sectionId) {
+      setExpandedSection('');
+    } else {
+      setExpandedSection(sectionId);
+      setTimeout(() => {
+        const element = sectionRefs.current[sectionId];
+        if (element) {
+          const yOffset = -20;
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }, 100);
+    }
   };
 
   const filteredSections = sections.filter(section => {
@@ -362,10 +375,10 @@ const Documentation: React.FC = () => {
       {/* Quick Start Guide */}
       <div className="bg-gradient-to-br from-orange-50 to-blue-50 rounded-2xl p-6 mb-8 border-2 border-[#D95D00]">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white rounded-xl shadow-sm">
+          <div className="p-3 bg-white rounded-xl shadow-sm flex-shrink-0">
             <Lightbulb className="w-6 h-6 text-[#D95D00]" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="text-xl font-bold text-gray-900 mb-3">Quick Start Guide</h3>
             <div className="space-y-2 text-sm text-gray-700">
               <div className="flex items-start gap-2">
@@ -394,6 +407,7 @@ const Documentation: React.FC = () => {
         {filteredSections.map((section) => (
           <div
             key={section.id}
+            ref={(el) => (sectionRefs.current[section.id] = el)}
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
           >
             {/* Section Header */}
@@ -402,27 +416,27 @@ const Documentation: React.FC = () => {
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg text-[#D95D00]">
+                <div className="p-2 bg-orange-100 rounded-lg text-[#D95D00] flex-shrink-0">
                   {section.icon}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">{section.title}</h3>
+                <h3 className="text-lg font-bold text-gray-900 text-left">{section.title}</h3>
               </div>
               {expandedSection === section.id ? (
-                <ChevronDown className="w-5 h-5 text-gray-400" />
+                <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
               ) : (
-                <ChevronRight className="w-5 h-5 text-gray-400" />
+                <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
               )}
             </button>
 
             {/* Section Content */}
             {expandedSection === section.id && (
-              <div className="px-6 pb-6 space-y-6">
+              <div className="px-4 sm:px-6 pb-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 {section.content.map((content, idx) => (
-                  <div key={idx} className="border-l-4 border-[#D95D00] pl-6 py-2">
-                    <h4 className="text-lg font-bold text-gray-800 mb-2">
+                  <div key={idx} className="border-l-4 border-[#D95D00] pl-4 sm:pl-6 py-2">
+                    <h4 className="text-base sm:text-lg font-bold text-gray-800 mb-2">
                       {content.subtitle}
                     </h4>
-                    <p className="text-gray-600 mb-4 leading-relaxed">
+                    <p className="text-sm sm:text-base text-gray-600 mb-4 leading-relaxed">
                       {content.description}
                     </p>
 
@@ -447,14 +461,14 @@ const Documentation: React.FC = () => {
                     {content.tips && content.tips.length > 0 && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                         <p className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4" />
+                          <Lightbulb className="w-4 h-4 flex-shrink-0" />
                           Tips:
                         </p>
                         <ul className="space-y-1">
                           {content.tips.map((tip, tipIdx) => (
                             <li key={tipIdx} className="text-sm text-blue-800 flex items-start gap-2">
                               <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                              <span>{tip}</span>
+                              <span className="flex-1">{tip}</span>
                             </li>
                           ))}
                         </ul>
@@ -465,14 +479,14 @@ const Documentation: React.FC = () => {
                     {content.warnings && content.warnings.length > 0 && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                         <p className="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
                           Perhatian:
                         </p>
                         <ul className="space-y-1">
                           {content.warnings.map((warning, warnIdx) => (
                             <li key={warnIdx} className="text-sm text-amber-800 flex items-start gap-2">
                               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                              <span>{warning}</span>
+                              <span className="flex-1">{warning}</span>
                             </li>
                           ))}
                         </ul>
@@ -487,30 +501,30 @@ const Documentation: React.FC = () => {
       </div>
 
       {/* Support Section */}
-      <div className="mt-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-8">
+      <div className="mt-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 sm:p-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
-            <h3 className="text-2xl font-bold mb-2">Butuh Bantuan Lebih Lanjut?</h3>
-            <p className="text-gray-300">
+            <h3 className="text-xl sm:text-2xl font-bold mb-2">Butuh Bantuan Lebih Lanjut?</h3>
+            <p className="text-gray-300 text-sm sm:text-base">
               Tim support kami siap membantu Anda 24/7
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
             <a
               href="mailto:support@hiregood.one"
-              className="flex items-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
-              <Mail className="w-5 h-5" />
-              Email Support
+              <Mail className="w-5 h-5 flex-shrink-0" />
+              <span>Email Support</span>
             </a>
             <a
               href="https://hiregood.one"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-lg font-semibold hover:bg-[#B14D00] transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-lg font-semibold hover:bg-[#B14D00] transition-colors"
             >
-              <Globe className="w-5 h-5" />
-              Visit Website
+              <Globe className="w-5 h-5 flex-shrink-0" />
+              <span>Visit Website</span>
             </a>
           </div>
         </div>
