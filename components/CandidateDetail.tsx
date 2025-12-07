@@ -249,6 +249,75 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     };
   };
 
+
+  const handleCompleteWorkflowStep = async (stageId: string, stepIndex: number) => {
+    if (!candidate || !workflowData) return;
+
+    try {
+      setIsUpdating(true);
+
+      // Validate sequential execution
+      const currentTimeline = candidate.timeline || [];
+      const workflowSteps = currentTimeline.filter((t: any) => 
+        workflowData.steps.some((s: any) => s.id === t.stage)
+      );
+
+      // Check if this is really the current step
+      const currentStep = workflowSteps.find((t: any) => t.status === 'current');
+      if (!currentStep || currentStep.stage !== stageId) {
+        toast.error('Tahapan harus diselesaikan secara berurutan!');
+        setIsUpdating(false);
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      // Update timeline: mark current as completed, set next as current
+      const updatedTimeline = currentTimeline.map((item: any, idx: number) => {
+        if (item.stage === stageId && item.status === 'current') {
+          return {
+            ...item,
+            status: 'completed',
+            completedAt: now
+          };
+        }
+        return item;
+      });
+
+      // Find next workflow step and set as current
+      const nextStepIndex = stepIndex + 1;
+      const nextWorkflowStep = workflowSteps[nextStepIndex];
+      
+      if (nextWorkflowStep) {
+        updatedTimeline.forEach((item: any, idx: number) => {
+          if (item.stage === nextWorkflowStep.stage && item.status === 'pending') {
+            item.status = 'current';
+          }
+        });
+      }
+
+      // Update Firestore
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      await updateDoc(sessionRef, {
+        timeline: updatedTimeline,
+        recruitmentStage: nextWorkflowStep ? nextWorkflowStep.stage : stageId,
+        updatedAt: now
+      });
+
+      // Reload candidate data
+      await loadCandidateData();
+
+      const stepName = workflowData.steps.find((s: any) => s.id === stageId)?.name;
+      toast.success(`✓ Tahap "${stepName}" berhasil diselesaikan!`);
+
+    } catch (error) {
+      console.error('[WORKFLOW] Error completing step:', error);
+      toast.error('Gagal menyelesaikan tahap workflow');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleInterviewInvitation = async () => {
     if (!candidate) return;
 
