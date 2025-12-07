@@ -1357,27 +1357,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Workflow Progress - Compact */}
-              {workflowData && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-purple-600" />
-                    <div>
-                      <div className="text-xs font-semibold text-purple-900">{workflowData.name}</div>
-                      <div className="text-xs text-purple-600">
-                        {(() => {
-                          const completedSteps = candidate.timeline?.filter((t: any) => 
-                            workflowData.steps.some((s: any) => s.id === t.stage) && t.status === 'completed'
-                          ).length || 0;
-                          const totalSteps = workflowData.steps.length;
-                          return `${completedSteps}/${totalSteps} tahapan`;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {statusBadge && (
                 <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border ${statusBadge.color}`}>
                   {statusBadge.icon}
