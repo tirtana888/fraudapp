@@ -1201,13 +1201,17 @@ export const createApplication = async (applicationData: Omit<JobApplication, 'i
 
     const jobRef = doc(db, COLLECTIONS.JOBS, applicationData.jobId);
     const jobSnap = await getDoc(jobRef);
+    let enableInstantAssessment = false; // Default: Instant OFF (pending_review)
+    
     if (jobSnap.exists()) {
-      const currentCount = jobSnap.data().applicantsCount || 0;
+      const jobData = jobSnap.data();
+      const currentCount = jobData.applicantsCount || 0;
+      enableInstantAssessment = jobData.enableInstantAssessment || false;
       await updateDoc(jobRef, { applicantsCount: currentCount + 1 });
     }
 
-    console.log('[APPLICATIONS] Creating interview session for application...');
-    const sessionId = await createInterviewSessionFromApplication(docRef.id, applicationData);
+    console.log('[APPLICATIONS] Creating interview session for application... Instant Assessment:', enableInstantAssessment);
+    const sessionId = await createInterviewSessionFromApplication(docRef.id, applicationData, enableInstantAssessment);
     console.log('[APPLICATIONS] Interview session created:', sessionId);
 
     await updateDoc(docRef, { sessionId });
