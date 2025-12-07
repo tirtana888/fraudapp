@@ -47,28 +47,50 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
 
   return (
     <div className={`
-      w-64 bg-white dark:bg-brand-slate-850 border-r border-gray-200 dark:border-slate-700 
-      flex flex-col h-screen fixed left-0 top-0 z-30 shadow-xl transition-transform duration-300 ease-in-out
+      ${isCollapsed ? 'w-16' : 'w-56'} bg-white dark:bg-brand-slate-850 border-r border-gray-200 dark:border-slate-700 
+      flex flex-col h-screen fixed left-0 top-0 z-30 shadow-lg transition-all duration-300 ease-in-out
       ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
     `}>
-      <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-slate-700">
-        <div className="flex items-center space-x-3">
+      {/* Header */}
+      <div className={`${isCollapsed ? 'p-3' : 'p-4'} flex items-center justify-between border-b border-gray-100 dark:border-slate-700`}>
+        {!isCollapsed ? (
+          <div className="flex items-center space-x-2">
             <img
               src="/untitled_design_(43).png"
               alt="HireGood Logo"
-              className="h-10 w-10 object-contain"
+              className="h-8 w-8 object-contain"
             />
             <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight font-sans">HireGood.one</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider truncate max-w-[120px]">{companyName}</p>
+              <h1 className="text-base font-bold text-gray-800 dark:text-white tracking-tight">HireGood</h1>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider truncate max-w-[100px]">{companyName}</p>
             </div>
-        </div>
+          </div>
+        ) : (
+          <img
+            src="/untitled_design_(43).png"
+            alt="HireGood Logo"
+            className="h-8 w-8 object-contain mx-auto"
+          />
+        )}
+        
+        {/* Mobile close button */}
         <button onClick={onClose} className="md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <X size={24} />
+          <X size={20} />
         </button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+      {/* Collapse Toggle Button - Desktop only */}
+      {onToggleCollapse && (
+        <button
+          onClick={onToggleCollapse}
+          className="hidden md:flex absolute -right-3 top-20 bg-white dark:bg-brand-slate-850 border border-gray-200 dark:border-slate-700 rounded-full p-1.5 shadow-md hover:shadow-lg transition-all hover:bg-gray-50 dark:hover:bg-slate-800 z-40"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ChevronLeft size={16} className={`text-gray-600 dark:text-gray-400 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+
+      <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
         {userRole === 'System Admin' && (
            <div className="mb-6">
               <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Super Admin</p>
