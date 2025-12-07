@@ -23,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   const coreMenuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
     { id: 'jobs', label: 'Kelola Lowongan', icon: Briefcase },
+    { id: 'workflows', label: 'Workflow Rekrutmen', icon: Workflow },
   ];
 
   const candidateSubMenus = [
