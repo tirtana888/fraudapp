@@ -200,3 +200,115 @@ export interface JobApplication {
   appliedAt: string;
   createdAt?: any;
 }
+
+
+// Workflow System
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  description: string;
+  credits: number;
+  isMandatory: boolean;
+  isEnabled: boolean;
+  order: number;
+  status?: 'pending' | 'in_progress' | 'completed' | 'skipped';
+  completedAt?: string;
+}
+
+export interface Workflow {
+  id?: string;
+  name: string;
+  description: string;
+  companyId: string;
+  steps: WorkflowStep[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  totalCredits: number; // Total credits for selected optional steps
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  credits: number;
+  isMandatory: boolean;
+  icon: string;
+  category: 'assessment' | 'interview' | 'verification' | 'decision';
+}
+
+// Available workflow templates
+export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    id: 'integrity_assessment',
+    name: 'Assessment Integritas',
+    description: 'Test integritas dan AI chatbot untuk menilai kejujuran kandidat',
+    credits: 0,
+    isMandatory: true,
+    icon: 'ShieldCheck',
+    category: 'assessment'
+  },
+  {
+    id: 'skill_interview',
+    name: 'Wawancara Skill',
+    description: 'Chatbot AI untuk menilai kemampuan teknis kandidat (Coming Soon)',
+    credits: 5,
+    isMandatory: false,
+    icon: 'Brain',
+    category: 'interview'
+  },
+  {
+    id: 'live_proctoring',
+    name: 'Live Proctoring',
+    description: 'Monitoring real-time dengan AI untuk mencegah kecurangan',
+    credits: 5,
+    isMandatory: false,
+    icon: 'Video',
+    category: 'assessment'
+  },
+  {
+    id: 'face_to_face_interview',
+    name: 'Wawancara Tatap Muka',
+    description: 'Interview langsung dengan HR atau hiring manager',
+    credits: 0,
+    isMandatory: false,
+    icon: 'Users',
+    category: 'interview'
+  },
+  {
+    id: 'background_check',
+    name: 'Cek Latar Belakang',
+    description: 'KYC verification dengan Didit untuk validasi identitas',
+    credits: 50,
+    isMandatory: false,
+    icon: 'Search',
+    category: 'verification'
+  },
+  {
+    id: 'document_forgery',
+    name: 'Document Forgery Detection',
+    description: 'AI detection untuk mendeteksi pemalsuan dokumen',
+    credits: 50,
+    isMandatory: false,
+    icon: 'FileCheck',
+    category: 'verification'
+  },
+  {
+    id: 'social_media_screening',
+    name: 'Social Media Screening',
+    description: 'Analisis profil media sosial kandidat untuk risk assessment',
+    credits: 50,
+    isMandatory: false,
+    icon: 'Share2',
+    category: 'verification'
+  },
+  {
+    id: 'hire_reject',
+    name: 'Rekrut atau Tolak',
+    description: 'Keputusan final untuk merekrut atau menolak kandidat',
+    credits: 0,
+    isMandatory: true,
+    icon: 'CheckCircle',
+    category: 'decision'
+  }
+];
