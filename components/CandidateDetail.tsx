@@ -102,6 +102,20 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         }
       }
 
+      // Load workflow if exists
+      if (sessionData.workflowId) {
+        try {
+          const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, sessionData.workflowId);
+          const workflowSnap = await getDoc(workflowRef);
+          if (workflowSnap.exists()) {
+            setWorkflowData({ id: workflowSnap.id, ...workflowSnap.data() });
+            console.log('[CANDIDATE] Loaded workflow:', workflowSnap.id);
+          }
+        } catch (error) {
+          console.error('[CANDIDATE] Error fetching workflow:', error);
+        }
+      }
+
       const riskScore = calculateRiskScore(sessionData);
 
       const fraudTriangle = sessionData.analysis?.scores ? {
