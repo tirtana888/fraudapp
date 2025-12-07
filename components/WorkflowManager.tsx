@@ -469,9 +469,14 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     Total Credits
                   </span>
-                  <span className="text-lg font-bold text-brand-orange">
-                    {workflow.totalCredits} Credits
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xl font-bold text-brand-orange">
+                      {workflow.totalCredits}
+                    </span>
+                    <span className="text-sm text-gray-500 ml-1">
+                      credits
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
