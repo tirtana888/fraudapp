@@ -1435,10 +1435,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               )}
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
                 // If workflow exists, use workflow steps as stage buttons
+                console.log('[BUTTONS] Rendering buttons. workflowData:', workflowData ? 'EXISTS' : 'NULL', 'recruitmentStage:', candidate.recruitmentStage);
+                
                 if (workflowData) {
+                  console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: any) => s.name).join(', '));
                   const workflowTimeline = candidate.timeline?.filter((t: any) => 
                     workflowData.steps.some((s: any) => s.id === t.stage)
                   ) || [];
+                  console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map((t: any) => `${t.stage}:${t.status}`).join(', '));
                   
                   const currentStepIndex = workflowTimeline.findIndex((t: any) => t.status === 'current');
                   const currentStep = workflowTimeline[currentStepIndex];
