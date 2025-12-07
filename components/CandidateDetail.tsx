@@ -296,19 +296,62 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         });
       }
 
+      // Add to existing timeline (non-workflow steps)
+      const existingTimeline = candidate.timeline || [];
+      const completedStepName = workflowData.steps.find((s: any) => s.id === stageId)?.name;
+      const nextStepName = nextWorkflowStep ? workflowData.steps.find((s: any) => s.id === nextWorkflowStep.stage)?.name : null;
+      
+      const timelineUpdate = [
+        ...existingTimeline.map((event: any) => {
+          if (event.stage === stageId && event.status === 'current') {
+            return { ...event, status: 'completed', completedAt: now };
+          }
+          if (nextWorkflowStep && event.stage === nextWorkflowStep.stage && event.status === 'pending') {
+            return { ...event, status: 'current' };
+          }
+          return event;
+        }),
+        {
+          stage: 'update',
+          status: 'completed' as const,
+          date: now,
+          note: `${completedStepName} selesai${nextStepName ? `, lanjut ke ${nextStepName}` : ''}`
+        }
+      ];
+
       // Update Firestore
       const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       await updateDoc(sessionRef, {
-        timeline: updatedTimeline,
+        timeline: timelineUpdate,
         recruitmentStage: nextWorkflowStep ? nextWorkflowStep.stage : stageId,
         updatedAt: now
       });
 
+      // Send Email Notification to Candidate
+      try {
+        const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
+        const companySnap = await getDoc(companyRef);
+        
+        if (companySnap.exists()) {
+          const companyData = companySnap.data();
+          
+          // TODO: Call email function for workflow step completion
+          // For now, just log
+          console.log(`[WORKFLOW] Email notification: ${completedStepName} completed for ${candidate.candidate.email}`);
+          console.log(`[WORKFLOW] Company: ${companyData.name}, Next step: ${nextStepName || 'Final'}`);
+          
+          // You can implement email sending here based on step type
+          // await sendEmailViaCloudFunction("workflow_step_complete", candidate.candidate.email, {...});
+        }
+      } catch (emailError) {
+        console.error('[WORKFLOW] Error sending email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+
       // Reload candidate data
       await loadCandidateData();
 
-      const stepName = workflowData.steps.find((s: any) => s.id === stageId)?.name;
-      toast.success(`✓ Tahap "${stepName}" berhasil diselesaikan!`);
+      toast.success(`✓ Tahap "${completedStepName}" berhasil diselesaikan!${nextStepName ? ` Lanjut ke: ${nextStepName}` : ''}`);
 
     } catch (error) {
       console.error('[WORKFLOW] Error completing step:', error);
