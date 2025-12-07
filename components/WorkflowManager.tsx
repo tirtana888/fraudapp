@@ -296,10 +296,13 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                           <h5 className="font-semibold text-gray-900 dark:text-white">
                             {template.name}
                           </h5>
-                          {template.credits > 0 && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
-                              <DollarSign size={12} />
-                              {template.credits}
+                          {template.credits === 0 ? (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold rounded">
+                              FREE
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
+                              {template.credits} credits
                             </span>
                           )}
                         </div>
