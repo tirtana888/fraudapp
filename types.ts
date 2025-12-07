@@ -180,6 +180,7 @@ export interface Job {
   description: string;
   status: 'Active' | 'Closed';
   enableInstantAssessment: boolean;
+  workflowId?: string; // Reference to selected workflow
   datePosted: string;
   applicantsCount?: number;
   createdAt?: any;
