@@ -295,7 +295,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     credits: 50,
     isMandatory: false,
     icon: 'FileCheck',
-    category: 'verification'
+    category: 'verification',
+    isAvailable: false // Coming Soon
   },
   {
     id: 'social_media_screening',
@@ -304,7 +305,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     credits: 50,
     isMandatory: false,
     icon: 'Share2',
-    category: 'verification'
+    category: 'verification',
+    isAvailable: false // Coming Soon
   },
   {
     id: 'hire_reject',
