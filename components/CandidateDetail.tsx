@@ -103,17 +103,23 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       }
 
       // Load workflow if exists
+      console.log('[CANDIDATE] Session workflowId:', sessionData.workflowId);
       if (sessionData.workflowId) {
         try {
           const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, sessionData.workflowId);
           const workflowSnap = await getDoc(workflowRef);
           if (workflowSnap.exists()) {
-            setWorkflowData({ id: workflowSnap.id, ...workflowSnap.data() });
-            console.log('[CANDIDATE] Loaded workflow:', workflowSnap.id);
+            const loadedWorkflow = { id: workflowSnap.id, ...workflowSnap.data() };
+            setWorkflowData(loadedWorkflow);
+            console.log('[CANDIDATE] ✅ Loaded workflow:', loadedWorkflow.name, 'with', loadedWorkflow.steps?.length, 'steps');
+          } else {
+            console.log('[CANDIDATE] ⚠️ Workflow document not found:', sessionData.workflowId);
           }
         } catch (error) {
           console.error('[CANDIDATE] Error fetching workflow:', error);
         }
+      } else {
+        console.log('[CANDIDATE] ⚠️ No workflowId in session data');
       }
 
       const riskScore = calculateRiskScore(sessionData);
