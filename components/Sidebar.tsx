@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen, ChevronLeft } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -12,9 +12,11 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName, userRole, isDarkMode, toggleTheme, isOpen, onClose, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName, userRole, isDarkMode, toggleTheme, isOpen, onClose, onLogout, isCollapsed = false, onToggleCollapse }) => {
   const [candidatesExpanded, setCandidatesExpanded] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
