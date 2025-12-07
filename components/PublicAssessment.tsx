@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy } from 'lucide-react';
+import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy, Bot } from 'lucide-react';
 import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, db, COLLECTIONS } from '../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
