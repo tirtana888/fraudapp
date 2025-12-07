@@ -1320,50 +1320,109 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 </span>
               )}
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
-                const buttonConfig = getStageButtonConfig(candidate.recruitmentStage || 'screening');
-                return (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <button
-                      onClick={() => handleStatusUpdate('interview')}
-                      disabled={isUpdating || !buttonConfig.interview.enabled}
-                      title={buttonConfig.interview.tooltip}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <User size={14} />
-                      Wawancara
-                    </button>
+                // If workflow exists, use workflow steps as stage buttons
+                if (workflowData) {
+                  const workflowTimeline = candidate.timeline?.filter((t: any) => 
+                    workflowData.steps.some((s: any) => s.id === t.stage)
+                  ) || [];
+                  
+                  const currentStepIndex = workflowTimeline.findIndex((t: any) => t.status === 'current');
+                  const currentStep = workflowTimeline[currentStepIndex];
+                  const nextStep = workflowTimeline[currentStepIndex + 1];
 
-                    <button
-                      onClick={() => handleStatusUpdate('bc_check')}
-                      disabled={isUpdating || !buttonConfig.bc_check.enabled}
-                      title={buttonConfig.bc_check.tooltip}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Shield size={14} />
-                      Cek Latar
-                    </button>
+                  return (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Current Workflow Step Button */}
+                      {currentStep && (
+                        <button
+                          onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
+                          disabled={isUpdating}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed animate-pulse"
+                        >
+                          <CheckCircle2 size={14} />
+                          {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next Step'}
+                        </button>
+                      )}
 
-                    <button
-                      onClick={() => setShowHireModal(true)}
-                      disabled={isUpdating || !buttonConfig.hired.enabled}
-                      title={buttonConfig.hired.tooltip}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <CheckCircle2 size={14} />
-                      Rekrut
-                    </button>
+                      {/* Next Step Preview (Disabled) */}
+                      {nextStep && (
+                        <button
+                          disabled={true}
+                          title="Selesaikan tahap sebelumnya terlebih dahulu"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md transition-colors text-xs font-semibold opacity-50 cursor-not-allowed"
+                        >
+                          <Clock size={14} />
+                          {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Selanjutnya'}
+                        </button>
+                      )}
 
-                    <button
-                      onClick={() => setShowRejectModal(true)}
-                      disabled={isUpdating}
-                      title={buttonConfig.rejected.tooltip}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <XCircle size={14} />
-                      Tolak
-                    </button>
-                  </div>
-                );
+                      {/* Hire & Reject always available */}
+                      <button
+                        onClick={() => setShowHireModal(true)}
+                        disabled={isUpdating}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle2 size={14} />
+                        Rekrut
+                      </button>
+
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        disabled={isUpdating}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <XCircle size={14} />
+                        Tolak
+                      </button>
+                    </div>
+                  );
+                } else {
+                  // Fallback: Use default stage buttons if no workflow
+                  const buttonConfig = getStageButtonConfig(candidate.recruitmentStage || 'screening');
+                  return (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => handleStatusUpdate('interview')}
+                        disabled={isUpdating || !buttonConfig.interview.enabled}
+                        title={buttonConfig.interview.tooltip}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <User size={14} />
+                        Wawancara
+                      </button>
+
+                      <button
+                        onClick={() => handleStatusUpdate('bc_check')}
+                        disabled={isUpdating || !buttonConfig.bc_check.enabled}
+                        title={buttonConfig.bc_check.tooltip}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Shield size={14} />
+                        Cek Latar
+                      </button>
+
+                      <button
+                        onClick={() => setShowHireModal(true)}
+                        disabled={isUpdating || !buttonConfig.hired.enabled}
+                        title={buttonConfig.hired.tooltip}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle2 size={14} />
+                        Rekrut
+                      </button>
+
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        disabled={isUpdating}
+                        title={buttonConfig.rejected.tooltip}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <XCircle size={14} />
+                        Tolak
+                      </button>
+                    </div>
+                  );
+                }
               })()}
             </div>
           </div>
