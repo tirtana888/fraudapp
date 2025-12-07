@@ -51,6 +51,11 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
   const [timeLeft, setTimeLeft] = useState(CHAT_TIME_LIMIT_SECONDS);
   const [isAccessDenied, setIsAccessDenied] = useState(false);
+  
+  // Gamification states
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
 
   const fetchCompany = async (id: string): Promise<boolean> => {
       try {
