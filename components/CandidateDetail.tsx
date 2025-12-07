@@ -253,6 +253,28 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const handleCompleteWorkflowStep = async (stageId: string, stepIndex: number) => {
     if (!candidate || !workflowData) return;
 
+    // Special handling for decision steps - redirect to existing modals
+    if (stageId === 'hire_decision') {
+      setShowHireModal(true);
+      return;
+    }
+    if (stageId === 'reject_decision') {
+      setShowRejectModal(true);
+      return;
+    }
+
+    // Special handling for existing integrated actions
+    if (stageId === 'face_to_face_interview') {
+      // Use existing interview status update with email integration
+      await handleStatusUpdate('interview');
+      return;
+    }
+    if (stageId === 'background_check') {
+      // Use existing background check status update with email integration
+      await handleStatusUpdate('bc_check');
+      return;
+    }
+
     try {
       setIsUpdating(true);
 
