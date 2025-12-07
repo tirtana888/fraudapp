@@ -917,18 +917,52 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         )}
         
         {step === 'intro_chat' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-10 text-center animate-in zoom-in-95">
-                <div className="w-20 h-20 bg-brand-orange/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                   <Clock size={32} className="text-brand-orange" />
+            <div className="bg-gradient-to-br from-white to-purple-50 rounded-3xl shadow-2xl border-2 border-purple-200 p-10 mt-10 text-center animate-fade-in">
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-bounce-slow">
+                     <MessageSquare size={48} className="text-white" />
+                  </div>
+                  <div className="absolute -top-2 -right-6">
+                    <Sparkles size={32} className="text-yellow-400 animate-pulse" />
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Sesi Wawancara AI (10 Menit)</h2>
-                <p className="text-gray-500 mb-8 leading-relaxed">
-                    Terakhir, Anda akan melakukan sesi chat singkat dengan Asisten Virtual kami untuk memverifikasi beberapa jawaban. 
-                    <br/><br/><strong>Waktu dibatasi 10 menit. Sistem akan otomatis menutup sesi jika waktu habis.</strong>
+                
+                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-3">
+                  Sesi Wawancara AI
+                </h2>
+                
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-6 inline-flex items-center gap-2">
+                  <Clock size={24} className="text-purple-600" />
+                  <span className="text-xl font-bold text-purple-900">10 Menit</span>
+                </div>
+                
+                <p className="text-gray-700 mb-4 leading-relaxed max-w-md mx-auto">
+                    Terakhir, Anda akan melakukan sesi chat singkat dengan <span className="font-bold text-purple-600">Alex</span> - Asisten Virtual kami untuk memverifikasi beberapa jawaban. 
                 </p>
-                <button onClick={handleStartChat} className="w-full bg-brand-orange text-white py-4 rounded-xl font-bold shadow-lg hover:opacity-90">
-                    Mulai Wawancara (Timer Start)
+                
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mb-8 max-w-md mx-auto">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-yellow-900 mb-1">⏰ Perhatian Waktu</p>
+                      <p className="text-xs text-yellow-800">
+                        Timer akan dimulai saat Anda klik tombol di bawah. Pastikan koneksi internet Anda stabil dan Anda siap untuk menjawab.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={handleStartChat} 
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-5 rounded-xl font-bold shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all flex items-center justify-center gap-3 text-lg"
+                >
+                    <span>Mulai Wawancara Sekarang</span>
+                    <ArrowRight size={24} />
                 </button>
+                
+                <p className="text-xs text-gray-500 mt-4 italic">
+                  💡 Tips: Jawab dengan jujur dan natural untuk hasil terbaik
+                </p>
             </div>
         )}
 
