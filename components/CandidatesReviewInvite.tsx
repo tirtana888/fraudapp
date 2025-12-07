@@ -64,19 +64,36 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
   const loadCompletedCandidates = async () => {
     try {
       setIsLoadingCompleted(true);
-      console.log('[REVIEW-INVITE] Loading completed candidates for company:', companyId);
+      console.log('[REVIEW-INVITE] Loading completed candidates from job_application (Instant OFF, now completed)...');
 
+      // Query: Ambil kandidat dari job_application yang sudah complete test
+      // Ini adalah kandidat yang tadinya pending_review, lalu diundang dan sudah complete
       const completedQuery = query(
         collection(db, COLLECTIONS.SESSIONS),
         where('companyId', '==', companyId),
-        where('source', '==', 'job_application'),
-        where('status', '==', 'COMPLETED')
+        where('source', '==', 'job_application')
       );
+      
       const completedSnapshot = await getDocs(completedQuery);
-      console.log('[REVIEW-INVITE] Found completed candidates:', completedSnapshot.docs.length);
+      
+      // Filter: Ambil yang sudah ada analysis (sudah complete test) DAN tadinya dari pending_review
+      // Tandanya: ada inviteSource field atau pernah ada status pending_review
+      const completedSessions = completedSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        // Hanya tampilkan yang sudah complete test (ada analysis) DAN berasal dari review invite flow
+        return data.analysis && data.inviteSource === 'review_invite';
+      });
+
+      console.log('[REVIEW-INVITE] Found completed candidates from review invite flow:', completedSessions.length);
+
+      if (completedSessions.length === 0) {
+        setCompletedCandidates([]);
+        setIsLoadingCompleted(false);
+        return;
+      }
 
       const candidatesWithDetails: ApplicationWithDetails[] = await Promise.all(
-        completedSnapshot.docs.map(async (docSnap) => {
+        completedSessions.map(async (docSnap) => {
           const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
 
           let jobTitle = 'Unknown Position';
