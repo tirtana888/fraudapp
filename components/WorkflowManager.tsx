@@ -449,9 +449,13 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                           <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
                             {step.name}
                           </span>
-                          {step.credits > 0 && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
-                              {step.credits}
+                          {step.credits === 0 ? (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold rounded">
+                              FREE
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
+                              {step.credits} credits
                             </span>
                           )}
                         </div>
