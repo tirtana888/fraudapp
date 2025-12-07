@@ -528,9 +528,11 @@ const App: React.FC = () => {
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         onLogout={handleLogout}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
-      <main className="md:ml-64 p-4 md:p-8 min-h-screen">
+      <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>
          <div className="max-w-7xl mx-auto">
             {/* Header / Title */}
             <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
