@@ -628,48 +628,66 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                    </div>
                  </div>
                )}
-               <form onSubmit={handleProfileSubmit} className="space-y-4">
+               <form onSubmit={handleProfileSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Nama Lengkap</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <User size={16} />
+                      Nama Lengkap
+                    </label>
                     <input
                       required
                       type="text"
                       value={candidateName}
                       onChange={e => setCandidateName(e.target.value)}
-                      className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder="Masukkan nama lengkap Anda"
                       disabled={!!inviteData}
                       readOnly={!!inviteData}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <Mail size={16} />
+                      Email
+                    </label>
                     <input
                       required
                       type="email"
                       value={candidateEmail}
                       onChange={e => setCandidateEmail(e.target.value)}
-                      className="w-full p-3 border rounded-xl disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder="email@example.com"
                       disabled={!!inviteData}
                       readOnly={!!inviteData}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Posisi</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <Briefcase size={16} />
+                      Posisi
+                    </label>
                     <div className="relative">
                         <select
                           required
                           value={candidateRole}
                           onChange={e => setCandidateRole(e.target.value)}
-                          className="w-full p-3 border rounded-xl bg-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          className="w-full p-4 border-2 border-gray-200 rounded-xl bg-white appearance-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                           disabled={!!inviteData?.role}
                         >
                             <option value="" disabled>-- Pilih Posisi --</option>
                             {AVAILABLE_ROLES.map((role, idx) => <option key={idx} value={role}>{role}</option>)}
                         </select>
-                        <ChevronDown className="absolute right-4 top-3.5 text-gray-400 pointer-events-none" size={20} />
+                        <ChevronDown className="absolute right-4 top-4 text-gray-400 pointer-events-none" size={24} />
                     </div>
                   </div>
-                  <button type="submit" className="w-full text-white py-3 rounded-xl font-bold mt-4" style={{ backgroundColor: brandColor }}>Lanjut</button>
+                  <button 
+                    type="submit" 
+                    className="w-full text-white py-4 rounded-xl font-bold mt-6 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2" 
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    <span>Lanjut ke Survey</span>
+                    <ArrowRight size={20} />
+                  </button>
                </form>
            </div>
         )}
