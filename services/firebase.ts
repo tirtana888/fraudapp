@@ -1241,6 +1241,71 @@ export const createInterviewSessionFromApplication = async (
 
     console.log(`[SESSION-CREATE] Creating session with status: ${sessionStatus} (Instant: ${enableInstantAssessment})`);
 
+    // Load Job and Workflow if exists
+    let workflowSteps: any[] = [];
+    let workflowId: string | undefined;
+    
+    if (applicationData.jobId) {
+      try {
+        const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, applicationData.jobId));
+        if (jobDoc.exists()) {
+          const jobData = jobDoc.data();
+          workflowId = jobData.workflowId;
+          
+          if (workflowId) {
+            console.log(`[SESSION-CREATE] Job has workflow: ${workflowId}`);
+            const workflowDoc = await getDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
+            if (workflowDoc.exists()) {
+              const workflowData = workflowDoc.data();
+              workflowSteps = workflowData.steps || [];
+              console.log(`[SESSION-CREATE] Loaded ${workflowSteps.length} workflow steps`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[SESSION-CREATE] Error loading workflow:', error);
+      }
+    }
+
+    // Build timeline based on workflow or default
+    const timeline: any[] = [
+      {
+        stage: 'applied',
+        status: 'completed' as const,
+        date: now,
+        note: `Kandidat melamar via Job Portal`
+      },
+      {
+        stage: 'cv_uploaded',
+        status: 'completed' as const,
+        date: now,
+        note: `CV berhasil diunggah`
+      }
+    ];
+
+    // Add workflow steps to timeline if exists
+    if (workflowSteps.length > 0) {
+      workflowSteps.forEach((step, index) => {
+        timeline.push({
+          stage: step.id,
+          status: index === 0 ? 'current' as const : 'pending' as const,
+          date: now,
+          note: step.description,
+          credits: step.credits,
+          isMandatory: step.isMandatory
+        });
+      });
+      console.log(`[SESSION-CREATE] Added ${workflowSteps.length} workflow stages to timeline`);
+    } else {
+      // Default timeline if no workflow
+      timeline.push({
+        stage: 'screening',
+        status: 'current' as const,
+        date: now,
+        note: screeningNote
+      });
+    }
+
     const session = {
       candidate: {
         id: applicationId,
@@ -1250,33 +1315,14 @@ export const createInterviewSessionFromApplication = async (
       },
       date: now,
       status: sessionStatus as 'active' | 'pending_review',
-      recruitmentStage: 'screening',
+      recruitmentStage: workflowSteps.length > 0 ? workflowSteps[0].id : 'screening',
       transcript: [
         {
           speaker: 'ai' as const,
           text: `Aplikasi diterima dari ${applicationData.fullName} via Job Portal. CV: ${applicationData.cvUrl}`
         }
       ],
-      timeline: [
-        {
-          stage: 'applied',
-          status: 'completed' as const,
-          date: now,
-          note: `Kandidat melamar via Job Portal`
-        },
-        {
-          stage: 'cv_uploaded',
-          status: 'completed' as const,
-          date: now,
-          note: `CV berhasil diunggah`
-        },
-        {
-          stage: 'screening',
-          status: 'current' as const,
-          date: now,
-          note: screeningNote
-        }
-      ],
+      timeline,
       companyId: applicationData.companyId,
       source: 'job_application',
       jobId: applicationData.jobId,
