@@ -309,12 +309,21 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     isAvailable: false // Coming Soon
   },
   {
-    id: 'hire_reject',
-    name: 'Rekrut atau Tolak',
-    description: 'Keputusan final untuk merekrut atau menolak kandidat',
+    id: 'hire_decision',
+    name: 'Rekrut Kandidat',
+    description: 'Keputusan untuk merekrut kandidat yang lolos seleksi',
     credits: 0,
     isMandatory: true,
     icon: 'CheckCircle',
+    category: 'decision'
+  },
+  {
+    id: 'reject_decision',
+    name: 'Tolak Kandidat',
+    description: 'Keputusan untuk menolak kandidat yang tidak memenuhi kriteria',
+    credits: 0,
+    isMandatory: true,
+    icon: 'XCircle',
     category: 'decision'
   }
 ];
