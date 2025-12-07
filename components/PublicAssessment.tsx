@@ -486,31 +486,62 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   
   if (step === 'done') {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50 p-4 font-sans pb-20">
-          <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center space-y-6">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 size={48} className="text-green-600" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 font-sans pb-20">
+          <ConfettiAnimation show={showConfetti} onComplete={() => setShowConfetti(false)} />
+          
+          <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center space-y-6 animate-scale-up border-4 border-green-200">
+            <div className="relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xl animate-bounce-slow">
+                <Trophy size={56} className="text-white" />
+              </div>
+              <div className="absolute -top-2 -right-2 w-16 h-16">
+                <Sparkles size={40} className="text-yellow-400 animate-spin-slow" />
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-gray-800">Terima Kasih!</h2>
-            <p className="text-lg text-gray-700">
-              Halo <span className="font-bold text-brand-orange">{candidateName}</span>,
+            
+            <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600">
+              Selamat! 🎉
+            </h2>
+            
+            <p className="text-xl text-gray-700">
+              Halo <span className="font-bold text-brand-orange">{candidateName}</span>!
             </p>
+            
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 space-y-3">
+              <div className="flex items-center justify-center gap-2 text-green-700 font-bold text-lg">
+                <CheckCircle2 size={24} className="text-green-600" />
+                Assessment Berhasil Diselesaikan!
+              </div>
+              <p className="text-sm text-gray-600">
+                Semua tahapan assessment telah Anda selesaikan dengan baik. Hasil telah tersimpan dengan aman dalam sistem kami.
+              </p>
+            </div>
+            
             <p className="text-gray-600 leading-relaxed">
-              Asesmen Anda telah berhasil diselesaikan dan hasil telah tersimpan dengan aman.
-              Tim HR akan meninjau hasil Anda dan menghubungi melalui email untuk tahap selanjutnya.
+              Tim HR akan meninjau hasil assessment Anda dan menghubungi melalui email untuk tahap selanjutnya dalam proses rekrutmen.
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left space-y-2">
-              <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-                <Mail className="text-blue-600" size={16} />
+            
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 text-left space-y-3">
+              <p className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                <Mail className="text-blue-600" size={18} />
                 Cek Email Anda
               </p>
-              <p className="text-xs text-blue-700">
-                Kami akan mengirimkan undangan untuk tahap selanjutnya ke <span className="font-semibold">{candidateEmail}</span>
+              <p className="text-sm text-blue-700">
+                Notifikasi dan undangan tahap berikutnya akan dikirim ke:
+              </p>
+              <p className="font-semibold text-blue-900 bg-blue-100 p-2 rounded text-center">
+                {candidateEmail}
               </p>
             </div>
-            <p className="text-sm text-gray-500 italic">
-              Semoga berhasil! 🎉
-            </p>
+            
+            <div className="pt-4 border-t-2 border-gray-100">
+              <p className="text-lg font-semibold text-gray-700 mb-2">
+                Terima kasih atas partisipasi Anda! 
+              </p>
+              <p className="text-sm text-gray-500">
+                Semoga berhasil di tahap selanjutnya! 🚀
+              </p>
+            </div>
           </div>
           <Watermark />
         </div>
