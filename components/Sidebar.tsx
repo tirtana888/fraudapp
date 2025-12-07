@@ -92,25 +92,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
 
       <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
         {userRole === 'System Admin' && (
-           <div className="mb-6">
-              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Super Admin</p>
+           <div className="mb-3">
+              {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Admin</p>}
               <button
                 onClick={() => setActiveTab(adminItem.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
                   activeTab === adminItem.id
-                    ? 'bg-brand-dark text-white shadow-md'
+                    ? 'bg-brand-dark text-white shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
+                title={isCollapsed ? adminItem.label : ''}
               >
-                <Shield size={20} className={activeTab === adminItem.id ? 'text-brand-orange' : 'text-gray-400'} />
-                <span>{adminItem.label}</span>
+                <Shield size={18} className={activeTab === adminItem.id ? 'text-brand-orange' : 'text-gray-400'} />
+                {!isCollapsed && <span className="text-sm">{adminItem.label}</span>}
+                {isCollapsed && (
+                  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                    {adminItem.label}
+                  </span>
+                )}
               </button>
-              <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
            </div>
         )}
 
         {/* BAGIAN 1: INTI (Sering Diakses) */}
-        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Inti</p>
+        {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Inti</p>}
         {coreMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -118,14 +123,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
                 isActive
                   ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
+              title={isCollapsed ? item.label : ''}
             >
-              <Icon size={20} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-              <span>{item.label}</span>
+              <Icon size={18} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+              {!isCollapsed && <span className="text-sm">{item.label}</span>}
+              {isCollapsed && (
+                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                  {item.label}
+                </span>
+              )}
             </button>
           );
         })}
