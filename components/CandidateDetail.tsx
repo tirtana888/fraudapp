@@ -52,6 +52,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [contactPerson, setContactPerson] = useState('');
   const [sendRejectionEmail, setSendRejectionEmail] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
+  const [workflowData, setWorkflowData] = useState<any>(null);
 
   useEffect(() => {
     loadCandidateData();
