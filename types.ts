@@ -253,11 +253,12 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'skill_interview',
     name: 'Wawancara Skill',
-    description: 'Chatbot AI untuk menilai kemampuan teknis kandidat (Coming Soon)',
+    description: 'Chatbot AI untuk menilai kemampuan teknis kandidat',
     credits: 5,
     isMandatory: false,
     icon: 'Brain',
-    category: 'interview'
+    category: 'interview',
+    isAvailable: false // Coming Soon
   },
   {
     id: 'live_proctoring',
@@ -266,7 +267,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     credits: 5,
     isMandatory: false,
     icon: 'Video',
-    category: 'assessment'
+    category: 'assessment',
+    isAvailable: false // Coming Soon
   },
   {
     id: 'face_to_face_interview',
