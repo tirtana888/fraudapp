@@ -48,6 +48,8 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       } as Job));
       setJobs(jobsData);
 
+      // Query: Hanya ambil kandidat dari job_application yang langsung auto-complete (Instant ON)
+      // Excludes: pending_review (ini untuk Review Invite) dan manual invite (yang ada access_code)
       const sessionsQuery = query(
         collection(db, COLLECTIONS.SESSIONS),
         where('companyId', '==', companyId),
@@ -56,11 +58,14 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       const sessionsSnapshot = await getDocs(sessionsQuery);
       console.log('[CANDIDATES-AUTO] Found all job application sessions:', sessionsSnapshot.docs.length);
 
+      // Filter: Ambil yang bukan pending_review DAN bukan dari manual invite (tidak ada accessCode di candidate data)
       const autoCandidateSessions = sessionsSnapshot.docs.filter(doc => {
         const data = doc.data();
-        return data.status !== 'pending_review';
+        // Hanya tampilkan yang auto-complete dari job portal (Instant ON)
+        // Exclude: pending_review dan yang ada inviteSource
+        return data.status !== 'pending_review' && !data.inviteSource;
       });
-      console.log('[CANDIDATES-AUTO] Filtered to auto-complete only (excluding pending_review):', autoCandidateSessions.length);
+      console.log('[CANDIDATES-AUTO] Filtered to auto-complete only (Instant ON, excluding pending_review & manual invites):', autoCandidateSessions.length);
 
       const candidatesWithDetails: AutoCandidate[] = await Promise.all(
         autoCandidateSessions.map(async (docSnap) => {
