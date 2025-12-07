@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search, FileCheck, Share2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search, FileCheck, Share2, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES } from '../types';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../services/firebase';
