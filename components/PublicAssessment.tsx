@@ -676,19 +676,56 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         `}</style>
 
         {step === 'survey_fin' && (
-            <div className="space-y-6">
-                <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-red-800 text-sm font-medium">Bagian 2/3: Survei Finansial</div>
-                {finAnswers.map((item) => (
-                  <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                     <p className="font-bold text-gray-800 mb-4">{item.question}</p>
+            <div className="space-y-6 animate-fade-in">
+                {/* Progress Bar */}
+                <AssessmentProgress 
+                  currentStep={finAnswers.filter(a => a.response !== null).length}
+                  totalSteps={finAnswers.length}
+                  stepName="Survei Finansial"
+                />
+                
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-100 text-red-800 text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle size={20} />
+                  <span>Bagian 2/3: Survei Finansial</span>
+                </div>
+                
+                {finAnswers.map((item, idx) => (
+                  <div key={item.id} className={`bg-white p-6 rounded-2xl shadow-md border-2 transition-all duration-300 ${item.response !== null ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
+                     <div className="flex items-start gap-3 mb-4">
+                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                         {idx + 1}
+                       </div>
+                       <p className="font-bold text-gray-800 flex-1">{item.question}</p>
+                       {item.response !== null && (
+                         <CheckCircle2 size={24} className="text-green-500 animate-scale-in" />
+                       )}
+                     </div>
                      <div className="flex gap-2">
                          {[1, 2, 3, 4, 5].map(val => (
-                             <button key={val} onClick={() => handleFinChange(item.id, val)} className={`flex-1 py-2 rounded-lg font-bold border transition-all ${item.response === val ? 'bg-red-500 text-white border-red-500' : 'text-gray-500 bg-white hover:bg-gray-50'}`}>{val}</button>
+                             <button 
+                               key={val} 
+                               onClick={() => handleFinChange(item.id, val)} 
+                               className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all transform hover:scale-105 active:scale-95 ${item.response === val ? 'bg-red-500 text-white border-red-500 shadow-lg scale-105' : 'text-gray-500 bg-white hover:bg-gray-50 hover:border-gray-400'}`}
+                             >
+                               {val}
+                             </button>
                          ))}
+                     </div>
+                     <div className="mt-3 flex justify-between text-xs text-gray-500">
+                       <span>Tidak Setuju</span>
+                       <span>Sangat Setuju</span>
                      </div>
                   </div>
                 ))}
-                <button onClick={() => setStep('survey_sjt')} disabled={finAnswers.some(a => a.response === null)} className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50" style={{ backgroundColor: brandColor }}>Lanjut</button>
+                <button 
+                  onClick={() => setStep('survey_sjt')} 
+                  disabled={finAnswers.some(a => a.response === null)} 
+                  className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2" 
+                  style={{ backgroundColor: brandColor }}
+                >
+                  <span>Lanjut ke Bagian 3</span>
+                  <ArrowRight size={20} />
+                </button>
             </div>
         )}
 
