@@ -806,31 +806,52 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         )}
 
         {step === 'chat' && (
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-[75vh]">
-                <div className="p-4 bg-gray-50 border-b flex justify-between items-center sticky top-0 z-10">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-[75vh] animate-fade-in">
+                {/* Header with Timer */}
+                <div className="p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-brand-orange text-white flex items-center justify-center font-bold">AI</div>
+                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-bold border-2 border-white/50 relative">
+                          <Bot size={24} />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                        </div>
                         <div>
-                            <p className="font-bold text-gray-800">Interviewer</p>
-                            <p className="text-xs text-gray-500">HireGood.one Forensic</p>
+                            <p className="font-bold text-white">Alex - AI Interviewer</p>
+                            <p className="text-xs text-white/80 flex items-center gap-1">
+                              <Sparkles size={12} />
+                              HireGood.one Forensic
+                            </p>
                         </div>
                     </div>
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                         <Clock size={14} />
-                         <span className="text-xs font-mono font-bold">{Math.floor(timeLeft/60)}:{String(timeLeft%60).padStart(2,'0')}</span>
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 backdrop-blur ${timeLeft < 60 ? 'bg-red-500/90 text-white border-white/50 animate-pulse' : 'bg-white/20 text-white border-white/30'}`}>
+                         <Clock size={16} />
+                         <span className="text-sm font-mono font-bold">{Math.floor(timeLeft/60)}:{String(timeLeft%60).padStart(2,'0')}</span>
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+
+                {/* Chat Messages Area */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-2 bg-gradient-to-b from-gray-50 to-white">
                     {chatHistory.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`max-w-[85%] p-4 rounded-2xl text-sm shadow-sm leading-relaxed ${msg.speaker === 'ai' ? 'bg-white border border-gray-200 text-gray-800 rounded-tl-none' : 'bg-brand-blue text-white rounded-tr-none'}`}>{msg.text}</div>
-                        </div>
+                        <ChatMessage 
+                          key={idx}
+                          speaker={msg.speaker}
+                          text={msg.text}
+                          isNew={idx === chatHistory.length - 1}
+                          isTyping={false}
+                        />
                     ))}
-                    {isAiThinking && <div className="flex justify-start"><div className="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-none flex items-center gap-2 text-gray-400 text-xs"><Loader2 className="animate-spin" size={14} /> Sedang mengetik...</div></div>}
+                    {isAiThinking && (
+                      <ChatMessage 
+                        speaker="ai"
+                        text=""
+                        isTyping={true}
+                      />
+                    )}
                     <div ref={chatEndRef} />
                 </div>
-                <div className="p-4 bg-white border-t sticky bottom-0 z-10">
-                    <div className="flex gap-2">
+
+                {/* Input Area */}
+                <div className="p-4 bg-white border-t-2 border-gray-100 sticky bottom-0 z-10 shadow-lg">
+                    <div className="flex gap-3">
                         <input
                           type="text"
                           value={userInput}
@@ -844,11 +865,20 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
                             }
                           }}
                           placeholder="Ketik jawaban Anda..."
-                          className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          className="flex-1 p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           disabled={isAiThinking || timeLeft === 0}
                         />
-                        <button onClick={handleSendMessage} disabled={!userInput.trim() || isAiThinking || timeLeft === 0} className="p-3 bg-brand-blue text-white rounded-xl hover:opacity-90 disabled:opacity-50"><Send size={20} /></button>
+                        <button 
+                          onClick={handleSendMessage} 
+                          disabled={!userInput.trim() || isAiThinking || timeLeft === 0} 
+                          className="px-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                        >
+                          <Send size={20} />
+                        </button>
                     </div>
+                    {timeLeft < 60 && (
+                      <p className="text-xs text-red-600 font-medium mt-2 animate-pulse">⏰ Waktu hampir habis! Segera kirim jawaban Anda.</p>
+                    )}
                 </div>
             </div>
         )}
