@@ -1365,15 +1365,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Workflow Progress */}
+        {/* Workflow Steps - Manual Trigger */}
         {workflowData && activeTab === 'overview' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-purple-600 to-purple-400 px-6 py-4">
               <h3 className="font-bold text-white text-lg flex items-center gap-2">
                 <Activity size={20} />
-                Workflow Progress: {workflowData.name}
+                Workflow: {workflowData.name}
               </h3>
-              <p className="text-white/80 text-sm mt-1">{workflowData.description || 'Tahapan rekrutmen untuk kandidat ini'}</p>
+              <p className="text-white/80 text-sm mt-1">Klik tombol untuk melanjutkan ke tahap berikutnya (harus berurutan)</p>
             </div>
             <div className="p-6">
               <div className="space-y-3">
@@ -1397,19 +1397,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                         }`}
                       >
                         <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                             isCompleted
                               ? 'bg-green-500 text-white'
                               : isCurrent
-                              ? 'bg-blue-500 text-white animate-pulse'
+                              ? 'bg-blue-500 text-white'
                               : 'bg-gray-300 text-gray-600'
                           }`}
                         >
-                          {isCompleted ? <CheckCircle2 size={24} /> : index + 1}
+                          {isCompleted ? <CheckCircle2 size={20} /> : index + 1}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-gray-800">{step?.name || item.stage}</h4>
+                            <h4 className="font-semibold text-gray-800">{step?.name || item.stage}</h4>
                             {step?.isMandatory && (
                               <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">
                                 WAJIB
@@ -1422,7 +1422,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">{item.note || step?.description}</p>
+                          <p className="text-xs text-gray-600">{step?.description}</p>
                           {item.completedAt && (
                             <p className="text-xs text-gray-500 mt-1">
                               ✓ Selesai: {new Date(item.completedAt).toLocaleString('id-ID')}
@@ -1431,32 +1431,28 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                         </div>
                         <div>
                           {isCompleted && (
-                            <div className="text-green-600 font-semibold text-sm">Selesai</div>
+                            <span className="text-green-600 font-semibold text-sm flex items-center gap-1">
+                              <CheckCircle2 size={16} />
+                              Selesai
+                            </span>
                           )}
                           {isCurrent && (
-                            <div className="text-blue-600 font-semibold text-sm">Sedang Berjalan</div>
+                            <button
+                              onClick={() => handleCompleteWorkflowStep(item.stage, index)}
+                              disabled={isUpdating}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                              <CheckCircle2 size={16} />
+                              Selesaikan
+                            </button>
                           )}
                           {isPending && (
-                            <div className="text-gray-500 font-semibold text-sm">Menunggu</div>
+                            <span className="text-gray-500 font-medium text-sm">Menunggu</span>
                           )}
                         </div>
                       </div>
                     );
                   })}
-              </div>
-              
-              {/* Total Credits Info */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Credits untuk Workflow Ini</p>
-                    <p className="text-xs text-gray-500 mt-1">Credits akan dideduct saat kandidat menyelesaikan setiap tahapan</p>
-                  </div>
-                  <div className="text-2xl font-bold text-purple-600 flex items-center gap-1">
-                    <DollarSign size={24} />
-                    {workflowData.totalCredits}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
