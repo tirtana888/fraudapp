@@ -491,6 +491,39 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                 </div>
               </div>
 
+              {/* Workflow Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <WorkflowIcon size={18} />
+                  Workflow Rekrutmen
+                </label>
+                <select
+                  value={formData.workflowId}
+                  onChange={(e) => setFormData({ ...formData, workflowId: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent transition-all"
+                  disabled={isLoadingWorkflows}
+                >
+                  <option value="">Tidak Ada Workflow (Default Process)</option>
+                  {workflows.map(workflow => (
+                    <option key={workflow.id} value={workflow.id}>
+                      {workflow.name} ({workflow.steps.length} tahapan, {workflow.totalCredits} credits)
+                    </option>
+                  ))}
+                </select>
+                {workflows.length === 0 && !isLoadingWorkflows && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Belum ada workflow. <a href="#" onClick={(e) => { e.preventDefault(); /* TODO: navigate to workflows */ }} className="text-[#D95D00] hover:underline">Buat workflow baru</a>
+                  </p>
+                )}
+                {formData.workflowId && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      ℹ️ Kandidat yang apply akan mengikuti tahapan workflow yang dipilih
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Status Lowongan
