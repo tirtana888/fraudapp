@@ -366,6 +366,8 @@ const App: React.FC = () => {
                />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
+      case 'workflows':
+        return <WorkflowManager companyId={currentCompany!.id} isDarkMode={isDarkMode} />;
       case 'candidates-auto':
         if (viewingCandidateId) {
           return <CandidateDetail
