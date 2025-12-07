@@ -1374,49 +1374,60 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   const nextStep = workflowTimeline[currentStepIndex + 1];
 
                   return (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Current Workflow Step Button */}
-                      {currentStep && (
+                    <div className="flex items-center gap-2">
+                      {/* Workflow Steps Section */}
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <Activity size={14} className="text-purple-600" />
+                        <div className="flex items-center gap-1.5">
+                          {/* Current Workflow Step Button */}
+                          {currentStep && (
+                            <button
+                              onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
+                              disabled={isUpdating}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <CheckCircle2 size={12} />
+                              {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next'}
+                            </button>
+                          )}
+
+                          {/* Next Step Preview (Disabled) */}
+                          {nextStep && (
+                            <button
+                              disabled={true}
+                              title="Selesaikan tahap sebelumnya"
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium opacity-60 cursor-not-allowed"
+                            >
+                              <Clock size={12} />
+                              {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Next'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Separator */}
+                      <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+
+                      {/* Decision Buttons - Always Available */}
+                      <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
+                          onClick={() => setShowHireModal(true)}
                           disabled={isUpdating}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed animate-pulse"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
                           <CheckCircle2 size={14} />
-                          {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next Step'}
+                          Rekrut
                         </button>
-                      )}
 
-                      {/* Next Step Preview (Disabled) */}
-                      {nextStep && (
                         <button
-                          disabled={true}
-                          title="Selesaikan tahap sebelumnya terlebih dahulu"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md transition-colors text-xs font-semibold opacity-50 cursor-not-allowed"
+                          onClick={() => setShowRejectModal(true)}
+                          disabled={isUpdating}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
-                          <Clock size={14} />
-                          {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Selanjutnya'}
+                          <XCircle size={14} />
+                          Tolak
                         </button>
-                      )}
-
-                      {/* Hire & Reject always available */}
-                      <button
-                        onClick={() => setShowHireModal(true)}
-                        disabled={isUpdating}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <CheckCircle2 size={14} />
-                        Rekrut
-                      </button>
-
-                      <button
-                        onClick={() => setShowRejectModal(true)}
-                        disabled={isUpdating}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <XCircle size={14} />
-                        Tolak
-                      </button>
+                      </div>
                     </div>
                   );
                 } else {
