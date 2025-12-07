@@ -289,6 +289,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
   const handleFinishAssessment = async () => {
     if (step === 'analyzing' || step === 'done' || !sessionId) return;
+    setShowConfetti(true);
     setStep('analyzing');
     
     let finalAnalysis: FraudAnalysis;
