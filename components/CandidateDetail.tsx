@@ -152,6 +152,70 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
     }
   };
 
+  // Auto-progress workflow when assessment is completed
+  useEffect(() => {
+    const checkAndProgressWorkflow = async () => {
+      if (!candidate || !workflowData || isUpdating) return;
+
+      // Check if candidate just completed assessment
+      const assessmentStep = candidate.timeline?.find((t: any) => t.stage === 'integrity_assessment');
+      const isAssessmentJustCompleted = candidate.status === 'completed' && assessmentStep?.status === 'current';
+
+      if (isAssessmentJustCompleted) {
+        console.log('[WORKFLOW] Assessment completed, auto-progressing workflow...');
+        
+        try {
+          setIsUpdating(true);
+          
+          const now = new Date().toISOString();
+          const workflowTimeline = candidate.timeline?.filter((t: any) => 
+            workflowData.steps.some((s: any) => s.id === t.stage)
+          ) || [];
+
+          // Update timeline: mark assessment as completed, set next as current
+          const updatedTimeline = candidate.timeline.map((item: any) => {
+            if (item.stage === 'integrity_assessment' && item.status === 'current') {
+              return { ...item, status: 'completed', completedAt: now };
+            }
+            return item;
+          });
+
+          // Find next workflow step and set as current
+          const assessmentIndex = workflowTimeline.findIndex(t => t.stage === 'integrity_assessment');
+          const nextStep = workflowTimeline[assessmentIndex + 1];
+          
+          if (nextStep) {
+            updatedTimeline.forEach((item: any) => {
+              if (item.stage === nextStep.stage && item.status === 'pending') {
+                item.status = 'current';
+              }
+            });
+          }
+
+          // Update Firestore
+          const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+          await updateDoc(sessionRef, {
+            timeline: updatedTimeline,
+            recruitmentStage: nextStep ? nextStep.stage : 'integrity_assessment',
+            updatedAt: now
+          });
+
+          console.log('[WORKFLOW] Auto-progressed to next step:', nextStep?.stage);
+          
+          // Reload candidate data
+          await loadCandidateData();
+        } catch (error) {
+          console.error('[WORKFLOW] Error auto-progressing:', error);
+        } finally {
+          setIsUpdating(false);
+        }
+      }
+    };
+
+    checkAndProgressWorkflow();
+  }, [candidate?.status, workflowData, isUpdating]);
+
+
   const handleParseCV = async () => {
     if (!candidate?.cvUrl || isParsing) return;
 
