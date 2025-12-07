@@ -1329,6 +1329,7 @@ export const createInterviewSessionFromApplication = async (
       applicationId: applicationId,
       cvUrl: applicationData.cvUrl,
       whatsapp: applicationData.whatsapp,
+      workflowId: workflowId || null, // Reference to workflow if exists
       // Tidak set inviteSource untuk auto-sourcing (Instant ON)
       // inviteSource akan di-set hanya saat HR mengirim undangan dari Review & Invite
     };
