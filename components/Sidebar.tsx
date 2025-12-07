@@ -142,27 +142,34 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         })}
 
         {/* Kandidat - Parent Menu dengan Submenu */}
-        <div className="mt-2">
+        <div className="mt-1">
           <button
-            onClick={() => setCandidatesExpanded(!candidatesExpanded)}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 font-medium group ${
+            onClick={() => isCollapsed ? null : setCandidatesExpanded(!candidatesExpanded)}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
               shouldShowCandidateActive
                 ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
+            title={isCollapsed ? 'Kandidat' : ''}
           >
-            <div className="flex items-center space-x-3">
-              <Users size={20} className={shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
-              <span>Kandidat</span>
+            <div className={`flex items-center ${isCollapsed ? '' : 'space-x-2'}`}>
+              <Users size={18} className={shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
+              {!isCollapsed && <span className="text-sm">Kandidat</span>}
             </div>
-            {candidatesExpanded ?
-              <ChevronDown size={16} className={`transition-transform ${shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'}`} /> :
-              <ChevronRight size={16} className={`transition-transform ${shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'}`} />
-            }
+            {!isCollapsed && (
+              candidatesExpanded ?
+                <ChevronDown size={14} className={`transition-transform ${shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'}`} /> :
+                <ChevronRight size={14} className={`transition-transform ${shouldShowCandidateActive ? 'text-brand-orange' : 'text-gray-400'}`} />
+            )}
+            {isCollapsed && (
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                Kandidat
+              </span>
+            )}
           </button>
 
-          {candidatesExpanded && (
-            <div className="mt-1.5 space-y-0.5">
+          {!isCollapsed && candidatesExpanded && (
+            <div className="mt-1 space-y-0.5">
               {candidateSubMenus.map((subItem) => {
                 const SubIcon = subItem.icon;
                 const isActive = activeTab === subItem.id;
@@ -170,13 +177,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
                   <button
                     key={subItem.id}
                     onClick={() => setActiveTab(subItem.id)}
-                    className={`w-full flex items-center space-x-3 pl-12 pr-4 py-2.5 rounded-lg transition-all duration-200 text-sm group ${
+                    className={`w-full flex items-center space-x-2 pl-8 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
                       isActive
                         ? 'bg-brand-orange text-white shadow-sm'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
                   >
-                    <SubIcon size={16} className={isActive ? 'text-white' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
+                    <SubIcon size={14} className={isActive ? 'text-white' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
                     <div className="flex-1 text-left font-medium">{subItem.label}</div>
                   </button>
                 );
