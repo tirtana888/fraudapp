@@ -93,6 +93,7 @@ const App: React.FC = () => {
   // Theme & Mobile State
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     seedRealDatabase();
