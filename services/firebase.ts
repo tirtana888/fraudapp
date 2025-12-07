@@ -1226,10 +1226,19 @@ export const createApplication = async (applicationData: Omit<JobApplication, 'i
 
 export const createInterviewSessionFromApplication = async (
   applicationId: string,
-  applicationData: Omit<JobApplication, 'id' | 'createdAt'>
+  applicationData: Omit<JobApplication, 'id' | 'createdAt'>,
+  enableInstantAssessment: boolean = false
 ): Promise<string> => {
   try {
     const now = new Date().toISOString();
+
+    // Tentukan status dan note berdasarkan Instant Assessment setting
+    const sessionStatus = enableInstantAssessment ? 'active' : 'pending_review';
+    const screeningNote = enableInstantAssessment 
+      ? 'Kandidat akan langsung mengikuti instant assessment' 
+      : 'Menunggu review HR';
+
+    console.log(`[SESSION-CREATE] Creating session with status: ${sessionStatus} (Instant: ${enableInstantAssessment})`);
 
     const session = {
       candidate: {
@@ -1239,7 +1248,7 @@ export const createInterviewSessionFromApplication = async (
         role: 'Applicant'
       },
       date: now,
-      status: 'pending_review' as const,
+      status: sessionStatus as 'active' | 'pending_review',
       recruitmentStage: 'screening',
       transcript: [
         {
@@ -1264,7 +1273,7 @@ export const createInterviewSessionFromApplication = async (
           stage: 'screening',
           status: 'current' as const,
           date: now,
-          note: `Menunggu review HR`
+          note: screeningNote
         }
       ],
       companyId: applicationData.companyId,
@@ -1272,7 +1281,9 @@ export const createInterviewSessionFromApplication = async (
       jobId: applicationData.jobId,
       applicationId: applicationId,
       cvUrl: applicationData.cvUrl,
-      whatsapp: applicationData.whatsapp
+      whatsapp: applicationData.whatsapp,
+      // Tidak set inviteSource untuk auto-sourcing (Instant ON)
+      // inviteSource akan di-set hanya saat HR mengirim undangan dari Review & Invite
     };
 
     const sessionRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), session);
