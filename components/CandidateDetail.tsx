@@ -1437,11 +1437,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                       {/* Separator */}
                       <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
 
-                      {/* Decision Buttons - Always Available */}
+                      {/* Decision Buttons */}
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => setShowHireModal(true)}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !isAssessmentCompleted}
+                          title={!isAssessmentCompleted ? "Assessment harus selesai terlebih dahulu" : "Rekrut kandidat"}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
                           <CheckCircle2 size={14} />
