@@ -320,13 +320,20 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                         </p>
                       </div>
 
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        disabled={isDisabled}
-                        onChange={() => {}}
-                        className="w-5 h-5 text-brand-orange rounded focus:ring-brand-orange"
-                      />
+                      {!isComingSoon && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={isDisabled}
+                          onChange={() => {}}
+                          className="w-5 h-5 text-brand-orange rounded focus:ring-brand-orange"
+                        />
+                      )}
+                      {isComingSoon && (
+                        <div className="w-5 h-5 rounded bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">🔒</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
