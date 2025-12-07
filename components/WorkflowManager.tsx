@@ -261,27 +261,36 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                 const Icon = iconMap[template.icon];
                 const isSelected = selectedSteps[template.id];
                 const isDisabled = template.isMandatory;
+                const isComingSoon = template.isAvailable === false;
 
                 return (
                   <div
                     key={template.id}
-                    onClick={() => handleToggleStep(template.id, template.isMandatory)}
+                    onClick={() => !isComingSoon && handleToggleStep(template.id, template.isMandatory)}
                     className={`
-                      relative p-4 border-2 rounded-xl cursor-pointer transition-all
-                      ${isSelected 
-                        ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10' 
-                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+                      relative p-4 border-2 rounded-xl transition-all
+                      ${isComingSoon 
+                        ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-700' 
+                        : isSelected 
+                          ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10 cursor-pointer' 
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 cursor-pointer'
                       }
-                      ${isDisabled ? 'opacity-75 cursor-not-allowed' : ''}
+                      ${isDisabled && !isComingSoon ? 'opacity-75 cursor-not-allowed' : ''}
                     `}
                   >
-                    {template.isMandatory && (
-                      <div className="absolute top-2 right-2">
+                    {/* Top Right Badges */}
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      {isComingSoon && (
+                        <span className="px-2 py-1 bg-gray-600 text-white dark:bg-gray-700 dark:text-gray-200 text-xs font-bold rounded">
+                          COMING SOON
+                        </span>
+                      )}
+                      {template.isMandatory && !isComingSoon && (
                         <span className="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs font-bold rounded">
                           WAJIB
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     <div className="flex items-start gap-3">
                       <div className={`
