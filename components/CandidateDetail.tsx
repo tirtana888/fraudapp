@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info } from 'lucide-react';
-import { InterviewSession } from '../types';
-import { db, COLLECTIONS, functions } from '../services/firebase';
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles } from 'lucide-react';
+import { InterviewSession, ParsedCVData } from '../types';
+import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
+import ParsedCVDisplay from './ParsedCVDisplay';
 
 interface CandidateDetailProps {
   sessionId: string;
@@ -50,6 +51,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   const [hireTime, setHireTime] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [sendRejectionEmail, setSendRejectionEmail] = useState(true);
+  const [isParsing, setIsParsing] = useState(false);
 
   useEffect(() => {
     loadCandidateData();
@@ -132,6 +134,26 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       console.error('[CANDIDATE-DETAIL] Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleParseCV = async () => {
+    if (!candidate?.cvUrl || isParsing) return;
+
+    try {
+      setIsParsing(true);
+      toast.info('Memulai parsing CV dengan Mistral AI...');
+
+      await parseCVWithMistral(candidate.cvUrl, sessionId);
+
+      toast.success('CV berhasil diparsing! Refresh halaman untuk melihat hasil.');
+      await loadCandidateData();
+
+    } catch (error) {
+      console.error('[CANDIDATE-DETAIL] Error parsing CV:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal parsing CV');
+    } finally {
+      setIsParsing(false);
     }
   };
 
@@ -1319,44 +1341,61 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <FileText size={18} className="text-[#D95D00]" />
-                    Resume Asli
+                <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Sparkles size={18} />
+                    Profil Kandidat (AI Parsed)
                   </h3>
-                </div>
-                <div className="p-4">
-                  {candidate.cvUrl ? (
-                    <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '600px' }}>
-                      {candidate.cvUrl.endsWith('.pdf') ? (
-                        <iframe
-                          src={candidate.cvUrl}
-                          className="w-full h-full"
-                          title={`CV ${candidate.candidate.name}`}
-                        />
+                  {!candidate.cvParsedData && candidate.cvUrl && (
+                    <button
+                      onClick={handleParseCV}
+                      disabled={isParsing}
+                      className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isParsing ? (
+                        <>
+                          <span className="animate-spin">⏳</span>
+                          Parsing...
+                        </>
                       ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600 mb-4">Pratinjau tidak tersedia</p>
-                            <a
-                              href={candidate.cvUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors"
-                            >
-                              <FileText size={16} />
-                              Buka di Tab Baru
-                            </a>
-                          </div>
-                        </div>
+                        <>
+                          <Sparkles size={12} />
+                          Parse CV
+                        </>
                       )}
-                    </div>
+                    </button>
+                  )}
+                </div>
+                <div className="p-4 max-h-[800px] overflow-y-auto">
+                  {candidate.cvParsedData ? (
+                    <ParsedCVDisplay parsedData={candidate.cvParsedData} />
                   ) : (
-                    <div className="flex items-center justify-center h-[600px] bg-gray-100 rounded-lg">
-                      <div className="text-center">
-                        <FileText size={48} className="text-gray-400 mb-4" />
-                        <p className="text-gray-600">CV belum diunggah</p>
+                    <div className="flex items-center justify-center py-20">
+                      <div className="text-center max-w-md">
+                        <Sparkles size={48} className="text-gray-300 mx-auto mb-4" />
+                        <h4 className="font-semibold text-gray-800 mb-2">CV Belum Diparsing</h4>
+                        <p className="text-gray-600 text-sm mb-4">
+                          Klik tombol "Parse CV" untuk mengekstrak informasi kandidat menggunakan AI
+                        </p>
+                        {candidate.cvUrl && (
+                          <button
+                            onClick={handleParseCV}
+                            disabled={isParsing}
+                            className="px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                          >
+                            {isParsing ? (
+                              <>
+                                <span className="animate-spin">⏳</span>
+                                Sedang Parsing...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={16} />
+                                Parse CV Sekarang
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1597,36 +1636,124 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'documents' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-4">Dokumen</h3>
-            {candidate.cvUrl ? (
-              <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '800px' }}>
-                {candidate.cvUrl.endsWith('.pdf') ? (
-                  <iframe
-                    src={candidate.cvUrl}
-                    className="w-full h-full"
-                    title={`CV ${candidate.candidate.name}`}
-                  />
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-6 py-4 flex items-center justify-between">
+                <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                  <Sparkles size={20} />
+                  Data Kandidat (AI Parsed)
+                </h3>
+                {!candidate.cvParsedData && candidate.cvUrl && (
+                  <button
+                    onClick={handleParseCV}
+                    disabled={isParsing}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isParsing ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Parsing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        Parse CV Sekarang
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              <div className="p-6">
+                {candidate.cvParsedData ? (
+                  <ParsedCVDisplay parsedData={candidate.cvParsedData} />
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Pratinjau tidak tersedia</p>
-                      <a
-                        href={candidate.cvUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors"
-                      >
-                        Buka di Tab Baru
-                      </a>
+                  <div className="flex items-center justify-center py-20">
+                    <div className="text-center max-w-md">
+                      <Sparkles size={64} className="text-gray-300 mx-auto mb-4" />
+                      <h4 className="font-bold text-gray-800 text-lg mb-2">CV Belum Diparsing</h4>
+                      <p className="text-gray-600 mb-6">
+                        Gunakan AI untuk mengekstrak informasi terstruktur dari CV kandidat
+                      </p>
+                      {candidate.cvUrl && (
+                        <button
+                          onClick={handleParseCV}
+                          disabled={isParsing}
+                          className="px-6 py-3 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 mx-auto font-semibold disabled:opacity-50"
+                        >
+                          {isParsing ? (
+                            <>
+                              <span className="animate-spin">⏳</span>
+                              Sedang Parsing...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={18} />
+                              Parse dengan Mistral AI
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
-            ) : (
-              <p className="text-gray-500 text-center py-20">Tidak ada dokumen tersedia</p>
-            )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <FileText size={20} className="text-[#D95D00]" />
+                  CV Original
+                </h3>
+                {candidate.cvUrl && (
+                  <a
+                    href={candidate.cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Download size={16} />
+                    Download CV
+                  </a>
+                )}
+              </div>
+              <div className="p-6">
+                {candidate.cvUrl ? (
+                  <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '800px' }}>
+                    {candidate.cvUrl.endsWith('.pdf') ? (
+                      <iframe
+                        src={candidate.cvUrl}
+                        className="w-full h-full"
+                        title={`CV ${candidate.candidate.name}`}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <FileText size={64} className="text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600 mb-4">Pratinjau tidak tersedia untuk format file ini</p>
+                          <a
+                            href={candidate.cvUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors font-semibold"
+                          >
+                            <Eye size={18} />
+                            Buka di Tab Baru
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="text-center">
+                      <FileText size={64} className="text-gray-300 mb-4" />
+                      <p className="text-gray-500">Tidak ada CV yang diunggah</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

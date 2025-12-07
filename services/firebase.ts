@@ -1337,6 +1337,31 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
   }
 };
 
+export const parseCVWithMistral = async (cvUrl: string, sessionId: string): Promise<any> => {
+  console.log('[CV-PARSE] Starting CV parsing with Mistral AI...');
+  console.log('[CV-PARSE] CV URL:', cvUrl);
+  console.log('[CV-PARSE] Session ID:', sessionId);
+
+  try {
+    if (!functions) {
+      console.error('[CV-PARSE] Firebase Functions not initialized');
+      throw new Error('Firebase Functions not available');
+    }
+
+    const parseCVFunction = httpsCallable(functions, 'parseCVWithMistral');
+
+    console.log('[CV-PARSE] Calling Firebase Function...');
+    const result = await parseCVFunction({ cvUrl, sessionId });
+
+    console.log('[CV-PARSE] ✅ CV parsed successfully');
+    return result.data;
+
+  } catch (error: any) {
+    console.error('[CV-PARSE] Error parsing CV:', error);
+    throw new Error(`Failed to parse CV: ${error.message}`);
+  }
+};
+
 export const generateSlug = (title: string): string => {
   return title
     .toLowerCase()

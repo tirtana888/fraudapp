@@ -37,6 +37,29 @@ export interface SJTItem {
   selectedOptionIndex: number | null;
 }
 
+export interface ParsedCVData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  summary?: string;
+  experience?: Array<{
+    title: string;
+    company: string;
+    duration: string;
+    description: string;
+  }>;
+  education?: Array<{
+    degree: string;
+    institution: string;
+    year: string;
+  }>;
+  skills?: string[];
+  certifications?: string[];
+  languages?: string[];
+  rawText?: string;
+}
+
 export interface InterviewSession {
   id: string;
   candidate: Candidate;
@@ -52,6 +75,7 @@ export interface InterviewSession {
   jobId?: string;
   applicationId?: string;
   cvUrl?: string;
+  cvParsedData?: ParsedCVData;
   whatsapp?: string;
   recruitmentStage?: string;
   timeline?: Array<{
