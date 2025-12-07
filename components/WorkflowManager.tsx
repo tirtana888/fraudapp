@@ -17,7 +17,8 @@ const iconMap: { [key: string]: any } = {
   Search,
   FileCheck,
   Share2,
-  CheckCircle
+  CheckCircle,
+  XCircle: X
 };
 
 const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode }) => {
