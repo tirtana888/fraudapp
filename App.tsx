@@ -23,6 +23,7 @@ import BackgroundCheckCallback from './components/BackgroundCheckCallback';
 import CompanyProfileSettings from './components/CompanyProfileSettings';
 import HistoryView from './components/HistoryView';
 import Documentation from './components/Documentation';
+import WorkflowManager from './components/WorkflowManager';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
