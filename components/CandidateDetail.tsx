@@ -1394,6 +1394,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   const currentStepIndex = workflowTimeline.findIndex((t: any) => t.status === 'current');
                   const currentStep = workflowTimeline[currentStepIndex];
                   const nextStep = workflowTimeline[currentStepIndex + 1];
+                  
+                  // Check if assessment is completed
+                  const assessmentStep = workflowTimeline.find((t: any) => t.stage === 'integrity_assessment');
+                  const isAssessmentCompleted = assessmentStep?.status === 'completed';
+                  const isCurrentStepAssessment = currentStep?.stage === 'integrity_assessment';
 
                   return (
                     <div className="flex items-center gap-2">
@@ -1403,18 +1408,34 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                         <div className="flex items-center gap-1.5">
                           {/* Current Workflow Step Button */}
                           {currentStep && (
-                            <button
-                              onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
-                              disabled={isUpdating}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <CheckCircle2 size={12} />
-                              {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next'}
-                            </button>
+                            <>
+                              {isCurrentStepAssessment ? (
+                                // Assessment button - Always disabled (kandidat gets email automatically)
+                                <button
+                                  disabled={true}
+                                  title="Kandidat sudah mendapat email untuk assessment"
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium cursor-not-allowed"
+                                >
+                                  <Mail size={12} />
+                                  {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Assessment'}
+                                  <span className="text-[10px] ml-1">(Email terkirim)</span>
+                                </button>
+                              ) : (
+                                // Other steps - Clickable
+                                <button
+                                  onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
+                                  disabled={isUpdating}
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <CheckCircle2 size={12} />
+                                  {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next'}
+                                </button>
+                              )}
+                            </>
                           )}
 
-                          {/* Next Step Preview (Disabled) */}
-                          {nextStep && (
+                          {/* Next Step Preview - Only show if assessment is completed OR not needed */}
+                          {nextStep && (isAssessmentCompleted || currentStepIndex > 0) && (
                             <button
                               disabled={true}
                               title="Selesaikan tahap sebelumnya"
@@ -1423,6 +1444,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                               <Clock size={12} />
                               {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Next'}
                             </button>
+                          )}
+                          
+                          {/* Show waiting message if assessment not complete */}
+                          {!isAssessmentCompleted && isCurrentStepAssessment && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400 italic ml-2">
+                              Menunggu kandidat menyelesaikan assessment...
+                            </span>
                           )}
                         </div>
                       </div>
