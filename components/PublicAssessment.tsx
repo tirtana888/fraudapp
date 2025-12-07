@@ -612,8 +612,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         )}
 
         {step === 'profile' && (
-           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-6">
-               <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><User /> Identitas Diri</h2>
+           <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-8 mt-6 animate-fade-in">
+               <div className="flex items-center gap-3 mb-6">
+                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                   <User className="text-white" size={24} />
+                 </div>
+                 <h2 className="text-2xl font-bold text-gray-800">Identitas Diri</h2>
+               </div>
                {inviteData && (
                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
                    <Lock size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
