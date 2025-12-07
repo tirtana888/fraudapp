@@ -2,7 +2,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db, COLLECTIONS, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
 
-const DIDIT_API_BASE = 'https://verification.didit.me/v2';
+const DIDIT_API_BASE = import.meta.env.VITE_DIDIT_API_BASE || 'https://verification.didit.me/v2';
 const DIDIT_FLOW_ID = import.meta.env.VITE_DIDIT_FLOW_ID;
 const DIDIT_API_KEY = import.meta.env.VITE_DIDIT_API_KEY;
 
