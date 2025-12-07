@@ -1344,6 +1344,103 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Workflow Progress */}
+        {workflowData && activeTab === 'overview' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-400 px-6 py-4">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <Activity size={20} />
+                Workflow Progress: {workflowData.name}
+              </h3>
+              <p className="text-white/80 text-sm mt-1">{workflowData.description || 'Tahapan rekrutmen untuk kandidat ini'}</p>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                {candidate.timeline && candidate.timeline
+                  .filter((item: any) => workflowData.steps.some((step: any) => step.id === item.stage))
+                  .map((item: any, index: number) => {
+                    const step = workflowData.steps.find((s: any) => s.id === item.stage);
+                    const isCompleted = item.status === 'completed';
+                    const isCurrent = item.status === 'current';
+                    const isPending = item.status === 'pending';
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
+                          isCompleted
+                            ? 'bg-green-50 border-green-200'
+                            : isCurrent
+                            ? 'bg-blue-50 border-blue-300 shadow-md'
+                            : 'bg-gray-50 border-gray-200 opacity-60'
+                        }`}
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                            isCompleted
+                              ? 'bg-green-500 text-white'
+                              : isCurrent
+                              ? 'bg-blue-500 text-white animate-pulse'
+                              : 'bg-gray-300 text-gray-600'
+                          }`}
+                        >
+                          {isCompleted ? <CheckCircle2 size={24} /> : index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold text-gray-800">{step?.name || item.stage}</h4>
+                            {step?.isMandatory && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">
+                                WAJIB
+                              </span>
+                            )}
+                            {step?.credits > 0 && (
+                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-bold rounded flex items-center gap-1">
+                                <DollarSign size={12} />
+                                {step.credits}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">{item.note || step?.description}</p>
+                          {item.completedAt && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              ✓ Selesai: {new Date(item.completedAt).toLocaleString('id-ID')}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          {isCompleted && (
+                            <div className="text-green-600 font-semibold text-sm">Selesai</div>
+                          )}
+                          {isCurrent && (
+                            <div className="text-blue-600 font-semibold text-sm">Sedang Berjalan</div>
+                          )}
+                          {isPending && (
+                            <div className="text-gray-500 font-semibold text-sm">Menunggu</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {/* Total Credits Info */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Credits untuk Workflow Ini</p>
+                    <p className="text-xs text-gray-500 mt-1">Credits akan dideduct saat kandidat menyelesaikan setiap tahapan</p>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-600 flex items-center gap-1">
+                    <DollarSign size={24} />
+                    {workflowData.totalCredits}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'overview' && candidate.status !== 'completed' && (
           <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
             <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
