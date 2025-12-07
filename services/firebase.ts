@@ -1285,17 +1285,26 @@ export const createInterviewSessionFromApplication = async (
 
     // Add workflow steps to timeline if exists
     if (workflowSteps.length > 0) {
-      workflowSteps.forEach((step, index) => {
+      // Ensure integrity_assessment is always first and current
+      const sortedSteps = [...workflowSteps].sort((a, b) => {
+        if (a.id === 'integrity_assessment') return -1;
+        if (b.id === 'integrity_assessment') return 1;
+        return a.order - b.order;
+      });
+      
+      sortedSteps.forEach((step, index) => {
+        // integrity_assessment is always first and current
+        const isIntegrityAssessment = step.id === 'integrity_assessment';
         timeline.push({
           stage: step.id,
-          status: index === 0 ? 'current' as const : 'pending' as const,
+          status: isIntegrityAssessment ? 'current' as const : 'pending' as const,
           date: now,
           note: step.description,
           credits: step.credits,
           isMandatory: step.isMandatory
         });
       });
-      console.log(`[SESSION-CREATE] Added ${workflowSteps.length} workflow stages to timeline`);
+      console.log(`[SESSION-CREATE] Added ${sortedSteps.length} workflow stages to timeline (integrity_assessment is first & current)`);
     } else {
       // Default timeline if no workflow
       timeline.push({
