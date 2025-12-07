@@ -18,19 +18,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   const [candidatesExpanded, setCandidatesExpanded] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const menuItems = [
+  const coreMenuItems = [
     { id: 'dashboard', label: 'Ringkasan Eksekutif', icon: LayoutDashboard },
     { id: 'jobs', label: 'Kelola Lowongan', icon: Briefcase },
-    { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon },
-    { id: 'history', label: 'Riwayat Audit', icon: History },
-    { id: 'settings', label: 'Pengaturan', icon: Settings },
   ];
 
   const candidateSubMenus = [
-    { id: 'candidates-auto', label: 'Otomatis', icon: Zap },
-    { id: 'candidates-manual', label: 'Manual Invite', icon: UserPlus },
+    { id: 'candidates-auto', label: 'Sourcing Otomatis', icon: Zap },
+    { id: 'candidates-manual', label: 'Undang Manual', icon: UserPlus },
     { id: 'candidates-review', label: 'Review & Invite', icon: ClipboardCheck },
   ];
+
+  const linkMenuItem = { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon };
+
+  const dataLogMenuItems = [
+    { id: 'history', label: 'Riwayat Audit', icon: History },
+    { id: 'documentation', label: 'Dokumentasi', icon: BookOpen },
+  ];
+
+  const systemMenuItem = { id: 'settings', label: 'Pengaturan', icon: Settings };
 
   const isCandidateSubmenu = activeTab.startsWith('candidates-');
   const shouldShowCandidateActive = isCandidateSubmenu;
@@ -75,12 +81,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
                 <Shield size={20} className={activeTab === adminItem.id ? 'text-brand-orange' : 'text-gray-400'} />
                 <span>{adminItem.label}</span>
               </button>
-              <div className="my-2 border-b border-gray-100 dark:border-slate-700 mx-4"></div>
+              <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
            </div>
         )}
 
-        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Menu Utama</p>
-        {menuItems.map((item) => {
+        {/* BAGIAN 1: INTI (Sering Diakses) */}
+        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Inti</p>
+        {coreMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -119,7 +126,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             }
           </button>
 
-          {/* Submenu Items */}
           {candidatesExpanded && (
             <div className="mt-1.5 space-y-0.5">
               {candidateSubMenus.map((subItem) => {
@@ -144,17 +150,58 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
           )}
         </div>
 
-        {/* Documentation Menu */}
+        {/* Link Asesmen */}
         <button
-          onClick={() => setActiveTab('documentation')}
+          onClick={() => setActiveTab(linkMenuItem.id)}
           className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
-            activeTab === 'documentation'
+            activeTab === linkMenuItem.id
               ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          <BookOpen size={20} className={activeTab === 'documentation' ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-          <span>Dokumentasi</span>
+          <LinkIcon size={20} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+          <span>{linkMenuItem.label}</span>
+        </button>
+
+        {/* DIVIDER 1 */}
+        <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
+
+        {/* BAGIAN 2: DATA & LOG (Jarang Diakses) */}
+        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Data & Log</p>
+        {dataLogMenuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+                isActive
+                  ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              <Icon size={20} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+
+        {/* DIVIDER 2 */}
+        <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
+
+        {/* BAGIAN 3: SISTEM (Paling Bawah) */}
+        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sistem</p>
+        <button
+          onClick={() => setActiveTab(systemMenuItem.id)}
+          className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+            activeTab === systemMenuItem.id
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <Settings size={20} className={activeTab === systemMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+          <span>{systemMenuItem.label}</span>
         </button>
       </nav>
 
