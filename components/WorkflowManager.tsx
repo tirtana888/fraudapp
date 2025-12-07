@@ -326,17 +326,29 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           </div>
 
           {/* Total Credits */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-xl p-5 mb-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <DollarSign size={20} className="text-blue-600 dark:text-blue-400" />
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  Total Credits Per Kandidat
-                </span>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Total Credits Per Kandidat
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
+                  Biaya yang akan dideduct saat workflow selesai
+                </p>
               </div>
-              <span className="text-2xl font-bold text-brand-orange">
-                {calculateTotalCredits()} Credits
-              </span>
+              <div className="text-right">
+                <div className="text-3xl font-bold bg-gradient-to-r from-brand-orange to-purple-600 bg-clip-text text-transparent">
+                  {calculateTotalCredits()}
+                </div>
+                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  credits
+                </div>
+              </div>
             </div>
           </div>
 
