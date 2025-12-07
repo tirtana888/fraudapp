@@ -236,6 +236,7 @@ export interface WorkflowTemplate {
   isMandatory: boolean;
   icon: string;
   category: 'assessment' | 'interview' | 'verification' | 'decision';
+  isAvailable?: boolean; // false = coming soon
 }
 
 // Available workflow templates
