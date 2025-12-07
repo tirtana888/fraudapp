@@ -699,11 +699,32 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
             from { transform: scale(0); }
             to { transform: scale(1); }
           }
+          @keyframes scale-up {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+          }
+          @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
           .animate-fade-in {
             animation: fade-in 0.5s ease-out;
           }
           .animate-scale-in {
             animation: scale-in 0.3s ease-out;
+          }
+          .animate-scale-up {
+            animation: scale-up 0.6s ease-out;
+          }
+          .animate-bounce-slow {
+            animation: bounce-slow 2s ease-in-out infinite;
+          }
+          .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
           }
         `}</style>
 
