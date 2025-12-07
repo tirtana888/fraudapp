@@ -109,7 +109,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
           const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, sessionData.workflowId);
           const workflowSnap = await getDoc(workflowRef);
           if (workflowSnap.exists()) {
-            const loadedWorkflow = { id: workflowSnap.id, ...workflowSnap.data() };
+            const loadedWorkflow = { id: workflowSnap.id, ...workflowSnap.data() } as any;
             setWorkflowData(loadedWorkflow);
             console.log('[CANDIDATE] ✅ Loaded workflow:', loadedWorkflow.name, 'with', loadedWorkflow.steps?.length, 'steps');
           } else {
