@@ -87,6 +87,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         jobType: job.jobType,
         description: job.description,
         enableInstantAssessment: job.enableInstantAssessment,
+        workflowId: job.workflowId || '',
         status: job.status
       });
     } else {
@@ -97,6 +98,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         jobType: 'Full-time',
         description: '',
         enableInstantAssessment: true,
+        workflowId: '',
         status: 'Active'
       });
     }
