@@ -26,12 +26,38 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
     jobType: 'Full-time' as Job['jobType'],
     description: '',
     enableInstantAssessment: true,
+    workflowId: '',
     status: 'Active' as Job['status']
   });
 
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(false);
+
   useEffect(() => {
     loadJobs();
+    loadWorkflows();
   }, [currentCompany.id]);
+
+  const loadWorkflows = async () => {
+    try {
+      setIsLoadingWorkflows(true);
+      const q = query(
+        collection(db, COLLECTIONS.WORKFLOWS),
+        where('companyId', '==', currentCompany.id)
+      );
+      const snapshot = await getDocs(q);
+      const workflowsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Workflow[];
+      setWorkflows(workflowsData);
+      console.log('[JOBS] Loaded workflows:', workflowsData.length);
+    } catch (error) {
+      console.error('[JOBS] Error loading workflows:', error);
+    } finally {
+      setIsLoadingWorkflows(false);
+    }
+  };
 
   const loadJobs = async () => {
     try {
