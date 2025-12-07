@@ -318,35 +318,49 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const sessionSnap = await getDoc(sessionRef);
       let existingTimeline: any[] = [];
+      let workflowId: string | null = null;
 
       if (sessionSnap.exists()) {
         const sessionData = sessionSnap.data();
         existingTimeline = sessionData.timeline || [];
+        workflowId = sessionData.workflowId || null;
       }
 
       const now = new Date().toISOString();
-      const updatedTimeline = [
-        ...existingTimeline.map((event: any) => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' : event.status
-        })),
-        {
-          stage: 'assessment_completed',
-          status: 'completed' as const,
-          date: now,
-          note: `Assessment selesai dengan skor risiko: ${finalAnalysis.riskLevel}`
-        },
-        {
-          stage: 'review',
-          status: 'current' as const,
-          date: now,
-          note: `Menunggu review HR`
+      
+      // Update timeline properly for workflow
+      const updatedTimeline = existingTimeline.map((event: any) => {
+        // Mark current integrity_assessment as completed
+        if (event.stage === 'integrity_assessment' && event.status === 'current') {
+          return {
+            ...event,
+            status: 'completed' as const,
+            completedAt: now,
+            note: `${event.note || 'Assessment Integritas'} - Selesai dengan risiko: ${finalAnalysis.riskLevel}`
+          };
         }
-      ];
+        return event;
+      });
+
+      // Find next workflow step and set as current
+      const assessmentIndex = updatedTimeline.findIndex(t => t.stage === 'integrity_assessment');
+      if (assessmentIndex !== -1 && assessmentIndex + 1 < updatedTimeline.length) {
+        const nextStep = updatedTimeline[assessmentIndex + 1];
+        if (nextStep.status === 'pending') {
+          updatedTimeline[assessmentIndex + 1] = {
+            ...nextStep,
+            status: 'current' as const,
+            date: now
+          };
+        }
+      }
+
+      console.log('[ASSESSMENT-COMPLETE] ✅ Updated timeline with workflow progression');
+      console.log('[ASSESSMENT-COMPLETE] Workflow ID:', workflowId);
 
       await updateSessionInDB(sessionId, {
         status: 'completed',
-        recruitmentStage: 'review',
+        recruitmentStage: 'integrity_assessment', // Keep as integrity_assessment (completed)
         analysis: finalAnalysis,
         transcript: chatHistory,
         timeline: updatedTimeline
