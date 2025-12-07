@@ -1461,35 +1461,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     </div>
                   );
                 } else {
-                  // Fallback: Use default stage buttons if no workflow
-                  const buttonConfig = getStageButtonConfig(candidate.recruitmentStage || 'screening');
+                  // No workflow - Show minimal buttons (Hire & Reject only)
                   return (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        onClick={() => handleStatusUpdate('interview')}
-                        disabled={isUpdating || !buttonConfig.interview.enabled}
-                        title={buttonConfig.interview.tooltip}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D95D00] text-white rounded-md hover:bg-[#B84D00] transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <User size={14} />
-                        Wawancara
-                      </button>
-
-                      <button
-                        onClick={() => handleStatusUpdate('bc_check')}
-                        disabled={isUpdating || !buttonConfig.bc_check.enabled}
-                        title={buttonConfig.bc_check.tooltip}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Shield size={14} />
-                        Cek Latar
-                      </button>
-
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setShowHireModal(true)}
-                        disabled={isUpdating || !buttonConfig.hired.enabled}
-                        title={buttonConfig.hired.tooltip}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isUpdating}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                       >
                         <CheckCircle2 size={14} />
                         Rekrut
@@ -1498,8 +1476,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                       <button
                         onClick={() => setShowRejectModal(true)}
                         disabled={isUpdating}
-                        title={buttonConfig.rejected.tooltip}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                       >
                         <XCircle size={14} />
                         Tolak
