@@ -85,6 +85,10 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
   const handleToggleStep = (stepId: string, isMandatory: boolean) => {
     if (isMandatory) return; // Cannot toggle mandatory steps
     
+    // Check if step is coming soon
+    const template = WORKFLOW_TEMPLATES.find(t => t.id === stepId);
+    if (template && template.isAvailable === false) return; // Cannot toggle coming soon steps
+    
     setSelectedSteps(prev => ({
       ...prev,
       [stepId]: !prev[stepId]
