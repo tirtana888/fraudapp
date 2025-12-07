@@ -126,6 +126,14 @@ export const sendIntegrityTestInvitation = async (
 
     await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
 
+    // Update session dengan inviteSource marker untuk tracking
+    const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+    await updateDoc(sessionRef, {
+      inviteSource: 'review_invite',
+      inviteAccessCode: accessCode,
+      invitedAt: new Date().toISOString()
+    });
+
     return true;
   } catch (error) {
     console.error('[INTEGRITY-INVITE] Error:', error);
