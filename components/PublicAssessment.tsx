@@ -604,21 +604,76 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         {/* ====================================================== */}
         
         {step === 'survey_ft' && (
-           <div className="space-y-6">
-               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-sm font-medium">Bagian 1/3: Kuesioner Gaya Kerja</div>
-               {ftAnswers.map((item) => (
-                 <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <p className="font-bold text-gray-800 mb-4">{item.question}</p>
+           <div className="space-y-6 animate-fade-in">
+               {/* Progress Bar */}
+               <AssessmentProgress 
+                 currentStep={ftAnswers.filter(a => a.response !== null).length}
+                 totalSteps={ftAnswers.length}
+                 stepName="Kuesioner Gaya Kerja"
+               />
+               
+               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-sm font-medium flex items-center gap-2">
+                 <BrainCircuit size={20} />
+                 <span>Bagian 1/3: Kuesioner Gaya Kerja</span>
+               </div>
+               
+               {ftAnswers.map((item, idx) => (
+                 <div key={item.id} className={`bg-white p-6 rounded-2xl shadow-md border-2 transition-all duration-300 ${item.response !== null ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        {idx + 1}
+                      </div>
+                      <p className="font-bold text-gray-800 flex-1">{item.question}</p>
+                      {item.response !== null && (
+                        <CheckCircle2 size={24} className="text-green-500 animate-scale-in" />
+                      )}
+                    </div>
                     <div className="flex gap-2">
                         {[1, 2, 3, 4, 5].map(val => (
-                            <button key={val} onClick={() => handleFtChange(item.id, val)} className={`flex-1 py-2 rounded-lg font-bold border transition-all ${item.response === val ? 'text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`} style={item.response === val ? { backgroundColor: brandColor, borderColor: brandColor } : { borderColor: '#e5e7eb' }}>{val}</button>
+                            <button 
+                              key={val} 
+                              onClick={() => handleFtChange(item.id, val)} 
+                              className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all transform hover:scale-105 active:scale-95 ${item.response === val ? 'text-white shadow-lg scale-105' : 'text-gray-500 bg-white hover:bg-gray-50 hover:border-gray-400'}`} 
+                              style={item.response === val ? { backgroundColor: brandColor, borderColor: brandColor } : { borderColor: '#e5e7eb' }}
+                            >
+                              {val}
+                            </button>
                         ))}
+                    </div>
+                    <div className="mt-3 flex justify-between text-xs text-gray-500">
+                      <span>Tidak Setuju</span>
+                      <span>Sangat Setuju</span>
                     </div>
                  </div>
                ))}
-               <button onClick={() => setStep('survey_fin')} disabled={ftAnswers.some(a => a.response === null)} className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50" style={{ backgroundColor: brandColor }}>Lanjut</button>
+               <button 
+                 onClick={() => setStep('survey_fin')} 
+                 disabled={ftAnswers.some(a => a.response === null)} 
+                 className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2" 
+                 style={{ backgroundColor: brandColor }}
+               >
+                 <span>Lanjut ke Bagian 2</span>
+                 <ArrowRight size={20} />
+               </button>
            </div>
         )}
+
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes scale-in {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+          }
+          .animate-scale-in {
+            animation: scale-in 0.3s ease-out;
+          }
+        `}</style>
 
         {step === 'survey_fin' && (
             <div className="space-y-6">
