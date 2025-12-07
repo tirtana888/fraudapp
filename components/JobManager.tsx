@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check, Share2, Globe } from 'lucide-react';
-import { Job, CompanyProfile } from '../types';
-import { getJobsByCompany, createJob, updateJob, generateSlug } from '../services/firebase';
+import { Briefcase, Plus, ExternalLink, Edit2, Copy, Check, Share2, Globe, Workflow as WorkflowIcon } from 'lucide-react';
+import { Job, CompanyProfile, Workflow } from '../types';
+import { getJobsByCompany, createJob, updateJob, generateSlug, db, COLLECTIONS } from '../services/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from './Toast';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
