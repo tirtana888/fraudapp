@@ -730,22 +730,58 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         )}
 
         {step === 'survey_sjt' && (
-            <div className="space-y-6">
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-purple-800 text-sm font-medium">Bagian 3/3: Studi Kasus</div>
+            <div className="space-y-6 animate-fade-in">
+                {/* Progress Bar */}
+                <AssessmentProgress 
+                  currentStep={sjtAnswers.filter(a => a.selectedOptionIndex !== null).length}
+                  totalSteps={sjtAnswers.length}
+                  stepName="Studi Kasus"
+                />
+                
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100 text-purple-800 text-sm font-medium flex items-center gap-2">
+                  <MessageSquare size={20} />
+                  <span>Bagian 3/3: Studi Kasus</span>
+                </div>
+                
                 {sjtAnswers.map((item, idx) => (
-                  <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                     <p className="font-bold text-gray-800 mb-4 italic">"{item.scenario}"</p>
+                  <div key={item.id} className={`bg-white p-6 rounded-2xl shadow-md border-2 transition-all duration-300 ${item.selectedOptionIndex !== null ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
+                     <div className="flex items-start gap-3 mb-4">
+                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                         {idx + 1}
+                       </div>
+                       <div className="flex-1">
+                         <p className="font-bold text-gray-800 mb-2 italic">"{item.scenario}"</p>
+                         {item.selectedOptionIndex !== null && (
+                           <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                             <CheckCircle2 size={16} />
+                             <span>Dijawab ✓</span>
+                           </div>
+                         )}
+                       </div>
+                     </div>
                      <div className="space-y-3">
                         {item.options.map((opt, optIdx) => (
-                            <button key={optIdx} onClick={() => handleSjtChange(idx, optIdx)} className={`w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center ${item.selectedOptionIndex === optIdx ? 'bg-purple-50 border-purple-500 text-purple-900 font-medium' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                                {opt.label}
-                                {item.selectedOptionIndex === optIdx && <CheckCircle2 size={16} className="text-purple-600" />}
+                            <button 
+                              key={optIdx} 
+                              onClick={() => handleSjtChange(idx, optIdx)} 
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all flex justify-between items-center transform hover:scale-[1.02] active:scale-[0.98] ${item.selectedOptionIndex === optIdx ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-500 text-purple-900 font-medium shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-400'}`}
+                            >
+                                <span>{opt.label}</span>
+                                {item.selectedOptionIndex === optIdx && <CheckCircle2 size={20} className="text-purple-600 animate-scale-in" />}
                             </button>
                         ))}
                      </div>
                   </div>
                 ))}
-                <button onClick={handleStartAnalysisBridge} disabled={sjtAnswers.some(a => a.selectedOptionIndex === null)} className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50" style={{ backgroundColor: brandColor }}>Selesai & Mulai Interview</button>
+                <button 
+                  onClick={handleStartAnalysisBridge} 
+                  disabled={sjtAnswers.some(a => a.selectedOptionIndex === null)} 
+                  className="w-full text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2" 
+                  style={{ backgroundColor: brandColor }}
+                >
+                  <Trophy size={20} />
+                  <span>Selesai & Mulai Interview</span>
+                </button>
             </div>
         )}
         
