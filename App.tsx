@@ -256,6 +256,7 @@ const App: React.FC = () => {
       switch(tab) {
           case 'dashboard': return 'Ringkasan Eksekutif';
           case 'jobs': return 'Kelola Lowongan';
+          case 'workflows': return 'Workflow Rekrutmen';
           case 'candidates-auto': return 'Otomatis (Instant Assessment)';
           case 'candidates-manual': return 'Manual Invite';
           case 'candidates-review': return 'Review & Invite';
