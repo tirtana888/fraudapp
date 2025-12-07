@@ -842,6 +842,80 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         {/* ========= RESTORED SURVEY BLOCKS END HERE ========== */}
         {/* ==================================================== */}
         
+        {step === 'analyzing_profile' && (
+            <div className="bg-white rounded-2xl shadow-xl border-2 border-purple-200 p-10 mt-10 text-center animate-fade-in">
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-pulse">
+                    <BrainCircuit size={56} className="text-white" />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-32 h-32 border-4 border-purple-300 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Menganalisis Profil Anda...</h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  AI kami sedang memproses jawaban survei Anda untuk mempersiapkan pertanyaan interview yang personal.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 text-sm text-purple-600 font-medium">
+                    <CheckCircle2 size={16} className="animate-scale-in" />
+                    <span>Menganalisis pola jawaban</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-purple-600 font-medium">
+                    <CheckCircle2 size={16} className="animate-scale-in" style={{ animationDelay: '0.3s' }} />
+                    <span>Menyusun pertanyaan follow-up</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-purple-600 font-medium">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Mempersiapkan sesi wawancara...</span>
+                  </div>
+                </div>
+            </div>
+        )}
+        
+        {step === 'analyzing' && (
+            <div className="bg-white rounded-2xl shadow-xl border-2 border-green-200 p-10 mt-10 text-center animate-fade-in">
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-pulse">
+                    <Trophy size={56} className="text-white" />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-32 h-32 border-4 border-green-300 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Menyelesaikan Assessment...</h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Kami sedang menganalisis seluruh jawaban Anda dan menyusun laporan komprehensif.
+                </p>
+                <div className="space-y-3 max-w-md mx-auto">
+                  <div className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">Survey</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">Interview</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Loader2 size={18} className="text-yellow-600 animate-spin flex-shrink-0" />
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">Analisis</span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 italic mt-6">
+                  Mohon tunggu sebentar, ini tidak akan lama... ⏳
+                </p>
+            </div>
+        )}
+        
         {step === 'intro_chat' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-10 text-center animate-in zoom-in-95">
                 <div className="w-20 h-20 bg-brand-orange/10 rounded-full flex items-center justify-center mx-auto mb-6">
