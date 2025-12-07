@@ -195,56 +195,72 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         {/* Link Asesmen */}
         <button
           onClick={() => setActiveTab(linkMenuItem.id)}
-          className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
             activeTab === linkMenuItem.id
               ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
+          title={isCollapsed ? linkMenuItem.label : ''}
         >
-          <LinkIcon size={20} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-          <span>{linkMenuItem.label}</span>
+          <LinkIcon size={18} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+          {!isCollapsed && <span className="text-sm">{linkMenuItem.label}</span>}
+          {isCollapsed && (
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+              {linkMenuItem.label}
+            </span>
+          )}
         </button>
 
-        {/* DIVIDER 1 */}
-        <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
+        {/* BAGIAN 2: DATA & LOG */}
+        <div className="mt-3">
+          {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 mt-2">Data</p>}
+          {dataLogMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
+                  isActive
+                    ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+                title={isCollapsed ? item.label : ''}
+              >
+                <Icon size={18} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+                {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                {isCollapsed && (
+                  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                    {item.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* BAGIAN 2: DATA & LOG (Jarang Diakses) */}
-        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Data & Log</p>
-        {dataLogMenuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
-                isActive
-                  ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              <Icon size={20} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-
-        {/* DIVIDER 2 */}
-        <div className="my-4 border-b border-gray-200 dark:border-slate-700"></div>
-
-        {/* BAGIAN 3: SISTEM (Paling Bawah) */}
-        <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sistem</p>
-        <button
-          onClick={() => setActiveTab(systemMenuItem.id)}
-          className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
-            activeTab === systemMenuItem.id
-              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-          }`}
-        >
-          <Settings size={20} className={activeTab === systemMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-          <span>{systemMenuItem.label}</span>
-        </button>
+        {/* BAGIAN 3: SISTEM */}
+        <div className="mt-3">
+          {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 mt-2">Sistem</p>}
+          <button
+            onClick={() => setActiveTab(systemMenuItem.id)}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
+              activeTab === systemMenuItem.id
+                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+            title={isCollapsed ? systemMenuItem.label : ''}
+          >
+            <Settings size={18} className={activeTab === systemMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+            {!isCollapsed && <span className="text-sm">{systemMenuItem.label}</span>}
+            {isCollapsed && (
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                {systemMenuItem.label}
+              </span>
+            )}
+          </button>
+        </div>
       </nav>
 
       <div className="p-4 border-t border-gray-100 dark:border-slate-700 space-y-2">
