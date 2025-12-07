@@ -7,14 +7,14 @@ import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from "../types";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { initializeApp } from "firebase/app";
 
-// Initialize Firebase for calling Cloud Functions
+// Initialize Firebase for calling Cloud Functions (From Environment Variables)
 const firebaseConfig = {
-  apiKey: "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
-  authDomain: "gen-lang-client-0226679970.firebaseapp.com",
-  projectId: "gen-lang-client-0226679970",
-  storageBucket: "gen-lang-client-0226679970.firebasestorage.app",
-  messagingSenderId: "422224153226",
-  appId: "1:422224153226:web:4598cd213b6275436a3b73"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 let functions: any;
