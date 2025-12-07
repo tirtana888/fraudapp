@@ -263,26 +263,44 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         </div>
       </nav>
 
-      <div className="p-4 border-t border-gray-100 dark:border-slate-700 space-y-2">
+      <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-t border-gray-100 dark:border-slate-700 space-y-1.5`}>
         <button 
           onClick={toggleTheme}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm group relative`}
+          title={isCollapsed ? (isDarkMode ? 'Mode Gelap' : 'Mode Terang') : ''}
         >
-          <span className="flex items-center gap-3">
-             {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
-             <span>Mode {isDarkMode ? 'Gelap' : 'Terang'}</span>
-          </span>
-          <div className={`w-8 h-4 rounded-full relative transition-colors ${isDarkMode ? 'bg-brand-orange' : 'bg-gray-300'}`}>
-             <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow-sm ${isDarkMode ? 'left-4.5' : 'left-0.5'}`} style={{ left: isDarkMode ? '18px' : '2px' }}></div>
-          </div>
+          {!isCollapsed ? (
+            <>
+              <span className="flex items-center gap-2">
+                {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+                <span className="text-xs">Mode {isDarkMode ? 'Gelap' : 'Terang'}</span>
+              </span>
+              <div className={`w-7 h-3.5 rounded-full relative transition-colors ${isDarkMode ? 'bg-brand-orange' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all shadow-sm`} style={{ left: isDarkMode ? '15px' : '2px' }}></div>
+              </div>
+            </>
+          ) : (
+            <>
+              {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                Mode {isDarkMode ? 'Gelap' : 'Terang'}
+              </span>
+            </>
+          )}
         </button>
 
         <button
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors font-medium group relative`}
+          title={isCollapsed ? 'Keluar' : ''}
         >
-          <LogOut size={20} />
-          <span>Keluar</span>
+          <LogOut size={18} />
+          {!isCollapsed && <span className="text-sm">Keluar</span>}
+          {isCollapsed && (
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+              Keluar
+            </span>
+          )}
         </button>
       </div>
 
