@@ -51,8 +51,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({ companyId, onViewCandidate })
       const sessionsSnapshot = await getDocs(sessionsQuery);
       const allCandidates: CandidateHistory[] = [];
 
+      console.log('[HISTORY] Loaded sessions from database:', sessionsSnapshot.size);
+
       sessionsSnapshot.forEach((doc) => {
         const data = doc.data() as InterviewSession;
+        console.log('[HISTORY] Session:', doc.id, 'status:', data.status, 'stage:', data.recruitmentStage);
 
         const riskScore = data.analysis?.scores
           ? Math.round((data.analysis.scores.pressure + data.analysis.scores.opportunity + data.analysis.scores.rationalization) / 3)
