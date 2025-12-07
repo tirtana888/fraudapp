@@ -31,7 +31,8 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [selectedSteps, setSelectedSteps] = useState<{ [key: string]: boolean }>({
     integrity_assessment: true, // Mandatory
-    hire_reject: true // Mandatory
+    hire_decision: true, // Mandatory
+    reject_decision: true // Mandatory
   });
 
   useEffect(() => {
