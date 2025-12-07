@@ -22,7 +22,8 @@ export const COLLECTIONS = {
   COMPANIES: 'companies',
   INVITES: 'assessment_invites',
   JOBS: 'jobs',
-  APPLICATIONS: 'applications'
+  APPLICATIONS: 'applications',
+  WORKFLOWS: 'workflows'
 };
 
 export let db: Firestore;
