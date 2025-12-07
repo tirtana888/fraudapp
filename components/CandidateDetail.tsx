@@ -1576,14 +1576,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {activeTab === 'overview' && candidate.status !== 'completed' && (
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
-            <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
-            <p className="text-gray-600">Kandidat masih dalam proses mengerjakan assessment. Report akan tersedia setelah assessment selesai.</p>
-          </div>
-        )}
-
         {activeTab === 'overview' && candidate.status === 'completed' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               <div className="lg:col-span-2 space-y-6">
