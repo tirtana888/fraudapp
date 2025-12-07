@@ -17,12 +17,13 @@ Mistral AI akan mengekstrak:
 
 ### Flow Kerja
 
-1. **Kandidat Upload CV** → CV disimpan di Firebase Storage
-2. **HR Klik "Parse CV"** → Memanggil Firebase Function
-3. **Function Download CV** → Mengambil PDF dari Storage
-4. **Mistral AI Parsing** → Mengekstrak data terstruktur
-5. **Save to Firestore** → Menyimpan hasil parsing ke session document
-6. **Tampilkan di UI** → Hasil parsing muncul di Candidate Profile
+1. **Kandidat Upload CV** → CV disimpan di Firebase Storage (`cvs/{applicationId}/{filename}`)
+2. **HR Klik "Parse CV"** → Memanggil Firebase Function `parseCVWithMistral`
+3. **Function Download CV** → Extract storage path dari URL dan download PDF
+4. **Extract Text** → Gunakan `pdf-parse` untuk extract text dari PDF
+5. **Mistral AI Parsing** → Kirim text ke Mistral AI untuk strukturisasi
+6. **Save to Firestore** → Menyimpan hasil parsing ke `interview_sessions` collection
+7. **Tampilkan di UI** → Hasil parsing muncul di Candidate Profile
 
 ### 1. Dapatkan API Key Mistral AI
 
@@ -67,14 +68,20 @@ Output yang benar:
 }
 \`\`\`
 
-### 4. Deploy Firebase Functions
+### 4. Install Dependencies & Deploy
 
-Deploy function CV parsing ke production:
+**PENTING**: Install `pdf-parse` dependency terlebih dahulu:
 
 \`\`\`bash
 cd functions
+npm install pdf-parse
 npm install
 cd ..
+\`\`\`
+
+Lalu deploy function CV parsing ke production:
+
+\`\`\`bash
 firebase deploy --only functions:parseCVWithMistral
 \`\`\`
 
@@ -111,7 +118,19 @@ Tab ini memiliki 2 section:
 **Solusi**:
 - CV mungkin dalam format yang sulit dibaca (scan quality rendah)
 - Coba upload ulang CV dengan quality lebih baik
-- Format PDF harus text-based, bukan image-based
+- Format PDF harus text-based, bukan image-based (PDF hasil scan tidak akan berfungsi dengan baik)
+
+#### Error: "Invalid CV URL format"
+**Solusi**:
+- URL CV tidak valid atau rusak
+- Pastikan CV sudah terupload dengan benar ke Firebase Storage
+- Coba upload ulang CV
+
+#### Error: "pdf-parse module not found"
+**Solusi**:
+- Jalankan `npm install` di folder `functions/`
+- Pastikan `pdf-parse` ada di `package.json`
+- Deploy ulang Firebase Functions
 
 #### Error: "Firebase Functions not available"
 **Solusi**:
@@ -165,15 +184,21 @@ Fitur yang bisa ditambahkan:
 
 \`\`\`bash
 # 1. Set API Key
-firebase functions:config:set mistral.api_key="YOUR_API_KEY"
+firebase functions:config:set mistral.api_key="YOUR_MISTRAL_API_KEY"
 
-# 2. Deploy Function
+# 2. Install Dependencies
+cd functions
+npm install pdf-parse
+npm install
+cd ..
+
+# 3. Deploy Function
 firebase deploy --only functions:parseCVWithMistral
 
-# 3. Test
+# 4. Test
 # Go to Candidate Detail → Click "Parse CV" button
 
-# 4. Check Logs (optional)
+# 5. Check Logs (optional)
 firebase functions:log --only parseCVWithMistral
 \`\`\`
 
