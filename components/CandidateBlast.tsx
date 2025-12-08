@@ -63,14 +63,33 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
 
     setActionLoading(true);
     try {
+      // Find the invite to get candidate name
+      const invite = invites.find(inv => inv.id === inviteId);
+      
+      // Deduct 2 credits for resending invite
+      const deductionResult = await deductCredit(
+        currentCompany.id,
+        2,
+        'RESEND_INVITE',
+        `Kirim ulang undangan - ${invite?.name || 'Kandidat'}`,
+        { candidateName: invite?.name }
+      );
+
+      if (!deductionResult.success) {
+        toast.error(deductionResult.error || 'Gagal kirim ulang - Kredit tidak cukup');
+        setActionLoading(false);
+        setActiveMenuId(null);
+        return;
+      }
+
       const result = await resendCandidateInvite(inviteId, currentCompany.name);
       if (result.success) {
-        toast.success(` ${result.message}`);
+        toast.success(`${result.message} (2 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       } else {
-        toast.error(` ${result.message}`);
+        toast.error(`${result.message}`);
       }
     } catch (error: any) {
-      toast.error(` Error: ${error.message}`);
+      toast.error(`Error: ${error.message}`);
     } finally {
       setActionLoading(false);
       setActiveMenuId(null);
