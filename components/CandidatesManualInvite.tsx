@@ -8,6 +8,7 @@ import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { calculateAssessmentScores } from '../services/genai';
+import { deductCredit } from '../services/creditManagement';
 
 interface CandidatesManualInviteProps {
   currentCompany: CompanyProfile;
