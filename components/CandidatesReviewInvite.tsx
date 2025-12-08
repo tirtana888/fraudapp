@@ -296,6 +296,27 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
     return true;
   });
 
+  // Dashboard Stats
+  const totalPending = applications.length;
+  const totalCompleted = completedCandidates.length;
+  const totalAll = totalPending + totalCompleted;
+  
+  const completedWithRisk = completedCandidates.filter(c => c.analysis?.riskLevel);
+  const highRiskCount = completedWithRisk.filter(c => 
+    ['high', 'critical'].includes(c.analysis?.riskLevel?.toLowerCase() || '')
+  ).length;
+  const mediumRiskCount = completedWithRisk.filter(c => 
+    c.analysis?.riskLevel?.toLowerCase() === 'medium'
+  ).length;
+  const lowRiskCount = completedWithRisk.filter(c => 
+    c.analysis?.riskLevel?.toLowerCase() === 'low'
+  ).length;
+
+  const inviteSentCount = applications.filter(a => 
+    a.recruitmentStage && a.recruitmentStage !== 'pending_review'
+  ).length;
+  const pendingInviteCount = totalPending - inviteSentCount;
+
   const getRiskScoreBadge = (candidate: ApplicationWithDetails) => {
     const riskLevel = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
     const riskScore = candidate.analysis?.riskScore || 0;
