@@ -39,7 +39,7 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
   // This component is now primarily a REVIEWER for sessions created via Public Link
   const [session, setSession] = useState<InterviewSession | undefined>(existingSession);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
-  const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
+  const [companyTier, setCompanyTier] = useState<'Freemium' | 'Premium'>('Freemium');
 
   useEffect(() => {
      const fetchTier = async () => {

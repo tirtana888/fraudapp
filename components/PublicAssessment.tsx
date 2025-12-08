@@ -73,11 +73,9 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
             welcomeMessage: data.welcomeMessage?.substring(0, 50) + '...'
           });
 
-          if (data.tier === 'Basic') {
-              console.warn(`[PUBLIC-ASSESSMENT] Access denied - Basic tier`);
-              setIsAccessDenied(true);
-              setStep('welcome'); // Show access denied message on welcome screen
-              return false;
+          if (data.tier === 'Freemium') {
+              console.warn(`[PUBLIC-ASSESSMENT] Access may be limited - Freemium tier`);
+              // Freemium users can still access but with limits
           }
 
           setCompany(data);
@@ -332,7 +330,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           const nextQuestion = await generateNextQuestion(
               candidateRole,
               newHistory,
-              company?.tier || 'Basic',
+              company?.tier || 'Freemium',
               { structuredAssessment: ftAnswers, sjtResults: sjtAnswers, financialStrainResults: finAnswers }
           );
           const updatedHistory = [...newHistory, { speaker: 'ai', text: nextQuestion } as const];

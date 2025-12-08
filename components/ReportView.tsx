@@ -18,7 +18,7 @@ interface ReportViewProps {
 
 const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, onReReview }) => {
   const { analysis, candidate, companyId } = session;
-  const [companyTier, setCompanyTier] = useState<'Basic' | 'Premium' | 'Enterprise'>('Basic');
+  const [companyTier, setCompanyTier] = useState<'Freemium' | 'Premium'>('Freemium');
 
   useEffect(() => {
     const fetchTier = async () => {

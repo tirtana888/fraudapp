@@ -307,9 +307,7 @@ const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="p-5">
                     <span className={`px-2 py-1 rounded-md text-xs font-bold border 
-                      ${company.tier === 'Enterprise' 
-                        ? 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/30' 
-                        : company.tier === 'Premium'
+                      ${company.tier === 'Premium'
                         ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30'
                         : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}>
                       {company.tier}
