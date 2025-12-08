@@ -2411,12 +2411,45 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   </div>
                   <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
                     <span className="text-xs text-gray-600 dark:text-gray-400">Verification Method</span>
-                    <span className="text-xs font-semibold text-gray-400">--</span>
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Didit KYC</span>
                   </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">Provider</span>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Didit</span>
+                  </div>
+                  {candidate.backgroundCheck?.verificationLink && (
+                    <div className="mt-3">
+                      <a
+                        href={candidate.backgroundCheck.verificationLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors w-full justify-center"
+                      >
+                        <ExternalLink size={14} />
+                        Open Verification Link
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {/* Additional Info Section */}
+            {candidate.backgroundCheck?.decision && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                    <FileText size={20} className="text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 dark:text-white">Verification Decision</h3>
+                </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{candidate.backgroundCheck.decision}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-teal-100 rounded-lg">
                     <User size={20} className="text-teal-600" />
