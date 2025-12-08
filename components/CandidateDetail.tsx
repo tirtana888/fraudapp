@@ -1780,33 +1780,78 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800 mb-4">Informasi Kontak</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail size={16} className="text-gray-400" />
-                    <a href={`mailto:${candidate.candidate.email}`} className="text-[#D95D00] hover:underline">
-                      {candidate.candidate.email}
-                    </a>
-                  </div>
-                  {candidate.whatsapp && (
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-800">Informasi Kontak</h3>
+                  {company.tier === 'Freemium' && !isContactUnlocked && (
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                      Terkunci
+                    </span>
+                  )}
+                </div>
+                
+                {company.tier === 'Freemium' && !isContactUnlocked ? (
+                  <div className="space-y-4">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                      <Lock size={32} className="text-orange-600 mx-auto mb-2" />
+                      <p className="text-sm text-gray-700 mb-1 font-medium">Kontak Tersembunyi</p>
+                      <p className="text-xs text-gray-600 mb-4">Email & WhatsApp kandidat disembunyikan untuk paket Freemium</p>
+                      <button
+                        onClick={handleUnlockContact}
+                        disabled={isUnlocking}
+                        className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isUnlocking ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Membuka...
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={14} />
+                            Buka Kontak (2 Kredit)
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <Phone size={16} className="text-gray-400" />
-                      <a href={`https://wa.me/${candidate.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-[#D95D00] hover:underline">
-                        {candidate.whatsapp}
+                      <Calendar size={16} className="text-gray-400" />
+                      <span className="text-gray-600">
+                        Melamar pada {new Date(candidate.date).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm">
+                      <Mail size={16} className="text-gray-400" />
+                      <a href={`mailto:${candidate.candidate.email}`} className="text-[#D95D00] hover:underline">
+                        {candidate.candidate.email}
                       </a>
                     </div>
-                  )}
-                  <div className="flex items-center gap-3 text-sm">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span className="text-gray-600">
-                      Melamar pada {new Date(candidate.date).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </span>
+                    {candidate.whatsapp && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Phone size={16} className="text-gray-400" />
+                        <a href={`https://wa.me/${candidate.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-[#D95D00] hover:underline">
+                          {candidate.whatsapp}
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 text-sm">
+                      <Calendar size={16} className="text-gray-400" />
+                      <span className="text-gray-600">
+                        Melamar pada {new Date(candidate.date).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
