@@ -1950,8 +1950,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md">
                       <div className="animate-spin text-4xl mb-3">⏳</div>
-                      <h4 className="font-semibold text-gray-800 mb-1">Sedang Memproses...</h4>
-                      <p className="text-gray-600 text-sm">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Sedang Memproses...</h4>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
                         CV sedang dianalisis oleh AI. Proses ini memakan waktu 10-30 detik.
                       </p>
                     </div>
@@ -1959,9 +1959,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 ) : (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md">
-                      <Sparkles size={48} className="text-gray-300 mx-auto mb-3" />
-                      <h4 className="font-semibold text-gray-800 mb-1">CV Tidak Tersedia</h4>
-                      <p className="text-gray-600 text-sm">
+                      <Sparkles size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">CV Tidak Tersedia</h4>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
                         Kandidat belum mengupload CV.
                       </p>
                     </div>
