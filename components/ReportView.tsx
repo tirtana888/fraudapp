@@ -195,7 +195,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
 
       {/* Header Card */}
       <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center transition-colors gap-4 relative overflow-hidden">
-        {companyTier === 'Enterprise' && (
+        {companyTier === 'Premium' && (
              <div className="absolute top-0 right-0 bg-gradient-to-l from-brand-orange/20 to-transparent p-20 rounded-bl-full pointer-events-none"></div>
         )}
         <div className="relative z-10">

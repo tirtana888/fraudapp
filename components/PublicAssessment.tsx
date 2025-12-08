@@ -367,7 +367,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     
     try {
       finalAnalysis = await Promise.race([
-        analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Basic'),
+        analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium'),
         analysisTimeout
       ]) as FraudAnalysis;
       
