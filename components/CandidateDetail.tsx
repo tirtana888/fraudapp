@@ -1988,9 +1988,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   </a>
                 )}
               </div>
-              <div className="p-6">
+              <div className="p-4">
                 {candidate.cvUrl ? (
-                  <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '800px' }}>
+                  <div className="bg-gray-100 rounded overflow-hidden" style={{ height: '600px' }}>
                     {candidate.cvUrl.endsWith('.pdf') ? (
                       <iframe
                         src={candidate.cvUrl}
@@ -2000,15 +2000,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
-                          <FileText size={64} className="text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600 mb-4">Pratinjau tidak tersedia untuk format file ini</p>
+                          <FileText size={48} className="text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-600 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
                           <a
                             href={candidate.cvUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors font-semibold"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors text-sm font-medium"
                           >
-                            <Eye size={18} />
+                            <Eye size={16} />
                             Buka di Tab Baru
                           </a>
                         </div>
@@ -2016,10 +2016,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center py-20">
+                  <div className="flex items-center justify-center py-12">
                     <div className="text-center">
-                      <FileText size={64} className="text-gray-300 mb-4" />
-                      <p className="text-gray-500">Tidak ada CV yang diunggah</p>
+                      <FileText size={48} className="text-gray-300 mb-3" />
+                      <p className="text-gray-500 text-sm">Tidak ada CV yang diunggah</p>
                     </div>
                   </div>
                 )}
