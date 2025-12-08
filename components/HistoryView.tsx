@@ -236,10 +236,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                  {filteredCandidates.map((candidate) => (
-                    <tr key={candidate.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
+                  {filteredCandidates.map((candidate, index) => {
+                    const isBlurred = isFreemium && index >= viewLimit;
+                    
+                    return (
+                    <tr key={candidate.id} className={`hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group relative ${isBlurred ? 'opacity-40' : ''}`}>
                       <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
+                        <div className={`flex items-center space-x-3 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
                           <div className="flex-shrink-0">
                             <div className="h-10 w-10 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
                               <User className="text-brand-orange" size={20} />
@@ -257,12 +260,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <code className="px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-mono font-semibold">
+                        <code className={`px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-mono font-semibold ${isBlurred ? 'blur-sm select-none' : ''}`}>
                           {candidate.assessmentCode}
                         </code>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className={`flex items-center gap-2 ${isBlurred ? 'blur-sm select-none' : ''}`}>
                           <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${getRiskColor(candidate.riskScore || 50)}`}>
                             {getRiskLabel(candidate.riskScore || 50)}
                           </span>
@@ -272,22 +275,33 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${getStageColor(candidate.recruitmentStage)}`}>
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${getStageColor(candidate.recruitmentStage)} ${isBlurred ? 'blur-sm select-none' : ''}`}>
                           <Calendar size={14} />
                           {getStageLabel(candidate.recruitmentStage)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => onViewCandidate(candidate.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md hover:shadow-lg"
-                        >
-                          <FileText size={16} />
-                          Lihat Laporan
-                        </button>
+                        {isBlurred ? (
+                          <button
+                            onClick={() => onUpgradeClick && onUpgradeClick()}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md hover:shadow-lg"
+                          >
+                            <Lock size={16} />
+                            Unlock
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onViewCandidate(candidate.id)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md hover:shadow-lg"
+                          >
+                            <FileText size={16} />
+                            Lihat Laporan
+                          </button>
+                        )}
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
