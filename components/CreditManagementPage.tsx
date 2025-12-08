@@ -19,10 +19,11 @@ import { getCompanyById } from '../services/firebase';
 
 interface CreditManagementPageProps {
   company: CompanyProfile;
+  user: UserProfile;
   onCompanyUpdate: () => void;
 }
 
-const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: initialCompany, onCompanyUpdate }) => {
+const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: initialCompany, user, onCompanyUpdate }) => {
   const [creditBalance, setCreditBalance] = useState<number>(initialCompany.credits || 0);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [company, setCompany] = useState<CompanyProfile>(initialCompany);
