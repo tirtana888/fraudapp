@@ -316,7 +316,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                 key={candidate.id}
                 className={`bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 space-y-4 relative ${isBlurred ? 'opacity-60' : ''}`}
               >
-                <div className="flex items-start justify-between">
+                <div className={`flex items-start justify-between ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
                   <div className="flex items-start space-x-3 flex-1">
                     <div className="flex-shrink-0">
                       <div className="h-12 w-12 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
@@ -335,7 +335,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid grid-cols-2 gap-3 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
                       Kode Akses
@@ -360,7 +360,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   </div>
                 </div>
 
-                <div>
+                <div className={isBlurred ? 'blur-sm select-none pointer-events-none' : ''}>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
                     Stage Proses
                   </p>
@@ -370,16 +370,28 @@ const HistoryView: React.FC<HistoryViewProps> = ({
                   </span>
                 </div>
 
-                <button
-                  onClick={() => onViewCandidate(candidate.id)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md active:scale-95"
-                >
-                  <FileText size={16} />
-                  Lihat Laporan
-                  <ChevronRight size={16} />
-                </button>
+                {isBlurred ? (
+                  <button
+                    onClick={() => onUpgradeClick && onUpgradeClick()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md active:scale-95"
+                  >
+                    <Lock size={16} />
+                    Unlock Premium
+                    <ChevronRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onViewCandidate(candidate.id)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md active:scale-95"
+                  >
+                    <FileText size={16} />
+                    Lihat Laporan
+                    <ChevronRight size={16} />
+                  </button>
+                )}
               </div>
-            ))}
+            );
+            })}
           </div>
         </>
       )}
