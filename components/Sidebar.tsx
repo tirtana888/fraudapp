@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
       )}
 
       <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
-        {userRole === 'System Admin' && (
+        {(userRole === 'System Admin' || userRole === 'superadmin') && (
            <div className="mb-3">
               {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Admin</p>}
               <button
