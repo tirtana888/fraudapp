@@ -17,11 +17,20 @@ interface CandidateHistory extends InterviewSession {
   recruitmentStage?: string;
 }
 
-const HistoryView: React.FC<HistoryViewProps> = ({ companyId, onViewCandidate }) => {
+const HistoryView: React.FC<HistoryViewProps> = ({ 
+  companyId, 
+  company, 
+  onViewCandidate,
+  onUpgradeClick 
+}) => {
   const [candidates, setCandidates] = useState<CandidateHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStage, setFilterStage] = useState<string>('all');
+  
+  // Freemium logic
+  const isFreemium = company?.tier === 'Freemium';
+  const viewLimit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
 
   useEffect(() => {
     loadAllCandidates();
