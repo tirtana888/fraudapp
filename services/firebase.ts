@@ -1424,3 +1424,12 @@ export const initiateBackgroundCheck = async (candidateId: string, candidateName
     throw new Error(`Background check gagal: ${error.message}`);
   }
 };
+
+// Legacy function exports for backward compatibility
+export const updateSessionInDB = updateSession;
+export const saveSessionToDB = createInterviewSession;
+export const inviteCompanyReal = async () => { throw new Error("Not implemented"); };
+export const getCompanies = async () => { throw new Error("Not implemented"); };
+export const updateCompanySubscription = async () => { throw new Error("Not implemented"); };
+export const deleteCompany = async () => { throw new Error("Not implemented"); };
+export const resendInviteEmail = async () => { throw new Error("Not implemented"); };
