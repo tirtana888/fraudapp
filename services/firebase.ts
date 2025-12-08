@@ -191,7 +191,11 @@ export const loginWithFirestore = async (email: string, password: string): Promi
 };
 
 
-// Sign Up Function
+// ==========================================
+// FIREBASE AUTHENTICATION - PRODUCTION READY
+// ==========================================
+
+// Sign Up Function with Firebase Authentication
 interface SignUpData {
   companyName: string;
   fullName: string;
@@ -200,62 +204,234 @@ interface SignUpData {
   password: string;
 }
 
-export const signUpWithFirestore = async (data: SignUpData): Promise<UserProfile | null> => {
-  if (!db) throw new Error("Koneksi Database terputus.");
+export const signUpWithFirebase = async (data: SignUpData): Promise<UserProfile | null> => {
+  if (!db || !auth) throw new Error("Firebase belum diinisialisasi.");
 
   try {
     const { companyName, fullName, email, phone, password } = data;
     
-    // Check if email already exists
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    const emailQuery = query(usersRef, where("email", "==", email));
-    const existingUsers = await getDocs(emailQuery);
+    console.log('[SIGNUP] Starting Firebase Authentication signup...');
     
-    if (!existingUsers.empty) {
-      throw new Error("Email sudah terdaftar. Silakan gunakan email lain atau login.");
+    // 1. Create Firebase Auth user (password automatically hashed)
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    console.log('[SIGNUP] Firebase Auth user created:', firebaseUser.uid);
+    
+    // 2. Update Firebase Auth profile
+    await updateProfile(firebaseUser, {
+      displayName: fullName
+    });
+    
+    // 3. Send email verification
+    try {
+      await sendEmailVerification(firebaseUser);
+      console.log('[SIGNUP] Verification email sent to:', email);
+    } catch (emailError) {
+      console.warn('[SIGNUP] Failed to send verification email:', emailError);
+      // Continue signup even if email fails
     }
-
-    // Create company first
+    
+    // 4. Create company profile in Firestore
     const companiesRef = collection(db, COLLECTIONS.COMPANIES);
     const newCompany: CompanyProfile = {
       id: '', // Will be set after creation
       name: companyName,
-      tier: 'Basic', // Default tier
+      tier: 'Basic',
       status: 'Active',
       adminEmail: email,
       joinedDate: new Date().toISOString(),
+      verification_credits: 100,
       logoUrl: '',
       whatsapp: phone,
-      createdAt: new Date(),
-      verification_credits: 100 // Initial credits
+      createdAt: new Date()
     };
 
     const companyDoc = await addDoc(companiesRef, newCompany);
     console.log('[SIGNUP] Company created:', companyDoc.id);
 
-    // Create user
-    const newUser: UserProfile = {
-      id: '', // Will be set after creation
+    // 5. Create user profile in Firestore (linked to Firebase Auth UID)
+    const userProfile: UserProfile = {
+      id: firebaseUser.uid, // Use Firebase Auth UID
       name: fullName,
       email: email,
-      password: password, // In production, this should be hashed
-      role: 'Company Admin', // First user is company admin
+      // NO PASSWORD STORED - handled by Firebase Auth
+      role: 'Company Admin',
       companyId: companyDoc.id,
-      avatar: ''
+      avatar: '',
+      emailVerified: firebaseUser.emailVerified,
+      createdAt: new Date()
     };
 
-    const userDoc = await addDoc(usersRef, newUser);
-    console.log('[SIGNUP] User created:', userDoc.id);
+    // Use setDoc with UID as document ID for easy retrieval
+    await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), userProfile);
+    console.log('[SIGNUP] User profile created with UID:', firebaseUser.uid);
 
-    // Return user profile
-    return {
-      ...newUser,
-      id: userDoc.id
-    };
+    // 6. Return user profile
+    return userProfile;
 
   } catch (error: any) {
     console.error('[SIGNUP] Error:', error);
-    throw error;
+    
+    // Handle specific Firebase Auth errors
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login.');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('Password terlalu lemah. Gunakan minimal 6 karakter.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Format email tidak valid.');
+    } else {
+      throw new Error(error.message || 'Gagal mendaftar. Silakan coba lagi.');
+    }
+  }
+};
+
+// Login Function with Firebase Authentication
+export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile | null> => {
+  if (!db || !auth) throw new Error("Firebase belum diinisialisasi.");
+
+  try {
+    console.log('[LOGIN] Authenticating with Firebase...');
+    
+    // 1. Sign in with Firebase Auth
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    console.log('[LOGIN] Firebase Auth successful:', firebaseUser.uid);
+    
+    // 2. Get user profile from Firestore
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
+    
+    if (!userDoc.exists()) {
+      throw new Error('Profil user tidak ditemukan. Silakan hubungi support.');
+    }
+    
+    const userProfile = userDoc.data() as UserProfile;
+    
+    console.log('[LOGIN] User profile retrieved:', userProfile.name);
+    
+    // 3. Check email verification (optional warning)
+    if (!firebaseUser.emailVerified) {
+      console.warn('[LOGIN] Email belum diverifikasi:', email);
+      // You can choose to block login or just warn
+      // For now, we'll allow but add flag
+    }
+    
+    // 4. Return user profile with current auth state
+    return {
+      ...userProfile,
+      id: firebaseUser.uid,
+      emailVerified: firebaseUser.emailVerified
+    };
+
+  } catch (error: any) {
+    console.error('[LOGIN] Error:', error);
+    
+    // Handle specific Firebase Auth errors
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      throw new Error('Email atau password salah.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Format email tidak valid.');
+    } else if (error.code === 'auth/user-disabled') {
+      throw new Error('Akun Anda telah dinonaktifkan. Hubungi support.');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Terlalu banyak percobaan login. Coba lagi nanti.');
+    } else {
+      throw new Error(error.message || 'Gagal login. Silakan coba lagi.');
+    }
+  }
+};
+
+// Logout Function
+export const logoutFromFirebase = async (): Promise<void> => {
+  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
+  
+  try {
+    await signOut(auth);
+    console.log('[LOGOUT] User signed out successfully');
+  } catch (error: any) {
+    console.error('[LOGOUT] Error:', error);
+    throw new Error('Gagal logout. Silakan coba lagi.');
+  }
+};
+
+// Password Reset Function
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
+  
+  try {
+    await sendPasswordResetEmail(auth, email);
+    console.log('[PASSWORD-RESET] Email sent to:', email);
+  } catch (error: any) {
+    console.error('[PASSWORD-RESET] Error:', error);
+    
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('Email tidak terdaftar.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Format email tidak valid.');
+    } else {
+      throw new Error('Gagal mengirim email reset. Silakan coba lagi.');
+    }
+  }
+};
+
+// Auth State Observer
+export const observeAuthState = (callback: (user: UserProfile | null) => void) => {
+  if (!auth || !db) {
+    console.error('[AUTH-OBSERVER] Firebase not initialized');
+    return () => {};
+  }
+
+  return onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      console.log('[AUTH-OBSERVER] User signed in:', firebaseUser.uid);
+      
+      try {
+        // Get user profile from Firestore
+        const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
+        
+        if (userDoc.exists()) {
+          const userProfile = userDoc.data() as UserProfile;
+          callback({
+            ...userProfile,
+            id: firebaseUser.uid,
+            emailVerified: firebaseUser.emailVerified
+          });
+        } else {
+          console.warn('[AUTH-OBSERVER] User profile not found');
+          callback(null);
+        }
+      } catch (error) {
+        console.error('[AUTH-OBSERVER] Error fetching profile:', error);
+        callback(null);
+      }
+    } else {
+      console.log('[AUTH-OBSERVER] User signed out');
+      callback(null);
+    }
+  });
+};
+
+// Resend Email Verification
+export const resendVerificationEmail = async (): Promise<void> => {
+  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
+  
+  const user = auth.currentUser;
+  
+  if (!user) {
+    throw new Error('Tidak ada user yang login.');
+  }
+  
+  if (user.emailVerified) {
+    throw new Error('Email sudah diverifikasi.');
+  }
+  
+  try {
+    await sendEmailVerification(user);
+    console.log('[EMAIL-VERIFY] Verification email resent');
+  } catch (error: any) {
+    console.error('[EMAIL-VERIFY] Error:', error);
+    throw new Error('Gagal mengirim email verifikasi. Silakan coba lagi.');
   }
 };
 
