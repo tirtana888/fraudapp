@@ -16,8 +16,10 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll }) => {
   const [copied, setCopied] = useState(false);
 
-  // FEATURE GATING with safety check
-  const features = currentCompany?.tier ? PLAN_LIMITS[currentCompany.tier] : PLAN_LIMITS['Freemium'];
+  // FEATURE GATING with safety check - Double defensive pattern
+  const features = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier] 
+    ? PLAN_LIMITS[currentCompany.tier] 
+    : PLAN_LIMITS['Freemium'];
 
   // Calculate stats from the timeline events
   const sessions = timelineEvents.filter(e => e.type === 'SESSION').map(e => e.data as InterviewSession);
