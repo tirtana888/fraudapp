@@ -151,7 +151,7 @@ const App: React.FC = () => {
                  name: currentUser.companyName || 'Unknown Company',
                  industry: '',
                  credits: 0,
-                 subscription_tier: 'Freemium',
+                 tier: 'Freemium',
                  subscription_ends_at: null
                } as CompanyProfile);
              }
