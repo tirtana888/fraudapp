@@ -45,11 +45,13 @@ interface CandidateData extends InterviewSession {
   };
 }
 
-const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) => {
+const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, onBack }) => {
   const toast = useToast();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background' | 'activity'>('overview');
+  const [isContactUnlocked, setIsContactUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [companyTier, setCompanyTier] = useState<'Freemium' | 'Premium'>('Freemium');
   const [showInterviewModal, setShowInterviewModal] = useState(false);
