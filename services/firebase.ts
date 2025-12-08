@@ -206,15 +206,14 @@ export const signUpWithFirestore = async (data: SignUpData): Promise<UserProfile
     const newCompany: CompanyProfile = {
       id: '', // Will be set after creation
       name: companyName,
-      industry: '',
-      website: '',
-      description: '',
+      tier: 'Basic', // Default tier
+      status: 'Active',
+      adminEmail: email,
+      joinedDate: new Date().toISOString(),
       logoUrl: '',
-      plan: 'trial', // Default trial plan
-      planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
-      creditsRemaining: 100, // Initial credits
+      whatsapp: phone,
       createdAt: new Date(),
-      updatedAt: new Date()
+      verification_credits: 100 // Initial credits
     };
 
     const companyDoc = await addDoc(companiesRef, newCompany);
@@ -226,11 +225,9 @@ export const signUpWithFirestore = async (data: SignUpData): Promise<UserProfile
       name: fullName,
       email: email,
       password: password, // In production, this should be hashed
-      role: 'Admin', // First user is admin
+      role: 'Company Admin', // First user is company admin
       companyId: companyDoc.id,
-      phone: phone,
-      createdAt: new Date(),
-      avatarUrl: ''
+      avatar: ''
     };
 
     const userDoc = await addDoc(usersRef, newUser);
