@@ -291,7 +291,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   };
 
   const isBackgroundCheckAvailable = (): boolean => {
-    return companyTier === 'Premium' || companyTier === 'Enterprise';
+    return companyTier === 'Premium';
   };
 
   const getStageButtonConfig = (currentStage: string) => {

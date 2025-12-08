@@ -7,6 +7,7 @@ export interface PlanConfig {
   hasPrioritySupport: boolean;
   hasCustomBranding: boolean;
   allow_permanent_link: boolean;
+  white_label: boolean;
 }
 
 export const PLAN_LIMITS: Record<'Freemium' | 'Premium', PlanConfig> = {
@@ -18,7 +19,8 @@ export const PLAN_LIMITS: Record<'Freemium' | 'Premium', PlanConfig> = {
     hasAPIAccess: false,
     hasPrioritySupport: false,
     hasCustomBranding: false,
-    allow_permanent_link: false
+    allow_permanent_link: false,
+    white_label: false
   },
   Premium: {
     maxCandidates: -1, // Unlimited
@@ -28,6 +30,7 @@ export const PLAN_LIMITS: Record<'Freemium' | 'Premium', PlanConfig> = {
     hasAPIAccess: true,
     hasPrioritySupport: true,
     hasCustomBranding: true,
-    allow_permanent_link: true
+    allow_permanent_link: true,
+    white_label: true
   }
 };

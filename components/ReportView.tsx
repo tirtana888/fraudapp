@@ -266,7 +266,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
           {/* ENTERPRISE: Consistency & Sentiment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white dark:bg-brand-slate-850 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 relative overflow-hidden">
-                {companyTier === 'Basic' && <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[1px] z-20"></div>}
+                {companyTier === 'Freemium' && <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[1px] z-20"></div>}
                 <div className="flex items-center gap-2 mb-4">
                     <Fingerprint className="text-brand-orange" size={20} />
                     <h4 className="font-bold text-gray-800 dark:text-white text-sm">Skor Konsistensi</h4>
@@ -285,7 +285,7 @@ const ReportView: React.FC<ReportViewProps> = ({ session, onBack, isDarkMode, on
               </div>
 
               <div className="bg-white dark:bg-brand-slate-850 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 relative overflow-hidden">
-                {companyTier === 'Basic' && <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[1px] z-20"></div>}
+                {companyTier === 'Freemium' && <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[1px] z-20"></div>}
                 <div className="flex items-center gap-2 mb-4">
                     <Crown className="text-brand-blue" size={20} />
                     <h4 className="font-bold text-gray-800 dark:text-white text-sm">Sentimen Analisis</h4>
