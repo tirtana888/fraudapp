@@ -2468,7 +2468,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         {/* Liveness (Coming Soon Section) */}
         {activeTab === 'liveness' && (
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-orange-100 rounded-lg">
                     <Scan size={20} className="text-orange-600" />
