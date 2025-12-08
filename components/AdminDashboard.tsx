@@ -286,7 +286,7 @@ const AdminDashboard: React.FC = () => {
                 // Calculate limits based on plan or override
                 const planLimit = PLAN_LIMITS[company.tier]?.max_candidates;
                 const finalLimit = company.custom_candidate_limit || planLimit;
-                const isUnlimited = finalLimit === 'unlimited';
+                const isUnlimited = finalLimit === -1 || (typeof finalLimit === 'string' && finalLimit === 'unlimited');
                 
                 // Expiry Check
                 const expiryDate = company.subscription_ends_at ? new Date(company.subscription_ends_at) : null;

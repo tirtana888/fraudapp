@@ -1,6 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from './firebase';
-import { FraudAnalysis } from '../types';
+import { FraudAnalysis, RiskLevel } from '../types';
 
 // ==========================================
 // GENAI SERVICE - Fraud Analysis with AI
@@ -51,7 +51,7 @@ export const analyzeFraudRisk = async (
         rationalization: 50,
         opportunity: 50
       },
-      riskLevel: 'Medium',
+      riskLevel: RiskLevel.MEDIUM,
       summary: 'Unable to complete AI analysis. Manual review recommended.',
       redFlags: ['Analysis service unavailable'],
       recommendation: 'Conduct thorough background check and schedule follow-up interview',

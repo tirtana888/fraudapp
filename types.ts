@@ -1,5 +1,10 @@
 
-export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
+export enum RiskLevel {
+  LOW = 'Low',
+  MEDIUM = 'Medium',
+  HIGH = 'High',
+  CRITICAL = 'Critical'
+}
 
 export interface FraudTriangleScore {
   pressure: number; // 0-100
