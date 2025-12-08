@@ -734,16 +734,38 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
         </div>
 
         {filteredApplications.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <Briefcase size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Belum Ada Aplikasi</h3>
-            <p className="text-gray-500">Aplikasi dari kandidat akan muncul di sini</p>
+          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-12 text-center">
+            <ClipboardCheck className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">Belum Ada Aplikasi</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              Aplikasi dari kandidat akan muncul di sini
+            </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredApplications.map((app) => {
+          <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Candidate
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Applied For
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Applied Date
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Stage
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                  {filteredApplications.map((app) => {
               const stageInfo = getStageInfo(app.recruitmentStage);
               const isExpanded = expandedApp === app.id;
               const isUpdating = updatingStatus === app.id;
