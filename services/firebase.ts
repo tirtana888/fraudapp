@@ -1346,6 +1346,21 @@ export const createInterviewSessionFromApplication = async (
     const sessionRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), session);
     console.log('[SESSIONS] Interview session created from job application:', sessionRef.id);
 
+    // Auto-parse CV if exists
+    if (applicationData.cvUrl) {
+      console.log('[SESSIONS] ✅ CV detected, triggering auto-parse...');
+      
+      // Trigger parse asynchronously (don't wait)
+      parseCVWithMistral(applicationData.cvUrl, sessionRef.id)
+        .then(() => {
+          console.log('[SESSIONS] ✅ Auto-parse CV completed for session:', sessionRef.id);
+        })
+        .catch((error) => {
+          console.error('[SESSIONS] ⚠️ Auto-parse CV failed (non-blocking):', error);
+          // Don't throw - CV parsing failure shouldn't block session creation
+        });
+    }
+
     return sessionRef.id;
   } catch (error) {
     console.error('[SESSIONS] Error creating interview session:', error);
