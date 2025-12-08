@@ -93,7 +93,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
     setIsLoading(true);
 
     try {
-      const user = await signUpWithFirestore({
+      const user = await signUpWithFirebase({
         companyName: formData.companyName.trim(),
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
