@@ -136,6 +136,23 @@ const App: React.FC = () => {
     
     const initCompany = async () => {
        try {
+         // Special handling for superadmin (no company needed)
+         if (currentUser.role === 'superadmin') {
+           console.log('[APP] Superadmin detected, skipping company load');
+           setCurrentCompany({
+             id: 'superadmin',
+             name: 'System Administrator',
+             tier: 'Premium',
+             status: 'Active',
+             adminEmail: currentUser.email || '',
+             joinedDate: new Date().toISOString(),
+             credits: 999999,
+             subscription_ends_at: null
+           } as CompanyProfile);
+           setIsLoadingData(false);
+           return;
+         }
+
          console.log('[APP] Loading company profile for ID:', currentUser.companyId);
          if(currentUser.companyId) {
              const company = await getCompanyById(currentUser.companyId);
@@ -157,12 +174,25 @@ const App: React.FC = () => {
                  subscription_ends_at: null
                } as CompanyProfile);
              }
+         } else {
+           console.error('[APP] No company ID found for user');
+           // Set fallback company
+           setCurrentCompany({
+             id: 'default',
+             name: currentUser.name || 'Unknown Company',
+             tier: 'Freemium',
+             status: 'Active',
+             adminEmail: currentUser.email || '',
+             joinedDate: new Date().toISOString(),
+             credits: 0,
+             subscription_ends_at: null
+           } as CompanyProfile);
          }
        } catch (error) {
          console.error('[APP] Error loading company profile:', error);
          // Set fallback company to prevent infinite loading
          setCurrentCompany({
-           id: currentUser.companyId || '',
+           id: currentUser.companyId || 'default',
            name: currentUser.name || 'Unknown Company',
            tier: 'Freemium',
            status: 'Active',
@@ -172,6 +202,7 @@ const App: React.FC = () => {
            subscription_ends_at: null
          } as CompanyProfile);
        }
+       setIsLoadingData(false);
     };
     initCompany();
 
