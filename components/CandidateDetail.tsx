@@ -435,24 +435,32 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         ? `Online via ${interviewLink}`
         : interviewLocation;
 
-      const sendEmail = httpsCallable(functions, 'sendEmail');
+      // Try to send email, but don't block workflow if it fails
+      try {
+        console.log('[INTERVIEW] Attempting to send email invitation...');
+        const sendEmail = httpsCallable(functions, 'sendEmail');
 
-      const emailData = {
-        type: 'interview_invitation',
-        to: candidate.candidate.email,
-        data: {
-          candidateName: candidate.candidate.name,
-          candidateEmail: candidate.candidate.email,
-          companyName: companyName,
-          role: candidate.candidate.role || candidate.jobTitle || '',
-          interviewDate: formattedDate,
-          interviewTime: interviewTime,
-          interviewLocation: locationText,
-          interviewType: interviewType
-        }
-      };
+        const emailData = {
+          type: 'interview_invitation',
+          to: candidate.candidate.email,
+          data: {
+            candidateName: candidate.candidate.name,
+            candidateEmail: candidate.candidate.email,
+            companyName: companyName,
+            role: candidate.candidate.role || candidate.jobTitle || '',
+            interviewDate: formattedDate,
+            interviewTime: interviewTime,
+            interviewLocation: locationText,
+            interviewType: interviewType
+          }
+        };
 
-      await sendEmail(emailData);
+        await sendEmail(emailData);
+        console.log('[INTERVIEW] ✅ Email sent successfully');
+      } catch (emailError) {
+        console.warn('[INTERVIEW] ⚠️ Email sending failed (will continue without email):', emailError);
+        // Don't throw - continue with workflow update even if email fails
+      }
 
       const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
