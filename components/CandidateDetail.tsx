@@ -2338,32 +2338,79 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <FileText size={20} className="text-purple-600" />
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <FileText size={20} className="text-purple-600 dark:text-purple-400" />
                   </div>
-                  <h3 className="font-bold text-gray-800">Extracted Data from ID</h3>
+                  <h3 className="font-bold text-gray-800 dark:text-white">Verification Timeline</h3>
+                </div>
+                <div className="space-y-3">
+                  {candidate.backgroundCheck?.createdAt && (
+                    <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                        <Clock size={14} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-white">Background Check Started</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {new Date(candidate.backgroundCheck.createdAt.seconds * 1000).toLocaleString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {candidate.backgroundCheck?.lastUpdated && (
+                    <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 size={14} className="text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-white">Status Updated</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {new Date(candidate.backgroundCheck.lastUpdated.seconds * 1000).toLocaleString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {!candidate.backgroundCheck?.createdAt && (
+                    <div className="text-center py-8">
+                      <Clock size={32} className="text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400">No timeline data available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                    <Shield size={20} className="text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 dark:text-white">Verification Details</h3>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-xs text-gray-600">Full Name</span>
-                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">Candidate Name</span>
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{candidate.candidate.name}</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-xs text-gray-600">ID Number</span>
-                    <span className="text-xs font-semibold text-gray-400">--</span>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">Email</span>
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{candidate.candidate.email}</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-xs text-gray-600">Date of Birth</span>
-                    <span className="text-xs font-semibold text-gray-400">--</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-xs text-gray-600">Address</span>
-                    <span className="text-xs font-semibold text-gray-400">--</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-xs text-gray-600">Nationality</span>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">Verification Method</span>
                     <span className="text-xs font-semibold text-gray-400">--</span>
                   </div>
                 </div>
