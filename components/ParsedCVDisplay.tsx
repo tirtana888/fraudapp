@@ -35,18 +35,6 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
           <div className="flex-1">
             <h2 className="text-2xl font-bold">{parsedData.fullName || 'Nama tidak tersedia'}</h2>
             <div className="flex flex-wrap gap-4 mt-2 text-sm">
-              {parsedData.email && (
-                <div className="flex items-center gap-2">
-                  <Mail size={14} />
-                  <span>{parsedData.email}</span>
-                </div>
-              )}
-              {parsedData.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone size={14} />
-                  <span>{parsedData.phone}</span>
-                </div>
-              )}
               {parsedData.address && (
                 <div className="flex items-center gap-2">
                   <MapPin size={14} />
