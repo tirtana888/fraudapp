@@ -35,9 +35,23 @@ const AssessmentProgress: React.FC<AssessmentProgressProps> = ({
   }, [currentStep]);
 
   return (
-    <div className="sticky-container">
-      {/* Progress Bar Container - STICKY WITH FIXED FALLBACK */}
-      <div className="sticky top-0 z-[9999] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-4 sm:p-6 border-2 border-gray-100 dark:border-slate-700 backdrop-blur-md bg-opacity-98 mb-6" style={{ position: 'sticky', top: 0 }}>
+    <>
+      {/* Progress Bar Container - FIXED POSITIONING (Always Visible) */}
+      <div 
+        className="fixed top-0 left-0 right-0 z-[9999] mx-auto max-w-2xl px-6 pt-6" 
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: '42rem',
+          padding: '1.5rem 1.5rem 0',
+          zIndex: 9999
+        }}
+      >
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-4 sm:p-6 border-2 border-gray-100 dark:border-slate-700 backdrop-blur-md bg-opacity-98" 
+             style={{ backgroundColor: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(12px)' }}>
         {/* Milestone Celebration - Inside sticky container */}
         {showMilestone && (
           <div className="animate-bounce-in bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow-lg text-center font-bold mb-4 text-sm sm:text-base">
