@@ -167,7 +167,9 @@ const App: React.FC = () => {
   // Merges sessions and invites into a single, sorted, real-time feed.
   useEffect(() => {
     const handleNavigateToCredits = () => {
-      setCurrentView('credit-management');
+      if (activeView) {
+        setActiveView('credit-management' as any);
+      }
     };
     
     window.addEventListener('navigate-to-credits', handleNavigateToCredits);
@@ -175,7 +177,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('navigate-to-credits', handleNavigateToCredits);
     };
-  }, []);
+  }, [activeView]);
 
   useEffect(() => {
     if (!currentUser) return;
