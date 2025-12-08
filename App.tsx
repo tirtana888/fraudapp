@@ -25,6 +25,7 @@ import CompanyProfileSettings from './components/CompanyProfileSettings';
 import HistoryView from './components/HistoryView';
 import Documentation from './components/Documentation';
 import WorkflowManager from './components/WorkflowManager';
+import CreditManagementPage from './components/CreditManagementPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
