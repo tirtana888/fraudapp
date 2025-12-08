@@ -2018,8 +2018,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 ) : (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">
-                      <FileText size={48} className="text-gray-300 mb-3" />
-                      <p className="text-gray-500 text-sm">Tidak ada CV yang diunggah</p>
+                      <FileText size={48} className="text-gray-300 dark:text-gray-600 mb-3" />
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">Tidak ada CV yang diunggah</p>
                     </div>
                   </div>
                 )}
