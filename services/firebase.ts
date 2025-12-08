@@ -7,7 +7,8 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   User as FirebaseUser,
-  onAuthStateChanged as firebaseOnAuthStateChanged
+  onAuthStateChanged as firebaseOnAuthStateChanged,
+  Auth
 } from 'firebase/auth';
 import { 
   getFirestore, 
