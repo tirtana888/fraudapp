@@ -156,16 +156,16 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
       </div>
 
       {parsedData.certifications && parsedData.certifications.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <Award size={18} className="text-[#D95D00]" />
-            Sertifikasi
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+            <Award size={16} className="text-[#D95D00]" />
+            Sertifikasi ({parsedData.certifications.length})
           </h3>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {parsedData.certifications.map((cert, index) => (
               <li key={index} className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 bg-[#D95D00] rounded-full mt-2"></div>
-                <span className="text-gray-700">{cert}</span>
+                <div className="w-1 h-1 bg-[#D95D00] rounded-full mt-1.5 flex-shrink-0"></div>
+                <span className="text-gray-600 text-xs">{cert}</span>
               </li>
             ))}
           </ul>
