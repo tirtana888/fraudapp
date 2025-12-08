@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Calendar, User, Briefcase, ChevronRight } from 'lucide-react';
+import { Search, FileText, Calendar, User, Briefcase, ChevronRight, Lock, Crown } from 'lucide-react';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { InterviewSession, AssessmentInvite } from '../types';
+import { InterviewSession, AssessmentInvite, CompanyProfile, SUBSCRIPTION_PLANS } from '../types';
 
 interface HistoryViewProps {
   companyId: string;
+  company?: CompanyProfile;
   onViewCandidate: (sessionId: string) => void;
+  onUpgradeClick?: () => void;
 }
 
 interface CandidateHistory extends InterviewSession {
