@@ -137,15 +137,18 @@ frontend:
 
   - task: "Login Flow with Email Verification Check"
     implemented: true
-    working: "NA"
+    working: false
     file: "components/LoginPage.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Login flow with verification check needs testing - create new account, logout, try to login with unverified account, verify system shows verification prompt instead of dashboard, check error messages are in Bahasa Indonesia."
+      - working: false
+        agent: "testing"
+        comment: "❌ LOGIN FLOW WITH VERIFICATION CHECK NOT WORKING - Firebase authentication fails with 'auth/api-key-not-valid' error. Created test account successfully via signup form, but login attempts fail due to API key mismatch. Code shows proper verification check logic in handleLogin function (lines 40-46) but cannot execute due to Firebase config issue. Root cause: services/firebase.ts uses hardcoded API key instead of environment variable."
 
 metadata:
   created_by: "testing_agent"
