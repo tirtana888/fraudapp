@@ -23,10 +23,10 @@ interface CreditManagementPageProps {
 }
 
 const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: initialCompany, onCompanyUpdate }) => {
-  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [creditBalance, setCreditBalance] = useState<number>(initialCompany.credits || 0);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [company, setCompany] = useState<CompanyProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [company, setCompany] = useState<CompanyProfile>(initialCompany);
+  const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -36,22 +36,26 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
 
   useEffect(() => {
     loadCreditData();
-  }, [user.companyId]);
+  }, [initialCompany.id]);
 
   const loadCreditData = async () => {
-    if (!user.companyId) return;
+    if (!initialCompany.id) return;
 
     setIsLoading(true);
     try {
-      const [balance, txHistory, companyData] = await Promise.all([
-        getCreditBalance(user.companyId),
-        getCreditTransactions(user.companyId, 50),
-        getCompanyById(user.companyId)
+      const [balance, txHistory] = await Promise.all([
+        getCreditBalance(initialCompany.id),
+        getCreditTransactions(initialCompany.id, 50)
       ]);
 
       setCreditBalance(balance);
       setTransactions(txHistory);
-      setCompany(companyData);
+      
+      // Refresh company data
+      const updatedCompany = await getCompanyById(initialCompany.id);
+      if (updatedCompany) {
+        setCompany(updatedCompany);
+      }
     } catch (error) {
       console.error('[CREDIT] Error loading data:', error);
     } finally {
