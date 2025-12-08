@@ -40,6 +40,7 @@ export const COLLECTIONS = {
 
 export let db: Firestore;
 export let functions: any;
+export let auth: Auth;
 let storage: any;
 
 // Helper function untuk kirim email via Firebase Cloud Function dengan Resend
