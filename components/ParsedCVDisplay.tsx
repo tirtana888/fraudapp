@@ -26,42 +26,41 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
   const totalExperience = calculateTotalExperience();
   
   return (
-    <div className="space-y-4">
-      <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] text-white rounded-xl p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-            <User size={32} />
+    <div className="space-y-3">
+      {/* Compact Header */}
+      <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] text-white rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <User size={24} />
           </div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold">{parsedData.fullName || 'Nama tidak tersedia'}</h2>
-            <div className="flex flex-wrap gap-4 mt-2 text-sm">
-              {parsedData.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} />
-                  <span>{parsedData.address}</span>
-                </div>
-              )}
-            </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold truncate">{parsedData.fullName || 'Nama tidak tersedia'}</h2>
+            {parsedData.address && (
+              <div className="flex items-center gap-1.5 mt-1 text-sm opacity-90">
+                <MapPin size={12} />
+                <span className="truncate">{parsedData.address}</span>
+              </div>
+            )}
+            
+            {/* Inline Stats */}
+            {(totalExperience > 0 || parsedData.education?.length > 0) && (
+              <div className="flex gap-4 mt-2 text-sm">
+                {totalExperience > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold">{totalExperience}+ thn</span>
+                    <span className="opacity-75">exp</span>
+                  </div>
+                )}
+                {parsedData.education && parsedData.education.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold">{parsedData.education[0]?.degree?.split(' ')[0] || 'S1'}</span>
+                    <span className="opacity-75">edu</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-        
-        {/* Quick Stats */}
-        {(totalExperience > 0 || parsedData.education?.length > 0) && (
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/20">
-            {totalExperience > 0 && (
-              <div>
-                <div className="text-3xl font-bold">{totalExperience}+</div>
-                <div className="text-sm opacity-90">Tahun Pengalaman</div>
-              </div>
-            )}
-            {parsedData.education && parsedData.education.length > 0 && (
-              <div>
-                <div className="text-3xl font-bold">{parsedData.education[0]?.degree?.split(' ')[0] || 'S1'}</div>
-                <div className="text-sm opacity-90">Pendidikan Terakhir</div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {parsedData.summary && (
