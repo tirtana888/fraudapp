@@ -3,6 +3,18 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc, limit } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  Auth,
+  User as FirebaseUser
+} from "firebase/auth";
 import { CompanyProfile, UserProfile, AssessmentInvite, Job, JobApplication } from "../types";
 
 // --- KONFIGURASI FIREBASE (From Environment Variables) ---
