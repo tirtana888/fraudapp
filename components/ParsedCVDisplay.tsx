@@ -74,19 +74,19 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
       )}
 
       {parsedData.experience && parsedData.experience.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2 text-sm">
             <Briefcase size={16} className="text-[#D95D00]" />
             Pengalaman Kerja ({parsedData.experience.length})
           </h3>
           <div className="space-y-3">
             {parsedData.experience.map((exp, index) => (
               <div key={index} className="border-l-2 border-[#D95D00] pl-3 pb-3 last:pb-0">
-                <h4 className="font-semibold text-gray-900 text-sm">{exp.title}</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{exp.title}</h4>
                 <p className="text-[#D95D00] font-medium text-xs">{exp.company}</p>
-                <p className="text-xs text-gray-500 mb-1">{exp.duration}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{exp.duration}</p>
                 {exp.description && (
-                  <p className="text-gray-600 text-xs leading-relaxed line-clamp-2">{exp.description}</p>
+                  <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed line-clamp-2">{exp.description}</p>
                 )}
               </div>
             ))}
