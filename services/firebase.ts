@@ -1444,27 +1444,30 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
 };
 
 export const parseCVWithMistral = async (cvUrl: string, sessionId: string): Promise<any> => {
-  console.log('[CV-PARSE] Starting CV parsing with Mistral AI...');
-  console.log('[CV-PARSE] CV URL:', cvUrl);
-  console.log('[CV-PARSE] Session ID:', sessionId);
+  console.log('[DOC-PARSE] Starting document parsing with Mistral AI...');
+  console.log('[DOC-PARSE] Document URL:', cvUrl);
+  console.log('[DOC-PARSE] Session ID:', sessionId);
 
   try {
     if (!functions) {
-      console.error('[CV-PARSE] Firebase Functions not initialized');
+      console.error('[DOC-PARSE] Firebase Functions not initialized');
       throw new Error('Firebase Functions not available');
     }
 
-    const parseCVFunction = httpsCallable(functions, 'parseCVWithMistral');
+    // Updated: Use new universal document parser function
+    const parseDocFunction = httpsCallable(functions, 'parseDocumentWithMistral');
 
-    console.log('[CV-PARSE] Calling Firebase Function...');
-    const result = await parseCVFunction({ cvUrl, sessionId });
+    console.log('[DOC-PARSE] Calling Firebase Function...');
+    const result = await parseDocFunction({ documentUrl: cvUrl, sessionId });
 
-    console.log('[CV-PARSE] ✅ CV parsed successfully');
+    console.log('[DOC-PARSE] ✅ Document parsed successfully');
+    console.log('[DOC-PARSE] File type:', result.data?.fileType);
+    console.log('[DOC-PARSE] Extracted chars:', result.data?.extractedChars);
     return result.data;
 
   } catch (error: any) {
-    console.error('[CV-PARSE] Error parsing CV:', error);
-    throw new Error(`Failed to parse CV: ${error.message}`);
+    console.error('[DOC-PARSE] Error parsing document:', error);
+    throw new Error(`Failed to parse document: ${error.message}`);
   }
 };
 
