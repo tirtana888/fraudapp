@@ -2462,7 +2462,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 </p>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Liveness (Coming Soon Section) */}
