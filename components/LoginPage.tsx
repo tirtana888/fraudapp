@@ -102,7 +102,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-6">
             <img 
-              src="/untitled_design_(43).png" 
+              src="/untitled_design_43.png" 
               alt="HireGood Logo" 
               className="w-12 h-12 object-contain"
             />
