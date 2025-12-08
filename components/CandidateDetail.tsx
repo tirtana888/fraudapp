@@ -69,22 +69,48 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
   useEffect(() => {
     loadCandidateData();
 
-    // Real-time listener for CV parsing updates
+    // Real-time listener for CV parsing and Background Check updates
     const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
     const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        // Update only cvParsedData if it changes
+        
+        // Update cvParsedData if it changes
         if (data.cvParsedData && candidate?.cvUrl && !candidate.cvParsedData) {
           console.log('[CANDIDATE-DETAIL] CV parsed data received via real-time listener');
           setCandidate(prev => prev ? { ...prev, cvParsedData: data.cvParsedData } : null);
           toast.success('CV berhasil diparsing!');
         }
+
+        // Update backgroundCheck if it changes
+        if (data.backgroundCheck) {
+          const currentBgCheck = candidate?.backgroundCheck;
+          const newBgCheck = data.backgroundCheck;
+          
+          // Check if status has changed
+          if (currentBgCheck?.status !== newBgCheck.status) {
+            console.log('[CANDIDATE-DETAIL] Background check status updated via real-time listener:', newBgCheck.status);
+            setCandidate(prev => prev ? { ...prev, backgroundCheck: newBgCheck } : null);
+            
+            // Show toast based on status
+            if (newBgCheck.status === 'approved') {
+              toast.success('✓ Background check berhasil! Kandidat telah diverifikasi.');
+            } else if (newBgCheck.status === 'declined') {
+              toast.error('✗ Background check ditolak. Verifikasi gagal.');
+            } else if (newBgCheck.status === 'in_progress') {
+              toast.info('⏳ Background check sedang diproses...');
+            }
+          } else if (!currentBgCheck && newBgCheck) {
+            // Initial background check data received
+            console.log('[CANDIDATE-DETAIL] Background check data received via real-time listener');
+            setCandidate(prev => prev ? { ...prev, backgroundCheck: newBgCheck } : null);
+          }
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [sessionId]);
+  }, [sessionId, candidate?.cvParsedData, candidate?.backgroundCheck?.status]);
 
   const loadCandidateData = async () => {
     try {
