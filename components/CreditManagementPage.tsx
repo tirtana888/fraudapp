@@ -65,11 +65,11 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
   };
 
   const handleTopUp = async (credits: number) => {
-    if (!user.companyId || !user.email) return;
+    if (!initialCompany.id || !user.email) return;
 
     setIsProcessing(true);
     try {
-      const result = await createTopUpInvoice(user.companyId, credits, user.email);
+      const result = await createTopUpInvoice(initialCompany.id, credits, user.email);
 
       if (result.success && result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
@@ -85,11 +85,11 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
   };
 
   const handleUpgradeToPremium = async () => {
-    if (!user.companyId || !user.email) return;
+    if (!initialCompany.id || !user.email) return;
 
     setIsProcessing(true);
     try {
-      const result = await createPremiumSubscriptionInvoice(user.companyId, user.email);
+      const result = await createPremiumSubscriptionInvoice(initialCompany.id, user.email);
 
       if (result.success && result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
