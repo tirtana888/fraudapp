@@ -1932,23 +1932,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   Data Kandidat (AI Parsed)
                 </h3>
                 {!candidate.cvParsedData && candidate.cvUrl && (
-                  <button
-                    onClick={handleParseCV}
-                    disabled={isParsing}
-                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isParsing ? (
-                      <>
-                        <span className="animate-spin">⏳</span>
-                        Parsing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={16} />
-                        Parse CV Sekarang
-                      </>
-                    )}
-                  </button>
+                  <span className="px-3 py-1.5 bg-white/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5">
+                    <span className="animate-spin">⏳</span>
+                    Auto-parsing...
+                  </span>
+                )}
+                {candidate.cvParsedData && (
+                  <span className="px-3 py-1.5 bg-green-500/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5">
+                    ✓ Parsed
+                  </span>
                 )}
               </div>
               <div className="p-6">
