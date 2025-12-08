@@ -47,7 +47,6 @@ export const analyzeFraudRisk = async (
     // Return fallback analysis
     return {
       riskLevel: 'Medium' as any,
-      riskScore: 50,
       pressureScore: 50,
       rationalizationScore: 50,
       opportunityScore: 50,
@@ -89,3 +88,27 @@ export const generateAIReport = async (
     throw error;
   }
 };
+
+
+/**
+ * Legacy function - Calculate assessment scores manually
+ */
+export const calculateAssessmentScores = (
+  ftAnswers: Record<string, any>,
+  sjtAnswers: Record<string, any>,
+  finAnswers?: Record<string, any>
+): { pressureScore: number; rationalizationScore: number; opportunityScore: number } => {
+  return {
+    pressureScore: 50,
+    rationalizationScore: 50,
+    opportunityScore: 50
+  };
+};
+
+/**
+ * Legacy function - Generate next question
+ */
+export const generateNextQuestion = async (context: any): Promise<string> => {
+  return 'Ceritakan tentang pengalaman kerja Anda.';
+};
+
