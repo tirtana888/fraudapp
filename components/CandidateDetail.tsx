@@ -2450,24 +2450,25 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             )}
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-teal-100 rounded-lg">
-                    <User size={20} className="text-teal-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-800">Liveness Detection</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <Info size={20} className="text-gray-600 dark:text-gray-400" />
                 </div>
-                <div className="text-center mb-4">
-                  <div className="w-32 h-32 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <User size={48} className="text-gray-300" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-400">Liveness Check Pending</p>
-                  <p className="text-xs text-gray-400 mt-1">Verifies user is physically present</p>
-                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white">Notes</h3>
+              </div>
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Background check powered by <span className="font-semibold text-blue-600 dark:text-blue-400">Didit KYC</span>
+                </p>
               </div>
             </div>
+          </div>
+        )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {/* Liveness (Coming Soon Section) */}
+        {activeTab === 'liveness' && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-orange-100 rounded-lg">
                     <Scan size={20} className="text-orange-600" />
