@@ -1320,7 +1320,7 @@ export const createInterviewSessionFromApplication = async (
       },
       date: now,
       status: sessionStatus as 'active' | 'pending_review',
-      recruitmentStage: workflowSteps.length > 0 ? 'integrity_assessment' : 'screening',
+      recruitmentStage: workflowSteps.length > 0 ? workflowSteps[0].id : 'screening',
       transcript: [
         {
           speaker: 'ai' as const,
