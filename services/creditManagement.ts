@@ -8,16 +8,23 @@ import { CreditTransaction, CREDIT_COSTS, SUBSCRIPTION_PLANS, CREDIT_TO_IDR_RATE
 
 /**
  * Deduct credits from company balance with transaction logging
+ * @param companyId - Company ID
+ * @param amount - Amount to deduct (if provided, overrides default cost)
+ * @param actionType - Type of action
+ * @param description - Custom description (optional)
+ * @param metadata - Additional metadata
  */
 export const deductCredit = async (
   companyId: string,
+  amount: number,
   actionType: 'KYC_VERIFICATION' | 'RESEND_INVITE' | 'UNLOCK_PROFILE',
+  description?: string,
   metadata?: {
     candidateId?: string;
     candidateName?: string;
     sessionId?: string;
   }
-): Promise<{ success: boolean; message: string; remainingCredits?: number }> => {
+): Promise<{ success: boolean; error?: string; remainingCredits?: number }> => {
   try {
     const cost = CREDIT_COSTS[actionType];
     const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
