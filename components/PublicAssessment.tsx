@@ -358,11 +358,26 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     setShowConfetti(true);
     setStep('analyzing');
     
+    console.log('[FINISH-ASSESSMENT] Starting analysis...');
+    
     let finalAnalysis: FraudAnalysis;
+    
+    // Add timeout to prevent infinite spinner
+    const analysisTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Analysis timeout')), 30000) // 30 second timeout
+    );
+    
     try {
-      finalAnalysis = await analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Basic');
+      finalAnalysis = await Promise.race([
+        analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Basic'),
+        analysisTimeout
+      ]) as FraudAnalysis;
+      
+      console.log('[FINISH-ASSESSMENT] ✅ Analysis completed');
+      
     } catch (error) {
-      console.error("CRITICAL: analyzeFraudRisk threw an unexpected error. Generating emergency fallback.", error);
+      console.error("[FINISH-ASSESSMENT] Analysis failed, using fallback:", error);
+      
       const manualScores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
       const avgScore = (manualScores.pressureScore + manualScores.rationalizationScore + manualScores.opportunityScore) / 3;
       let manualRisk = RiskLevel.LOW;
@@ -373,9 +388,9 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       finalAnalysis = {
           scores: { pressure: manualScores.pressureScore, opportunity: manualScores.opportunityScore, rationalization: manualScores.rationalizationScore },
           riskLevel: manualRisk,
-          summary: "Laporan GAGAL dibuat karena gangguan koneksi saat analisis AI. Skor dihitung berdasarkan jawaban kuesioner saja. Mohon review manual.",
-          redFlags: ["ANALISIS AI GAGAL TOTAL"],
-          recommendation: "Lakukan review manual transkrip dan jawaban yang tersimpan.",
+          summary: "Laporan dibuat berdasarkan analisis manual. AI analisis tidak tersedia saat ini.",
+          redFlags: ["Analisis AI tidak tersedia"],
+          recommendation: "Review manual diperlukan untuk verifikasi hasil.",
           isManualFallback: true,
       } as FraudAnalysis;
     }
