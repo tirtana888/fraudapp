@@ -92,15 +92,18 @@ frontend:
 
   - task: "Email Verification Flow - Verification Screen"
     implemented: true
-    working: "NA"
+    working: false
     file: "components/LoginPage.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Email verification flow implementation needs testing - verify verification screen shows for unverified users with proper UI elements: 'Verifikasi Email Anda' heading, explanation with bullet points, 'Kirim Ulang Email Verifikasi' button, 'Lanjutkan Tanpa Verifikasi' button."
+      - working: false
+        agent: "testing"
+        comment: "❌ EMAIL VERIFICATION FLOW NOT WORKING - Firebase authentication failing with error 'Firebase: Error (auth/api-key-not-valid.-please-pass-a-valid-api-key.)'. Login attempts fail, preventing access to email verification screen. Issue: Firebase config in services/firebase.ts uses hardcoded API key 'AIzaSyBRq4BjPPkxb0HuiX1pJ-pqxnK6RaHBdRk' which differs from .env file API key 'AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo'. Cannot test verification flow until Firebase config is fixed."
 
   - task: "Email Verification Flow - Resend Verification Email"
     implemented: true
