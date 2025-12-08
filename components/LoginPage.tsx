@@ -30,7 +30,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
     setIsLoading(true);
 
     try {
-      const user = await loginWithFirestore(email, password);
+      const user = await loginWithFirebase(email, password);
       if (user) {
         onLogin(user);
       }
