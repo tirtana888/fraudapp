@@ -62,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
         </div>
         
         {/* Recruitment Link Widget - GATED */}
-        {features.allow_permanent_link ? (
+        {features?.allow_permanent_link === true ? (
             <div className="w-full md:w-auto bg-brand-blue/10 dark:bg-brand-blue/5 border border-brand-blue/20 p-4 rounded-xl flex flex-col gap-2">
                 <label className="text-xs font-bold text-brand-dark dark:text-brand-blue uppercase tracking-wide flex items-center gap-1">
                     <ExternalLink size={12} /> Link Asesmen Mandiri
