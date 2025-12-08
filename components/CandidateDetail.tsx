@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink } from 'lucide-react';
-import { InterviewSession, ParsedCVData } from '../types';
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock } from 'lucide-react';
+import { InterviewSession, ParsedCVData, CompanyProfile } from '../types';
 import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -8,9 +8,11 @@ import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
 import ParsedCVDisplay from './ParsedCVDisplay';
+import { deductCredit } from '../services/creditManagement';
 
 interface CandidateDetailProps {
   sessionId: string;
+  company: CompanyProfile;
   onBack: () => void;
 }
 
