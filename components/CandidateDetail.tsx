@@ -56,6 +56,22 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
   useEffect(() => {
     loadCandidateData();
+
+    // Real-time listener for CV parsing updates
+    const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+    const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        // Update only cvParsedData if it changes
+        if (data.cvParsedData && candidate?.cvUrl && !candidate.cvParsedData) {
+          console.log('[CANDIDATE-DETAIL] CV parsed data received via real-time listener');
+          setCandidate(prev => prev ? { ...prev, cvParsedData: data.cvParsedData } : null);
+          toast.success('CV berhasil diparsing!');
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, [sessionId]);
 
   const loadCandidateData = async () => {
