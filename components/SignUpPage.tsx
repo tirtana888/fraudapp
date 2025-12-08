@@ -1,19 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Loader2, 
-  ShieldAlert, 
-  Eye, 
-  EyeOff, 
-  Building2,
-  User,
-  Phone,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, Building2, User, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { signUpWithFirebase } from '../services/firebase';
 
@@ -38,6 +24,8 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   // Password Strength Check
   const checkPasswordStrength = (password: string) => {
@@ -74,8 +62,8 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'Format email tidak valid';
     if (!formData.phone.trim()) return 'Nomor telepon harus diisi';
     if (formData.password.length < 8) return 'Password minimal 8 karakter';
-    if (formData.password !== formData.confirmPassword) return 'Password dan konfirmasi password tidak cocok';
-    if (passwordStrength === 'weak') return 'Password terlalu lemah. Gunakan kombinasi huruf besar, kecil, angka, dan simbol';
+    if (formData.password !== formData.confirmPassword) return 'Password tidak cocok';
+    if (passwordStrength === 'weak') return 'Password terlalu lemah';
     
     return null;
   };
@@ -102,7 +90,9 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
       });
 
       if (user) {
-        onSignUpSuccess(user);
+        // Show verification message instead of auto-login
+        setRegisteredEmail(formData.email);
+        setShowVerificationMessage(true);
       }
     } catch (err: any) {
       setError(err.message || "Gagal mendaftar. Silakan coba lagi.");
@@ -125,36 +115,76 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
     return 'Kuat';
   };
 
-  return (
-    <div className="min-h-screen flex bg-white font-sans">
-      
-      {/* LEFT SIDE: FORM */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-20 xl:px-32 relative overflow-y-auto">
-        <div className="absolute top-8 left-8 md:left-20 flex items-center gap-2">
-          <div className="bg-brand-orange p-1.5 rounded-lg text-white">
-            <ShieldAlert size={20} />
+  if (showVerificationMessage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={32} className="text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pendaftaran Berhasil!</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Kami telah mengirim email verifikasi ke<br />
+              <span className="font-medium text-gray-900">{registeredEmail}</span>
+            </p>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-orange-900 font-medium mb-2">Langkah Selanjutnya:</p>
+              <ol className="text-xs text-orange-800 text-left space-y-1">
+                <li>1. Buka email dari HireGood.one</li>
+                <li>2. Klik link verifikasi</li>
+                <li>3. Login ke akun Anda</li>
+              </ol>
+            </div>
+            <button
+              onClick={onSwitchToLogin}
+              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all"
+            >
+              Ke Halaman Login
+            </button>
+            <p className="text-xs text-gray-500 mt-4">
+              Tidak menerima email? Periksa folder spam
+            </p>
           </div>
-          <span className="font-bold text-xl text-gray-800 tracking-tight">HireGood.one</span>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold border border-green-200">SECURE</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-md">
+        
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">H</span>
+            </div>
+            <span className="text-2xl font-bold text-gray-900">HireGood</span>
+          </div>
         </div>
 
-        <div className="max-w-md w-full mx-auto py-16 animate-in fade-in slide-in-from-left-4 duration-500">
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Daftar Perusahaan</h1>
-          <p className="text-gray-500 mb-8">Buat akun Enterprise SaaS untuk perusahaan Anda.</p>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Buat Akun</h1>
+            <p className="text-sm text-gray-500">Daftar untuk memulai rekrutmen</p>
+          </div>
 
           <form onSubmit={handleSignUp} className="space-y-4">
             {/* Company Name */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Nama Perusahaan</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Perusahaan</label>
               <div className="relative">
-                <Building2 className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <Building2 className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type="text" 
                   value={formData.companyName}
                   onChange={(e) => handleInputChange('companyName', e.target.value)}
                   placeholder="PT. Nama Perusahaan"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
               </div>
@@ -162,15 +192,15 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Full Name */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Nama Lengkap</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
               <div className="relative">
-                <User className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <User className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type="text" 
                   value={formData.fullName}
                   onChange={(e) => handleInputChange('fullName', e.target.value)}
                   placeholder="John Doe"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
               </div>
@@ -178,15 +208,15 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Email Perusahaan</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type="email" 
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="name@company.com"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  placeholder="nama@perusahaan.com"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
               </div>
@@ -194,15 +224,15 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Nomor Telepon</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nomor Telepon</label>
               <div className="relative">
-                <Phone className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type="tel" 
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="+62 812-3456-7890"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
               </div>
@@ -210,35 +240,35 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Kata Sandi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   placeholder="Minimal 8 karakter"
-                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               
               {/* Password Strength Indicator */}
               {formData.password && (
                 <div className="mt-2">
-                  <div className="flex gap-1 mb-1">
-                    <div className={`h-1.5 flex-1 rounded-full ${formData.password.length > 0 ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
-                    <div className={`h-1.5 flex-1 rounded-full ${passwordStrength && passwordStrength !== 'weak' ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
-                    <div className={`h-1.5 flex-1 rounded-full ${passwordStrength === 'strong' ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
+                  <div className="flex gap-1">
+                    <div className={`h-1 flex-1 rounded-full ${formData.password.length > 0 ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
+                    <div className={`h-1 flex-1 rounded-full ${passwordStrength && passwordStrength !== 'weak' ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
+                    <div className={`h-1 flex-1 rounded-full ${passwordStrength === 'strong' ? getPasswordStrengthColor() : 'bg-gray-200'}`} />
                   </div>
-                  <p className={`text-xs font-semibold ${
+                  <p className={`text-xs mt-1 font-medium ${
                     passwordStrength === 'weak' ? 'text-red-600' :
                     passwordStrength === 'medium' ? 'text-yellow-600' :
                     'text-green-600'
@@ -251,23 +281,23 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Konfirmasi Kata Sandi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  placeholder="Ketik ulang kata sandi"
-                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:bg-white focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none font-medium"
+                  placeholder="Ketik ulang password"
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                 >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               
@@ -276,13 +306,13 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
                 <div className="mt-2 flex items-center gap-2">
                   {formData.password === formData.confirmPassword ? (
                     <>
-                      <CheckCircle2 size={16} className="text-green-600" />
-                      <p className="text-xs text-green-600 font-semibold">Password cocok</p>
+                      <CheckCircle2 size={14} className="text-green-600" />
+                      <p className="text-xs text-green-600 font-medium">Password cocok</p>
                     </>
                   ) : (
                     <>
-                      <AlertCircle size={16} className="text-red-600" />
-                      <p className="text-xs text-red-600 font-semibold">Password tidak cocok</p>
+                      <AlertCircle size={14} className="text-red-600" />
+                      <p className="text-xs text-red-600 font-medium">Password tidak cocok</p>
                     </>
                   )}
                 </div>
@@ -291,9 +321,9 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800 font-medium">{error}</p>
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-red-700">{error}</span>
               </div>
             )}
 
@@ -301,90 +331,38 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
               {isLoading ? (
                 <>
-                  <Loader2 size={20} className="animate-spin" />
-                  <span>Mendaftar...</span>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-sm">Mendaftar...</span>
                 </>
               ) : (
                 <>
-                  <span>Daftar Sekarang</span>
-                  <ArrowRight size={20} />
+                  <span className="text-sm">Daftar</span>
+                  <ArrowRight size={18} />
                 </>
               )}
             </button>
 
             {/* Switch to Login */}
-            <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
-                Sudah punya akun?{' '}
-                <button
-                  type="button"
-                  onClick={onSwitchToLogin}
-                  className="font-bold text-brand-orange hover:underline"
-                >
-                  Login di sini
-                </button>
-              </p>
+            <div className="text-center mt-4">
+              <span className="text-sm text-gray-600">Sudah punya akun? </span>
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                className="text-sm font-medium text-orange-600 hover:text-orange-700"
+              >
+                Login
+              </button>
             </div>
           </form>
         </div>
-      </div>
 
-      {/* RIGHT SIDE: BRANDING & BENEFITS */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-orange via-orange-600 to-orange-700 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20"></div>
-        
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <div className="max-w-lg animate-in fade-in slide-in-from-right-4 duration-700">
-            <ShieldCheck size={64} className="mb-6" />
-            <h2 className="text-4xl font-extrabold mb-6 leading-tight">
-              Bergabung dengan Platform Rekrutmen Terpercaya
-            </h2>
-            <p className="text-xl text-orange-100 mb-12 leading-relaxed">
-              HireGood.one membantu perusahaan menemukan kandidat terbaik dengan sistem penilaian integritas berbasis AI.
-            </p>
-
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm flex-shrink-0">
-                  <CheckCircle2 size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-1">Deteksi Fraud Otomatis</h3>
-                  <p className="text-orange-100">AI-powered fraud detection untuk screening kandidat</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm flex-shrink-0">
-                  <CheckCircle2 size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-1">Background Check Terintegrasi</h3>
-                  <p className="text-orange-100">Verifikasi identitas dengan Didit KYC</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm flex-shrink-0">
-                  <CheckCircle2 size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-1">Workflow Customizable</h3>
-                  <p className="text-orange-100">Sesuaikan proses rekrutmen dengan kebutuhan bisnis</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-12 pt-8 border-t border-white/20">
-              <p className="text-sm text-orange-100">
-                Dipercaya oleh <span className="font-bold text-white">500+ perusahaan</span> di Indonesia
-              </p>
-            </div>
-          </div>
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-500">© 2024 HireGood.one</p>
         </div>
       </div>
     </div>
