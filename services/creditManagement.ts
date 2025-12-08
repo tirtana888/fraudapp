@@ -26,7 +26,7 @@ export const deductCredit = async (
   }
 ): Promise<{ success: boolean; error?: string; remainingCredits?: number }> => {
   try {
-    const cost = CREDIT_COSTS[actionType];
+    const cost = amount || CREDIT_COSTS[actionType];
     const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
 
     // Use Firestore transaction for atomic credit deduction
@@ -42,7 +42,7 @@ export const deductCredit = async (
 
       // Check if sufficient credits
       if (currentCredits < cost) {
-        throw new Error(`Insufficient credits. Required: ${cost}, Available: ${currentCredits}`);
+        throw new Error(`Kredit tidak cukup. Dibutuhkan: ${cost}, Tersedia: ${currentCredits}`);
       }
 
       const newBalance = currentCredits - cost;
@@ -58,7 +58,7 @@ export const deductCredit = async (
         type: 'debit',
         amount: cost,
         action: actionType,
-        description: getActionDescription(actionType, metadata),
+        description: description || getActionDescription(actionType, metadata),
         balanceBefore: currentCredits,
         balanceAfter: newBalance,
         timestamp: new Date().toISOString(),
@@ -75,7 +75,6 @@ export const deductCredit = async (
 
     return {
       success: true,
-      message: `${result.cost} credits deducted successfully`,
       remainingCredits: result.newBalance
     };
 
@@ -83,7 +82,7 @@ export const deductCredit = async (
     console.error('[CREDIT] Deduction error:', error);
     return {
       success: false,
-      message: error.message || 'Failed to deduct credits'
+      error: error.message || 'Gagal mengurangi kredit'
     };
   }
 };
