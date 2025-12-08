@@ -82,6 +82,7 @@ export const sendEmailViaCloudFunction = async (
 try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+  auth = getAuth(app);
   functions = getFunctions(app, "europe-west1"); // Set region sesuai dengan Cloud Function
   storage = getStorage(app); // Initialize Firebase Storage
   console.log("[FraudGuard System] Connected to Firebase (Firestore + Functions + Storage).");
