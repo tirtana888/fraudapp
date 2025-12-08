@@ -438,7 +438,7 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
         </div>
 
         {/* COPY LINK SECTION - GATED */}
-        {features.allow_permanent_link ? (
+        {features?.allow_permanent_link === true ? (
             <div className="bg-brand-blue/10 dark:bg-brand-blue/5 border border-brand-blue/20 p-6 rounded-2xl">
                 <h3 className="text-sm font-bold text-brand-dark dark:text-brand-blue uppercase tracking-wide mb-3">Link Asesmen Aktif</h3>
                 <div className="flex gap-2">
