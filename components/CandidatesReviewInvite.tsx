@@ -868,12 +868,12 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
 
                       {app.recruitmentStage === 'kyc' && (
                         <button
-                          onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'approved', 'Kandidat disetujui dan siap bergabung')}
+                          onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'approved', 'Kandidat disetujui')}
                           disabled={isUpdating}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <CheckCircle2 size={16} />
-                          Setujui Kandidat
+                          <CheckCircle2 size={14} />
+                          Approve
                         </button>
                       )}
 
@@ -881,73 +881,27 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                         <button
                           onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'rejected', 'Kandidat ditolak')}
                           disabled={isUpdating}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <XCircle size={16} />
-                          Tolak
+                          <XCircle size={14} />
+                          Reject
                         </button>
                       )}
 
                       {app.cvUrl && (
-                        <button
-                          onClick={() => setExpandedApp(isExpanded ? null : app.id)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ml-auto"
+                        <a
+                          href={app.cvUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold transition-colors"
                         >
-                          <FileText size={16} />
-                          {isExpanded ? 'Tutup CV' : 'Lihat CV'}
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
+                          <FileText size={14} />
+                          CV
+                        </a>
                       )}
                     </div>
-
-                    {app.timeline && app.timeline.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Timeline Rekrutmen</h4>
-                        <div className="space-y-2">
-                          {app.timeline.map((item, idx) => {
-                            const itemStageInfo = getStageInfo(item.stage);
-                            return (
-                              <div key={idx} className="flex items-start gap-3 text-sm">
-                                <div className={`mt-0.5 p-1.5 rounded-full ${itemStageInfo.color.split(' ')[0]}`}>
-                                  {itemStageInfo.icon}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="font-medium text-gray-800">{itemStageInfo.label}</div>
-                                  {item.note && <div className="text-gray-600 text-xs mt-0.5">{item.note}</div>}
-                                  {item.date && (
-                                    <div className="text-gray-400 text-xs mt-0.5">
-                                      {new Date(item.date).toLocaleDateString('id-ID', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {isExpanded && app.cvUrl && (
-                    <div className="border-t border-gray-200 bg-gray-50 p-4">
-                      <div className="bg-white rounded-lg overflow-hidden" style={{ height: '600px' }}>
-                        {app.cvUrl.endsWith('.pdf') ? (
-                          <iframe
-                            src={app.cvUrl}
-                            className="w-full h-full"
-                            title={`CV ${app.candidate.name}`}
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <div className="text-center">
-                              <AlertCircle size={48} className="text-gray-400 mx-auto mb-4" />
-                              <p className="text-gray-600 mb-4">Preview tidak tersedia untuk format file ini</p>
+                  </td>
+                </tr>
                               <a
                                 href={app.cvUrl}
                                 target="_blank"
