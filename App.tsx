@@ -503,6 +503,11 @@ const App: React.FC = () => {
         />;
       case 'documentation':
         return <Documentation />;
+      case 'credit-management':
+        return <CreditManagementPage 
+          company={currentCompany!} 
+          onCompanyUpdate={handleCompanyUpdate}
+        />;
       case 'admin-panel':
         return <AdminDashboard />;
       case 'settings':
