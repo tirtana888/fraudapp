@@ -111,8 +111,8 @@ export interface FraudAnalysis {
 export interface UserProfile {
   id?: string;
   name: string;
-  role: 'System Admin' | 'Company Admin' | 'User' | 'Lead Investigator'; 
-  avatar: string;
+  role: 'System Admin' | 'Company Admin' | 'User' | 'Lead Investigator' | 'superadmin'; 
+  avatar?: string;
   email: string;
   companyId?: string; 
   password?: string; // Only for legacy users, Firebase Auth users don't store passwords
