@@ -142,11 +142,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Firebase Authentication - Sign Up Flow"
-    - "Firebase Authentication - Login Flow"
-    - "Firebase Authentication - Session Management"
-    - "Firebase Authentication - Form Validation"
-    - "Firebase Authentication - Password Reset"
+    - "Improved Login Page UI - Friendly Design"
+    - "Email Verification Flow - Verification Screen"
+    - "Email Verification Flow - Resend Verification Email"
+    - "Email Verification Flow - Skip Verification"
+    - "Login Flow with Email Verification Check"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
