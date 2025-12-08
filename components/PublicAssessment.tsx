@@ -258,11 +258,32 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       if (inviteData?.applicationId) {
           sessionData.applicationId = inviteData.applicationId;
 
-          // Fetch application data to get cvUrl and whatsapp
+          // Fetch application data to get cvUrl, whatsapp, and check for existing session
           try {
               const appDoc = await getDoc(doc(db, COLLECTIONS.APPLICATIONS, inviteData.applicationId));
               if (appDoc.exists()) {
                   const appData = appDoc.data();
+                  
+                  // Check if session already exists for this application
+                  if (appData.sessionId) {
+                      console.log('[PUBLIC-ASSESSMENT] ✅ Session already exists for application:', appData.sessionId);
+                      console.log('[PUBLIC-ASSESSMENT] Using existing session instead of creating new one');
+                      
+                      // Use existing session ID
+                      setSessionId(appData.sessionId);
+                      
+                      // Update invite status if needed
+                      if (inviteData?.access_code) {
+                          await markAccessCodeUsed(inviteData.access_code, 'IN_PROGRESS', appData.sessionId);
+                      }
+                      
+                      setChatHistory(initialHistory);
+                      setTimeLeft(CHAT_TIME_LIMIT_SECONDS);
+                      setStep('chat');
+                      return; // Exit early - don't create new session!
+                  }
+                  
+                  // If no existing session, add CV and WhatsApp to new session data
                   if (appData.cvUrl) sessionData.cvUrl = appData.cvUrl;
                   if (appData.whatsapp) sessionData.whatsapp = appData.whatsapp;
                   console.log('[PUBLIC-ASSESSMENT] Added CV and WhatsApp from application:', {
@@ -275,7 +296,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           }
       }
 
-      console.log('[PUBLIC-ASSESSMENT] Creating session with source:', sessionSource, 'jobId:', inviteData?.jobId);
+      console.log('[PUBLIC-ASSESSMENT] Creating NEW session with source:', sessionSource, 'jobId:', inviteData?.jobId);
 
       const realSessionId = await saveSessionToDB(sessionData);
       setSessionId(realSessionId);
