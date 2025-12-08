@@ -1643,8 +1643,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         {activeTab === 'overview' && candidate.status === 'completed' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <h3 className="font-semibold text-white flex items-center gap-2">
                     <Sparkles size={18} />
                     Ringkasan CV (AI Parsed)
@@ -1669,8 +1669,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     <div className="flex items-center justify-center py-20">
                       <div className="text-center max-w-md">
                         <div className="animate-spin text-6xl mb-4">⏳</div>
-                        <h4 className="font-semibold text-gray-800 mb-2">Sedang Memproses CV...</h4>
-                        <p className="text-gray-600 text-sm">
+                        <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">Sedang Memproses CV...</h4>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">
                           CV sedang dianalisis oleh AI. Proses ini memakan waktu sekitar 10-30 detik.
                           Refresh halaman untuk melihat hasil.
                         </p>
@@ -1679,9 +1679,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   ) : (
                     <div className="flex items-center justify-center py-20">
                       <div className="text-center max-w-md">
-                        <Sparkles size={48} className="text-gray-300 mx-auto mb-4" />
-                        <h4 className="font-semibold text-gray-800 mb-2">CV Tidak Tersedia</h4>
-                        <p className="text-gray-600 text-sm">
+                        <Sparkles size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                        <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">CV Tidak Tersedia</h4>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">
                           Kandidat belum mengupload CV.
                         </p>
                       </div>
