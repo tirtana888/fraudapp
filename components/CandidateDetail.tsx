@@ -1924,55 +1924,46 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'documents' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-6 py-4 flex items-center justify-between">
-                <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                  <Sparkles size={20} />
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 flex items-center justify-between">
+                <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                  <Sparkles size={18} />
                   Data Kandidat (AI Parsed)
                 </h3>
                 {!candidate.cvParsedData && candidate.cvUrl && (
-                  <span className="px-3 py-1.5 bg-white/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 bg-white/20 text-white rounded text-xs font-medium flex items-center gap-1.5">
                     <span className="animate-spin">⏳</span>
                     Auto-parsing...
                   </span>
                 )}
                 {candidate.cvParsedData && (
-                  <span className="px-3 py-1.5 bg-green-500/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 bg-green-500/20 text-white rounded text-xs font-medium flex items-center gap-1.5">
                     ✓ Parsed
                   </span>
                 )}
               </div>
-              <div className="p-6">
+              <div className="p-4">
                 {candidate.cvParsedData ? (
                   <ParsedCVDisplay parsedData={candidate.cvParsedData} />
-                ) : (
-                  <div className="flex items-center justify-center py-20">
+                ) : candidate.cvUrl ? (
+                  <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md">
-                      <Sparkles size={64} className="text-gray-300 mx-auto mb-4" />
-                      <h4 className="font-bold text-gray-800 text-lg mb-2">CV Belum Diparsing</h4>
-                      <p className="text-gray-600 mb-6">
-                        Gunakan AI untuk mengekstrak informasi terstruktur dari CV kandidat
+                      <div className="animate-spin text-4xl mb-3">⏳</div>
+                      <h4 className="font-semibold text-gray-800 mb-1">Sedang Memproses...</h4>
+                      <p className="text-gray-600 text-sm">
+                        CV sedang dianalisis oleh AI. Proses ini memakan waktu 10-30 detik.
                       </p>
-                      {candidate.cvUrl && (
-                        <button
-                          onClick={handleParseCV}
-                          disabled={isParsing}
-                          className="px-6 py-3 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 mx-auto font-semibold disabled:opacity-50"
-                        >
-                          {isParsing ? (
-                            <>
-                              <span className="animate-spin">⏳</span>
-                              Sedang Parsing...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={18} />
-                              Parse dengan Mistral AI
-                            </>
-                          )}
-                        </button>
-                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center max-w-md">
+                      <Sparkles size={48} className="text-gray-300 mx-auto mb-3" />
+                      <h4 className="font-semibold text-gray-800 mb-1">CV Tidak Tersedia</h4>
+                      <p className="text-gray-600 text-sm">
+                        Kandidat belum mengupload CV.
+                      </p>
                     </div>
                   </div>
                 )}
