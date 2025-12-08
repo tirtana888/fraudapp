@@ -6,6 +6,7 @@ import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';
+import { deductCredit } from '../services/creditManagement';
 
 interface CandidateBlastProps {
   currentCompany: CompanyProfile;
