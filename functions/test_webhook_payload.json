@@ -1,0 +1,32 @@
+{
+  "session_id": "test-didit-session-123",
+  "status": "Approved",
+  "vendor_data": "YOUR_FIRESTORE_SESSION_ID_HERE",
+  "decision": {
+    "status": "Approved",
+    "id_verification": {
+      "status": "Approved",
+      "full_name": "Test User",
+      "document_number": "1234567890",
+      "warnings": []
+    },
+    "face_match": {
+      "status": "Approved",
+      "score": 95.5
+    },
+    "liveness": {
+      "status": "Approved",
+      "score": 98.0
+    }
+  },
+  "created_at": 1733654400,
+  "timestamp": 1733654400,
+  "webhook_type": "status.updated",
+  "session_url": "https://verify.didit.me/session/test123",
+  "session_number": 1,
+  "metadata": {
+    "candidate_name": "Test User",
+    "candidate_email": "test@example.com",
+    "session_id": "YOUR_FIRESTORE_SESSION_ID_HERE"
+  }
+}
