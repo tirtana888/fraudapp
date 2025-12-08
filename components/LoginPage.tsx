@@ -143,8 +143,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
                 </form>
 
                 <div className="mt-8 text-center">
-                    <p className="text-sm text-gray-400">
-                    Belum punya akun? <span className="font-bold text-gray-600">Hubungi Sales Enterprise</span>
+                    <p className="text-sm text-gray-600">
+                    Belum punya akun?{' '}
+                    <button
+                      type="button"
+                      onClick={onSwitchToSignUp}
+                      className="font-bold text-brand-orange hover:underline"
+                    >
+                      Daftar di sini
+                    </button>
                     </p>
                 </div>
             </>
