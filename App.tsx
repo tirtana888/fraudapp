@@ -490,6 +490,7 @@ const App: React.FC = () => {
         if (viewingCandidateId) {
           return <CandidateDetail
             sessionId={viewingCandidateId}
+            company={currentCompany!}
             onBack={() => {
               setViewingCandidateId(null);
             }}
