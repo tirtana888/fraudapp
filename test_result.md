@@ -122,15 +122,18 @@ frontend:
 
   - task: "Email Verification Flow - Skip Verification"
     implemented: true
-    working: "NA"
+    working: false
     file: "components/LoginPage.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Skip verification functionality needs testing - verify 'Lanjutkan Tanpa Verifikasi' button allows access to dashboard with unverified status, check if there's indicator showing email not verified."
+      - working: false
+        agent: "testing"
+        comment: "❌ SKIP VERIFICATION NOT TESTABLE - Cannot test skip verification functionality due to Firebase authentication failure. Code shows handleSkipVerification function exists in LoginPage.tsx but cannot reach verification screen to test it. Requires Firebase API key fix to test properly."
 
   - task: "Login Flow with Email Verification Check"
     implemented: true
