@@ -115,7 +115,9 @@ export interface UserProfile {
   avatar: string;
   email: string;
   companyId?: string; 
-  password?: string; 
+  password?: string; // Only for legacy users, Firebase Auth users don't store passwords
+  emailVerified?: boolean; // Firebase Auth email verification status
+  createdAt?: any; // Creation timestamp
 }
 
 export interface CompanyProfile {
