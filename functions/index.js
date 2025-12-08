@@ -239,3 +239,198 @@ exports.sendRejectionEmail = functions
     console.log('[SEND-REJECTION] Sending rejection email');
     return { success: true };
   });
+
+exports.diditWebhook = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60 })
+  .https.onRequest(async (req, res) => {
+    console.log('[DIDIT-WEBHOOK] Received webhook request');
+    console.log('[DIDIT-WEBHOOK] Method:', req.method);
+    console.log('[DIDIT-WEBHOOK] Headers:', JSON.stringify(req.headers));
+    
+    // Enable CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, X-Signature, X-Timestamp');
+    
+    if (req.method === 'OPTIONS') {
+      res.status(200).send('');
+      return;
+    }
+    
+    if (req.method !== 'POST') {
+      console.log('[DIDIT-WEBHOOK] ⚠️ Invalid method, expected POST');
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+    
+    try {
+      const webhookData = req.body;
+      console.log('[DIDIT-WEBHOOK] Webhook payload:', JSON.stringify(webhookData, null, 2));
+      
+      const { 
+        session_id: diditSessionId, 
+        status, 
+        vendor_data: firestoreSessionId,
+        decision,
+        created_at,
+        timestamp
+      } = webhookData;
+      
+      if (!firestoreSessionId) {
+        console.error('[DIDIT-WEBHOOK] ❌ vendor_data (Firestore session ID) is missing');
+        res.status(400).json({ 
+          success: false, 
+          error: 'vendor_data is required' 
+        });
+        return;
+      }
+      
+      console.log('[DIDIT-WEBHOOK] Processing for Firestore session:', firestoreSessionId);
+      console.log('[DIDIT-WEBHOOK] Didit session ID:', diditSessionId);
+      console.log('[DIDIT-WEBHOOK] Status:', status);
+      
+      // Map Didit status to our format
+      let mappedStatus = 'pending';
+      if (status === 'Approved') {
+        mappedStatus = 'approved';
+      } else if (status === 'Declined') {
+        mappedStatus = 'declined';
+      } else if (status === 'In Progress') {
+        mappedStatus = 'in_progress';
+      }
+      
+      // Extract decision info if available
+      let decisionText = null;
+      if (decision && decision.status) {
+        decisionText = `Verification ${decision.status}`;
+        
+        // Add warnings if any
+        if (decision.id_verification && decision.id_verification.warnings) {
+          const warnings = decision.id_verification.warnings;
+          if (warnings.length > 0) {
+            decisionText += ` (${warnings.length} warning(s) detected)`;
+          }
+        }
+      }
+      
+      // Prepare background check data
+      const backgroundCheckData = {
+        status: mappedStatus,
+        diditSessionId: diditSessionId,
+        decision: decisionText,
+        verificationLink: webhookData.session_url || null,
+        createdAt: admin.firestore.Timestamp.fromMillis(created_at * 1000),
+        lastUpdated: admin.firestore.Timestamp.fromMillis((timestamp || created_at) * 1000),
+        rawWebhookData: {
+          status: status,
+          webhook_type: webhookData.webhook_type,
+          session_number: webhookData.session_number
+        }
+      };
+      
+      console.log('[DIDIT-WEBHOOK] Updating Firestore document:', firestoreSessionId);
+      console.log('[DIDIT-WEBHOOK] Background check data:', JSON.stringify(backgroundCheckData, null, 2));
+      
+      // Update Firestore - use interview_sessions collection
+      await db.collection('interview_sessions').doc(firestoreSessionId).update({
+        backgroundCheck: backgroundCheckData,
+        backgroundCheckStatus: mappedStatus,
+        backgroundCheckCompletedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log('[DIDIT-WEBHOOK] ✅ Firestore updated successfully');
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'Webhook processed successfully',
+        sessionId: firestoreSessionId,
+        status: mappedStatus
+      });
+      
+    } catch (error) {
+      console.error('[DIDIT-WEBHOOK] ❌ Error processing webhook:', error);
+      console.error('[DIDIT-WEBHOOK] Error stack:', error.stack);
+      
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+exports.createDiditSession = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60 })
+  .https.onCall(async (data, context) => {
+    console.log('[CREATE-DIDIT] Creating Didit verification session');
+    
+    const { sessionId, candidateName, candidateEmail } = data;
+    
+    if (!sessionId || !candidateName || !candidateEmail) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'sessionId, candidateName, and candidateEmail are required'
+      );
+    }
+    
+    try {
+      const diditApiKey = functions.config().didit?.api_key;
+      const diditFlowId = functions.config().didit?.flow_id;
+      
+      if (!diditApiKey || !diditFlowId) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'Didit API key or Flow ID not configured'
+        );
+      }
+      
+      console.log('[CREATE-DIDIT] Calling Didit API...');
+      console.log('[CREATE-DIDIT] Flow ID:', diditFlowId);
+      console.log('[CREATE-DIDIT] Candidate:', candidateName, candidateEmail);
+      
+      const response = await axios.post(
+        'https://verification.didit.me/v2/session',
+        {
+          workflow_id: diditFlowId,
+          vendor_data: sessionId, // This will be sent back in webhook
+          metadata: {
+            candidate_name: candidateName,
+            candidate_email: candidateEmail,
+            session_id: sessionId
+          }
+        },
+        {
+          headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'x-api-key': diditApiKey
+          }
+        }
+      );
+      
+      console.log('[CREATE-DIDIT] ✅ Didit session created:', response.data);
+      
+      return {
+        success: true,
+        sessionId: response.data.id,
+        sessionUrl: response.data.url
+      };
+      
+    } catch (error) {
+      console.error('[CREATE-DIDIT] ❌ Error:', error);
+      
+      if (error.response) {
+        console.error('[CREATE-DIDIT] Didit API error:', error.response.data);
+        throw new functions.https.HttpsError(
+          'internal',
+          `Didit API error: ${JSON.stringify(error.response.data)}`
+        );
+      }
+      
+      throw new functions.https.HttpsError(
+        'internal',
+        `Failed to create Didit session: ${error.message}`
+      );
+    }
+  });
