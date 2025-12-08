@@ -232,6 +232,41 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
   // This useEffect is no longer needed as timeline progression happens during assessment completion
 
 
+  const handleUnlockContact = async () => {
+    if (!company.id || isUnlocking) return;
+
+    // Check if user is Premium (Premium users have unlimited access)
+    if (company.tier === 'Premium') {
+      setIsContactUnlocked(true);
+      return;
+    }
+
+    // For Freemium users, deduct 2 credits
+    try {
+      setIsUnlocking(true);
+      
+      const result = await deductCredit(
+        company.id,
+        2,
+        'UNLOCK_PROFILE',
+        `Unlock kontak ${candidate?.candidate.name}`,
+        { sessionId, candidateName: candidate?.candidate.name }
+      );
+
+      if (result.success) {
+        setIsContactUnlocked(true);
+        toast.success('Kontak kandidat berhasil dibuka! (2 kredit digunakan)');
+      } else {
+        toast.error(result.error || 'Gagal unlock kontak');
+      }
+    } catch (error) {
+      console.error('[UNLOCK] Error:', error);
+      toast.error('Terjadi kesalahan saat unlock kontak');
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
   const handleParseCV = async () => {
     if (!candidate?.cvUrl || isParsing) return;
 
