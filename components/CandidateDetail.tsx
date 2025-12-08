@@ -1631,58 +1631,43 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h3 className="font-semibold text-white flex items-center gap-2">
                     <Sparkles size={18} />
-                    Profil Kandidat (AI Parsed)
+                    Ringkasan CV (AI Parsed)
                   </h3>
-                  {!candidate.cvParsedData && candidate.cvUrl && (
-                    <button
-                      onClick={handleParseCV}
-                      disabled={isParsing}
-                      className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50"
-                    >
-                      {isParsing ? (
-                        <>
-                          <span className="animate-spin">⏳</span>
-                          Parsing...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={12} />
-                          Parse CV
-                        </>
-                      )}
-                    </button>
+                  {/* Auto-parse badge */}
+                  {candidate.cvUrl && !candidate.cvParsedData && (
+                    <span className="px-3 py-1 bg-white/20 text-white rounded-lg text-xs font-medium flex items-center gap-1">
+                      <span className="animate-spin">⏳</span>
+                      Sedang memproses...
+                    </span>
+                  )}
+                  {candidate.cvParsedData && (
+                    <span className="px-3 py-1 bg-green-500/20 text-white rounded-lg text-xs font-medium flex items-center gap-1">
+                      ✓ Parsed
+                    </span>
                   )}
                 </div>
                 <div className="p-4 max-h-[800px] overflow-y-auto">
                   {candidate.cvParsedData ? (
                     <ParsedCVDisplay parsedData={candidate.cvParsedData} />
+                  ) : candidate.cvUrl ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="text-center max-w-md">
+                        <div className="animate-spin text-6xl mb-4">⏳</div>
+                        <h4 className="font-semibold text-gray-800 mb-2">Sedang Memproses CV...</h4>
+                        <p className="text-gray-600 text-sm">
+                          CV sedang dianalisis oleh AI. Proses ini memakan waktu sekitar 10-30 detik.
+                          Refresh halaman untuk melihat hasil.
+                        </p>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center py-20">
                       <div className="text-center max-w-md">
                         <Sparkles size={48} className="text-gray-300 mx-auto mb-4" />
-                        <h4 className="font-semibold text-gray-800 mb-2">CV Belum Diparsing</h4>
-                        <p className="text-gray-600 text-sm mb-4">
-                          Klik tombol "Parse CV" untuk mengekstrak informasi kandidat menggunakan AI
+                        <h4 className="font-semibold text-gray-800 mb-2">CV Tidak Tersedia</h4>
+                        <p className="text-gray-600 text-sm">
+                          Kandidat belum mengupload CV.
                         </p>
-                        {candidate.cvUrl && (
-                          <button
-                            onClick={handleParseCV}
-                            disabled={isParsing}
-                            className="px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
-                          >
-                            {isParsing ? (
-                              <>
-                                <span className="animate-spin">⏳</span>
-                                Sedang Parsing...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={16} />
-                                Parse CV Sekarang
-                              </>
-                            )}
-                          </button>
-                        )}
                       </div>
                     </div>
                   )}
