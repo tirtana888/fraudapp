@@ -53,7 +53,53 @@ const workflowTimeline = candidate.timeline?.filter((t: any) =>
 
 ## Solution Implemented
 
-### 1. Fixed `PublicAssessment.tsx` (line 317-353)
+### 1. Fixed Session Creation in `PublicAssessment.tsx` (line 209-260)
+**BEFORE:**
+- jobId di-set tapi workflowId tidak di-fetch
+- Timeline tidak dibuild dari workflow steps
+- Session tidak punya workflow reference
+
+**AFTER:**
+- ✅ Fetch job data untuk mendapatkan workflowId
+- ✅ Fetch workflow data untuk mendapatkan steps
+- ✅ Build timeline dari workflow steps
+- ✅ Set workflowId di session data
+- ✅ Set recruitmentStage ke 'integrity_assessment'
+
+```typescript
+if (inviteData?.jobId) {
+    sessionData.jobId = inviteData.jobId;
+    
+    // Fetch job to get workflowId
+    const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, inviteData.jobId));
+    if (jobDoc.exists()) {
+        const jobData = jobDoc.data();
+        const workflowId = jobData.workflowId;
+        
+        if (workflowId) {
+            sessionData.workflowId = workflowId;
+            
+            // Fetch workflow and build timeline
+            const workflowDoc = await getDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
+            if (workflowDoc.exists()) {
+                const workflowSteps = workflowDoc.data().steps || [];
+                
+                // Build timeline from workflow steps
+                sessionData.timeline = sortedSteps.map(step => ({
+                    stage: step.id,
+                    status: step.id === 'integrity_assessment' ? 'current' : 'pending',
+                    date: now,
+                    note: step.description || step.name
+                }));
+                
+                sessionData.recruitmentStage = 'integrity_assessment';
+            }
+        }
+    }
+}
+```
+
+### 2. Fixed Assessment Completion in `PublicAssessment.tsx` (line 317-353)
 **BEFORE:**
 - Menambahkan stage baru (`assessment_completed`, `review`) yang tidak ada di workflow
 - Tidak meng-update next workflow step ke `current`
