@@ -162,6 +162,12 @@ const AssessmentProgress: React.FC<AssessmentProgressProps> = ({
         .animate-fade-in {
           animation: fade-in 0.5s ease-out;
         }
+        
+        /* Ensure sticky positioning works */
+        .sticky-container {
+          position: relative;
+          z-index: 1;
+        }
       `}</style>
     </div>
   );
