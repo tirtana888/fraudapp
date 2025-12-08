@@ -209,7 +209,51 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       // Add job-related fields if this is a job application
       if (inviteData?.jobId) {
           sessionData.jobId = inviteData.jobId;
+          
+          // Fetch job data to get workflowId
+          try {
+              const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, inviteData.jobId));
+              if (jobDoc.exists()) {
+                  const jobData = jobDoc.data();
+                  const workflowId = jobData.workflowId;
+                  
+                  if (workflowId) {
+                      console.log('[PUBLIC-ASSESSMENT] Job has workflow:', workflowId);
+                      sessionData.workflowId = workflowId;
+                      
+                      // Fetch workflow steps to build timeline
+                      const workflowDoc = await getDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
+                      if (workflowDoc.exists()) {
+                          const workflowData = workflowDoc.data();
+                          const workflowSteps = workflowData.steps || [];
+                          console.log('[PUBLIC-ASSESSMENT] Loaded workflow with', workflowSteps.length, 'steps');
+                          
+                          // Build timeline from workflow steps
+                          const sortedSteps = [...workflowSteps].sort((a: any, b: any) => {
+                              if (a.id === 'integrity_assessment') return -1;
+                              if (b.id === 'integrity_assessment') return 1;
+                              return (a.order || 0) - (b.order || 0);
+                          });
+                          
+                          sessionData.timeline = sortedSteps.map((step: any, index: number) => ({
+                              stage: step.id,
+                              status: step.id === 'integrity_assessment' ? 'current' as const : 'pending' as const,
+                              date: now,
+                              note: step.description || step.name,
+                              credits: step.credits,
+                              isMandatory: step.isMandatory
+                          }));
+                          
+                          sessionData.recruitmentStage = 'integrity_assessment';
+                          console.log('[PUBLIC-ASSESSMENT] ✅ Timeline built with workflow steps');
+                      }
+                  }
+              }
+          } catch (error) {
+              console.error('[PUBLIC-ASSESSMENT] Error fetching job/workflow:', error);
+          }
       }
+      
       if (inviteData?.applicationId) {
           sessionData.applicationId = inviteData.applicationId;
 
