@@ -64,12 +64,12 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
       </div>
 
       {parsedData.summary && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2 text-sm">
             <Lightbulb size={16} className="text-[#D95D00]" />
             Ringkasan Profesional
           </h3>
-          <p className="text-gray-700 text-sm leading-relaxed">{parsedData.summary}</p>
+          <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{parsedData.summary}</p>
         </div>
       )}
 
