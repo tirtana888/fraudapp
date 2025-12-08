@@ -675,67 +675,27 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
 
                           {/* Stage Column */}
                           <td className="px-6 py-4">
-                        Posisi
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                        Stage
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                        Risk Score
-                      </th>
-                      <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                    {filteredCompletedCandidates.map((candidate) => (
-                      <tr
-                        key={candidate.id}
-                        className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                              {getAvatarInitials(candidate.candidate.name)}
-                            </div>
-                            <div>
-                              <div className="font-bold text-gray-900 dark:text-white">
-                                {candidate.candidate.name}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {candidate.candidate.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                            <Briefcase size={14} className="text-brand-blue" />
-                            {candidate.jobTitle}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                            <MapPin size={12} />
-                            {candidate.jobLocation}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStageBadge(candidate)}
-                        </td>
-                        <td className="px-6 py-4">
-                          {getRiskScoreBadge(candidate)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => onViewSession(candidate.id)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium shadow-sm"
-                          >
-                            <Eye size={16} />
-                            Lihat Detail
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                            {getStageBadge(candidate)}
+                          </td>
+
+                          {/* Risk Score Column */}
+                          <td className="px-6 py-4">
+                            {getRiskScoreBadge(candidate)}
+                          </td>
+
+                          {/* Action Column */}
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => onViewSession(candidate.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors"
+                            >
+                              <Eye size={14} />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
