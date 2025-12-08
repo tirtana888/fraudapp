@@ -225,8 +225,16 @@ const App: React.FC = () => {
     setActiveTab('dashboard');
   };
 
-  const handleLogout = () => {
-    console.log('[APP] User logged out');
+  const handleLogout = async () => {
+    console.log('[APP] User logging out...');
+    try {
+      // Try Firebase Auth logout first
+      await logoutFromFirebase();
+    } catch (error) {
+      console.warn('[APP] Firebase logout failed, clearing local session:', error);
+    }
+    
+    // Clear local session regardless
     clearSession();
     setCurrentUser(null);
     setSessions([]);
