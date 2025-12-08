@@ -103,22 +103,29 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
+    // Set up Firebase Auth state observer
+    const unsubscribeAuth = observeAuthState((user) => {
+      if (user) {
+        console.log('[APP] Firebase Auth user detected:', user.email);
+        setCurrentUser(user);
+        saveSession(user); // Keep local session for backward compatibility
+      } else {
+        console.log('[APP] No Firebase Auth user');
+        // Try to restore from local session as fallback for legacy users
         const savedUser = getSession();
         if (savedUser) {
-          console.log('[APP] Restoring user session:', savedUser.email);
+          console.log('[APP] Restoring legacy user session:', savedUser.email);
           setCurrentUser(savedUser);
+        } else {
+          setCurrentUser(null);
         }
-      } catch (error) {
-        console.error('[APP] Error restoring session:', error);
-        clearSession();
-      } finally {
-        setIsCheckingAuth(false);
       }
-    };
+      setIsCheckingAuth(false);
+    });
 
-    restoreSession();
+    return () => {
+      unsubscribeAuth();
+    };
   }, []);
 
   useEffect(() => {
