@@ -453,11 +453,20 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
       await sendAssessmentCompleteEmail(candidateName, candidateEmail, company?.name || 'Perusahaan');
 
-      setStep('done');
+      console.log('[FINISH-ASSESSMENT] ✅ All done! Transitioning to completion page...');
+      
+      // Small delay untuk smooth transition
+      setTimeout(() => {
+        setStep('done');
+        console.log('[FINISH-ASSESSMENT] ✅ Now showing completion page');
+      }, 1000);
+      
     } catch (dbError) {
-      console.error("Failed to save final session to DB:", dbError);
+      console.error("[FINISH-ASSESSMENT] Failed to save to DB:", dbError);
       setErrorMsg("Gagal menyimpan hasil akhir. Mohon hubungi administrator.");
-      setStep('chat');
+      
+      // Still show done page even if DB save fails
+      setTimeout(() => setStep('done'), 2000);
     }
   };
 
