@@ -95,8 +95,8 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
       )}
 
       {parsedData.education && parsedData.education.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2 text-sm">
             <GraduationCap size={16} className="text-[#D95D00]" />
             Pendidikan
           </h3>
@@ -105,9 +105,9 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
               <div key={index} className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-[#D95D00] rounded-full mt-1.5 flex-shrink-0"></div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-gray-900 text-sm">{edu.degree}</h4>
-                  <p className="text-gray-600 text-xs truncate">{edu.institution}</p>
-                  <p className="text-xs text-gray-500">{edu.year}</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{edu.degree}</h4>
+                  <p className="text-gray-600 dark:text-gray-300 text-xs truncate">{edu.institution}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{edu.year}</p>
                 </div>
               </div>
             ))}
