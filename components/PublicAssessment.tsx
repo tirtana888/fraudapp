@@ -327,12 +327,10 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       await updateSessionInDB(sessionId, { transcript: newHistory });
 
       try {
-          const nextQuestion = await generateNextQuestion(
-              candidateRole,
-              newHistory,
-              company?.tier || 'Freemium',
-              { structuredAssessment: ftAnswers, sjtResults: sjtAnswers, financialStrainResults: finAnswers }
-          );
+          const nextQuestion = await generateNextQuestion({
+              role: candidateRole,
+              history: newHistory
+          });
           const updatedHistory = [...newHistory, { speaker: 'ai', text: nextQuestion } as const];
           setChatHistory(updatedHistory);
           await updateSessionInDB(sessionId, { transcript: updatedHistory });

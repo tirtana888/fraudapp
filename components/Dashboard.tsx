@@ -98,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
         <StatCard 
           icon={Users} 
           label="Total Kandidat" 
-          value={`${totalInterviews} / ${features.max_candidates === -1 || features.max_candidates === 'unlimited' ? '∞' : features.max_candidates}`} 
+          value={`${totalInterviews} / ${(features.max_candidates === -1 || (features.max_candidates as any) === 'unlimited') ? '∞' : features.max_candidates}`} 
           color="bg-brand-blue" 
         />
         <StatCard 
