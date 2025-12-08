@@ -49,19 +49,13 @@ export const analyzeFraudRisk = async (
       scores: {
         pressure: 50,
         rationalization: 50,
-        opportunity: 50,
-        overall: 50
+        opportunity: 50
       },
       riskLevel: 'Medium',
-      riskScore: 50,
-      keyFindings: ['Unable to complete AI analysis. Manual review recommended.'],
-      recommendations: ['Conduct thorough background check', 'Schedule follow-up interview'],
-      redFlags: [],
-      strengths: [],
-      behavioralPatterns: [],
-      transcript: [],
-      assessment: {},
-      timestamp: new Date().toISOString()
+      summary: 'Unable to complete AI analysis. Manual review recommended.',
+      redFlags: ['Analysis service unavailable'],
+      recommendation: 'Conduct thorough background check and schedule follow-up interview',
+      isManualFallback: true
     };
   }
 };
