@@ -1,41 +1,42 @@
-
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, Firestore, where, setDoc, getDoc, limit } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
   signOut,
-  sendEmailVerification,
   sendPasswordResetEmail,
-  updateProfile,
-  onAuthStateChanged,
-  Auth,
-  User as FirebaseUser
-} from "firebase/auth";
-import { CompanyProfile, UserProfile, AssessmentInvite, Job, JobApplication } from "../types";
+  sendEmailVerification,
+  User as FirebaseUser,
+  onAuthStateChanged as firebaseOnAuthStateChanged
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  getDocs, 
+  onSnapshot, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc, 
+  orderBy, 
+  limit, 
+  Firestore,
+  Timestamp
+} from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject, ref } from 'firebase/storage';
+import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, JobApplication, Workflow } from '../types';
 
-// --- KONFIGURASI FIREBASE (From Environment Variables) ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-};
-
-export const COLLECTIONS = {
-  SESSIONS: 'interview_sessions',
-  USERS: 'users',
-  COMPANIES: 'companies',
-  INVITES: 'assessment_invites',
-  JOBS: 'jobs',
-  APPLICATIONS: 'applications',
-  WORKFLOWS: 'workflows'
+  apiKey: "AIzaSyBRq4BjPPkxb0HuiX1pJ-pqxnK6RaHBdRk",
+  authDomain: "hiring-good.firebaseapp.com",
+  projectId: "hiring-good",
+  storageBucket: "hiring-good.firebasestorage.app",
+  messagingSenderId: "618826274963",
+  appId: "1:618826274963:web:6e54bb9f7df9d5a7c6d7a2"
 };
 
 export let db: Firestore;
@@ -122,163 +123,115 @@ export const sendIntegrityTestInvitation = async (
         candidateName,
         candidateEmail,
         companyName,
+        jobTitle,
         accessCode,
-        assessmentLink,
-        role: jobTitle
+        assessmentLink
       }
     );
 
-    const inviteData: AssessmentInvite = {
+    // Save invite to DB
+    const inviteData: Omit<AssessmentInvite, 'id'> = {
       access_code: accessCode,
       name: candidateName,
       email: candidateEmail,
-      role: jobTitle,
-      companyId: sessionId,
+      companyId: '',
       status: 'PENDING',
-      sessionId: sessionId,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      sessionId: sessionId
     };
 
     await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
-
-    // Update session dengan inviteSource marker untuk tracking
-    const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-    await updateDoc(sessionRef, {
-      inviteSource: 'review_invite',
-      inviteAccessCode: accessCode,
-      invitedAt: new Date().toISOString()
-    });
+    console.log('[INVITE] ✅ Invitation sent and saved');
 
     return true;
-  } catch (error) {
-    console.error('[INTEGRITY-INVITE] Error:', error);
+  } catch (error: any) {
+    console.error('[INVITE] Error sending invitation:', error);
     throw error;
   }
 };
 
-// --- LEGACY AUTHENTICATION SERVICE (DEPRECATED) ---
-// @deprecated Use loginWithFirebase instead for new implementations
-export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
-  if (!db) throw new Error("Koneksi Database terputus.");
-
-  try {
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    // Auto-trim input to prevent copy-paste errors
-    const cleanEmail = email.trim();
-    const cleanPass = password.trim();
-
-    const q = query(usersRef, where("email", "==", cleanEmail));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      throw new Error("Akun tidak ditemukan. Silakan hubungi Administrator.");
-    }
-
-    const userData = querySnapshot.docs[0].data() as UserProfile;
-    
-    // Auto-trim stored password as well for safety
-    if (userData.password?.trim() !== cleanPass) {
-      throw new Error("Kata sandi salah.");
-    }
-
-    // Assign Role if missing (Backward Compatibility)
-    const role = userData.role || 'User';
-
-    return { ...userData, role, id: querySnapshot.docs[0].id };
-  } catch (error) {
-    console.error("Login Error:", error);
-    throw error;
-  }
-};
-
-
 // ==========================================
-// FIREBASE AUTHENTICATION - PRODUCTION READY
+// FIREBASE AUTHENTICATION
 // ==========================================
 
-// Sign Up Function with Firebase Authentication
-interface SignUpData {
+/**
+ * Sign up new user with Firebase Authentication
+ * Creates user in Firebase Auth and saves profile to Firestore
+ */
+export const signUpWithFirebase = async (userData: {
   companyName: string;
   fullName: string;
   email: string;
   phone: string;
   password: string;
-}
-
-export const signUpWithFirebase = async (data: SignUpData): Promise<UserProfile | null> => {
-  if (!db || !auth) throw new Error("Firebase belum diinisialisasi.");
-
+}): Promise<UserProfile> => {
   try {
-    const { companyName, fullName, email, phone, password } = data;
+    console.log('[AUTH] Starting Firebase sign up process...');
     
-    console.log('[SIGNUP] Starting Firebase Authentication signup...');
+    // 1. Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      userData.email,
+      userData.password
+    );
     
-    // 1. Create Firebase Auth user (password automatically hashed)
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
-    
-    console.log('[SIGNUP] Firebase Auth user created:', firebaseUser.uid);
-    
-    // 2. Update Firebase Auth profile
-    await updateProfile(firebaseUser, {
-      displayName: fullName
-    });
-    
-    // 3. Send email verification
+    console.log('[AUTH] Firebase user created:', firebaseUser.uid);
+
+    // 2. Send email verification
     try {
       await sendEmailVerification(firebaseUser);
-      console.log('[SIGNUP] Verification email sent to:', email);
-    } catch (emailError) {
-      console.warn('[SIGNUP] Failed to send verification email:', emailError);
-      // Continue signup even if email fails
+      console.log('[AUTH] ✅ Verification email sent to:', userData.email);
+    } catch (verificationError) {
+      console.warn('[AUTH] ⚠️ Failed to send verification email:', verificationError);
+      // Don't block signup if email sending fails
     }
-    
-    // 4. Create company profile in Firestore
-    const companiesRef = collection(db, COLLECTIONS.COMPANIES);
-    const newCompany: CompanyProfile = {
-      id: '', // Will be set after creation
-      name: companyName,
+
+    // 3. Create company profile
+    const companyData: Omit<CompanyProfile, 'id'> = {
+      name: userData.companyName,
       tier: 'Basic',
       status: 'Active',
-      adminEmail: email,
+      adminEmail: userData.email,
       joinedDate: new Date().toISOString(),
+      usersCount: 1,
       verification_credits: 100,
-      logoUrl: '',
-      whatsapp: phone,
-      createdAt: new Date()
+      createdAt: Timestamp.now()
     };
 
-    const companyDoc = await addDoc(companiesRef, newCompany);
-    console.log('[SIGNUP] Company created:', companyDoc.id);
+    const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
+    const companyId = companyRef.id;
+    console.log('[AUTH] Company created:', companyId);
 
-    // 5. Create user profile in Firestore (linked to Firebase Auth UID)
-    const userProfile: UserProfile = {
-      id: firebaseUser.uid, // Use Firebase Auth UID
-      name: fullName,
-      email: email,
-      // NO PASSWORD STORED - handled by Firebase Auth
+    // 4. Create user profile in Firestore
+    const userProfile: Omit<UserProfile, 'id'> & { id: string } = {
+      id: firebaseUser.uid,
+      name: userData.fullName,
+      email: userData.email,
       role: 'Company Admin',
-      companyId: companyDoc.id,
-      avatar: '',
-      emailVerified: firebaseUser.emailVerified,
-      createdAt: new Date()
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
+      companyId: companyId,
+      emailVerified: false,
+      createdAt: Timestamp.now()
     };
 
-    // Use setDoc with UID as document ID for easy retrieval
-    await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), userProfile);
-    console.log('[SIGNUP] User profile created with UID:', firebaseUser.uid);
+    await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
+    console.log('[AUTH] ✅ User profile created in Firestore');
 
-    // 6. Return user profile
-    return userProfile;
+    // Return user profile
+    return {
+      ...userProfile,
+      emailVerified: firebaseUser.emailVerified
+    };
 
   } catch (error: any) {
-    console.error('[SIGNUP] Error:', error);
+    console.error('[AUTH] Sign up error:', error);
     
-    // Handle specific Firebase Auth errors
+    // Provide user-friendly error messages
     if (error.code === 'auth/email-already-in-use') {
       throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login.');
     } else if (error.code === 'auth/weak-password') {
-      throw new Error('Password terlalu lemah. Gunakan minimal 6 karakter.');
+      throw new Error('Password terlalu lemah. Gunakan minimal 8 karakter dengan kombinasi huruf dan angka.');
     } else if (error.code === 'auth/invalid-email') {
       throw new Error('Format email tidak valid.');
     } else {
@@ -287,677 +240,311 @@ export const signUpWithFirebase = async (data: SignUpData): Promise<UserProfile 
   }
 };
 
-// Login Function with Firebase Authentication
-export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile | null> => {
-  if (!db || !auth) throw new Error("Firebase belum diinisialisasi.");
-
+/**
+ * Sign in user with Firebase Authentication
+ */
+export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile> => {
   try {
-    console.log('[LOGIN] Authenticating with Firebase...');
+    console.log('[AUTH] Attempting login for:', email);
     
     // 1. Sign in with Firebase Auth
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
     
-    console.log('[LOGIN] Firebase Auth successful:', firebaseUser.uid);
-    
-    // 2. Get user profile from Firestore
-    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
-    
-    if (!userDoc.exists()) {
-      throw new Error('Profil user tidak ditemukan. Silakan hubungi support.');
+    console.log('[AUTH] Firebase login successful:', firebaseUser.uid);
+    console.log('[AUTH] Email verified:', firebaseUser.emailVerified);
+
+    // 2. Fetch user profile from Firestore
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where('email', '==', email), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      throw new Error('Profil pengguna tidak ditemukan');
     }
-    
-    const userProfile = userDoc.data() as UserProfile;
-    
-    console.log('[LOGIN] User profile retrieved:', userProfile.name);
-    
-    // 3. Check email verification (optional warning)
-    if (!firebaseUser.emailVerified) {
-      console.warn('[LOGIN] Email belum diverifikasi:', email);
-      // You can choose to block login or just warn
-      // For now, we'll allow but add flag
+
+    const userDoc = snapshot.docs[0];
+    const userData = userDoc.data() as UserProfile;
+
+    // 3. Update email verification status in Firestore if changed
+    if (userData.emailVerified !== firebaseUser.emailVerified) {
+      await updateDoc(userDoc.ref, {
+        emailVerified: firebaseUser.emailVerified
+      });
     }
-    
-    // 4. Return user profile with current auth state
+
+    console.log('[AUTH] ✅ Login complete');
+
     return {
-      ...userProfile,
+      ...userData,
       id: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified
     };
 
   } catch (error: any) {
-    console.error('[LOGIN] Error:', error);
+    console.error('[AUTH] Login error:', error);
     
-    // Handle specific Firebase Auth errors
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      throw new Error('Email atau password salah.');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Format email tidak valid.');
-    } else if (error.code === 'auth/user-disabled') {
-      throw new Error('Akun Anda telah dinonaktifkan. Hubungi support.');
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      throw new Error('Email atau password salah. Silakan coba lagi.');
     } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('Terlalu banyak percobaan login. Coba lagi nanti.');
+      throw new Error('Terlalu banyak percobaan login. Silakan coba lagi nanti.');
     } else {
       throw new Error(error.message || 'Gagal login. Silakan coba lagi.');
     }
   }
 };
 
-// Logout Function
+/**
+ * Sign out current user
+ */
 export const logoutFromFirebase = async (): Promise<void> => {
-  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
-  
   try {
     await signOut(auth);
-    console.log('[LOGOUT] User signed out successfully');
-  } catch (error: any) {
-    console.error('[LOGOUT] Error:', error);
-    throw new Error('Gagal logout. Silakan coba lagi.');
+    console.log('[AUTH] User signed out successfully');
+  } catch (error) {
+    console.error('[AUTH] Sign out error:', error);
+    throw error;
   }
 };
 
-// Password Reset Function
+/**
+ * Send password reset email
+ */
 export const sendPasswordReset = async (email: string): Promise<void> => {
-  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
-  
   try {
     await sendPasswordResetEmail(auth, email);
-    console.log('[PASSWORD-RESET] Email sent to:', email);
+    console.log('[AUTH] Password reset email sent to:', email);
   } catch (error: any) {
-    console.error('[PASSWORD-RESET] Error:', error);
+    console.error('[AUTH] Password reset error:', error);
     
     if (error.code === 'auth/user-not-found') {
       throw new Error('Email tidak terdaftar.');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Format email tidak valid.');
     } else {
-      throw new Error('Gagal mengirim email reset. Silakan coba lagi.');
+      throw new Error(error.message || 'Gagal mengirim email reset password.');
     }
   }
 };
 
-// Auth State Observer
-export const observeAuthState = (callback: (user: UserProfile | null) => void) => {
-  if (!auth || !db) {
-    console.error('[AUTH-OBSERVER] Firebase not initialized');
-    return () => {};
-  }
+/**
+ * Resend email verification
+ */
+export const resendVerificationEmail = async (): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      throw new Error('Tidak ada user yang login');
+    }
 
-  return onAuthStateChanged(auth, async (firebaseUser) => {
+    if (user.emailVerified) {
+      throw new Error('Email sudah terverifikasi');
+    }
+
+    await sendEmailVerification(user);
+    console.log('[AUTH] ✅ Verification email resent to:', user.email);
+  } catch (error: any) {
+    console.error('[AUTH] Resend verification error:', error);
+    
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error('Terlalu banyak permintaan. Tunggu beberapa menit sebelum mencoba lagi.');
+    } else {
+      throw new Error(error.message || 'Gagal mengirim ulang email verifikasi.');
+    }
+  }
+};
+
+/**
+ * Observe auth state changes
+ */
+export const observeAuthState = (callback: (user: UserProfile | null) => void) => {
+  return firebaseOnAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
     if (firebaseUser) {
-      console.log('[AUTH-OBSERVER] User signed in:', firebaseUser.uid);
-      
       try {
-        // Get user profile from Firestore
-        const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
-        
-        if (userDoc.exists()) {
-          const userProfile = userDoc.data() as UserProfile;
+        // Fetch user profile from Firestore
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, where('email', '==', firebaseUser.email), limit(1));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const userData = snapshot.docs[0].data() as UserProfile;
+          
+          // Update email verification status if changed
+          if (userData.emailVerified !== firebaseUser.emailVerified) {
+            await updateDoc(snapshot.docs[0].ref, {
+              emailVerified: firebaseUser.emailVerified
+            });
+          }
+
           callback({
-            ...userProfile,
+            ...userData,
             id: firebaseUser.uid,
             emailVerified: firebaseUser.emailVerified
           });
         } else {
-          console.warn('[AUTH-OBSERVER] User profile not found');
           callback(null);
         }
       } catch (error) {
-        console.error('[AUTH-OBSERVER] Error fetching profile:', error);
+        console.error('[AUTH] Error fetching user profile:', error);
         callback(null);
       }
     } else {
-      console.log('[AUTH-OBSERVER] User signed out');
       callback(null);
     }
   });
 };
 
-// Resend Email Verification
-export const resendVerificationEmail = async (): Promise<void> => {
-  if (!auth) throw new Error("Firebase Auth belum diinisialisasi.");
-  
-  const user = auth.currentUser;
-  
-  if (!user) {
-    throw new Error('Tidak ada user yang login.');
-  }
-  
-  if (user.emailVerified) {
-    throw new Error('Email sudah diverifikasi.');
-  }
-  
-  try {
-    await sendEmailVerification(user);
-    console.log('[EMAIL-VERIFY] Verification email resent');
-  } catch (error: any) {
-    console.error('[EMAIL-VERIFY] Error:', error);
-    throw new Error('Gagal mengirim email verifikasi. Silakan coba lagi.');
-  }
+// Collection names
+export const COLLECTIONS = {
+  SESSIONS: 'interview_sessions',
+  USERS: 'users',
+  COMPANIES: 'companies',
+  INVITES: 'assessment_invites',
+  JOBS: 'jobs',
+  APPLICATIONS: 'applications',
+  WORKFLOWS: 'workflows'
 };
 
-
-// @deprecated Use sendPasswordReset instead for new implementations
-export const resetUserPassword = async (email: string) => {
-    if (!db) throw new Error("Database terputus");
-
-    try {
-        const cleanEmail = email.trim();
-        const usersRef = collection(db, COLLECTIONS.USERS);
-        const q = query(usersRef, where("email", "==", cleanEmail));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            throw new Error("Email tidak terdaftar dalam sistem.");
-        }
-
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data() as UserProfile;
-        
-        // Generate Temporary Password
-        const tempPassword = Math.random().toString(36).slice(-8) + "#Rst";
-        
-        // Update Password in Database
-        await updateDoc(doc(db, COLLECTIONS.USERS, userDoc.id), {
-            password: tempPassword
-        });
-
-        // Send Email via Firebase Cloud Function
-        const emailSent = await sendEmailViaCloudFunction(
-            "password_reset",
-            cleanEmail,
-            {
-                candidateName: userData.name,
-                candidateEmail: cleanEmail,
-                tempPassword: tempPassword,
-                loginUrl: window.location.origin
-            }
-        );
-
-        if (!emailSent) {
-            throw new Error("Gagal mengirim email. Silakan coba lagi.");
-        }
-        
-        return { success: true, message: `Password baru telah dikirim ke ${cleanEmail}.` };
-
-    } catch (error: any) {
-        console.error("Reset Password Error:", error);
-        throw error;
-    }
-};
-
-// --- DATA SEEDING (ONCE ONLY) ---
+// Seed real database with demo data
 export const seedRealDatabase = async () => {
-  if (!db) return;
+  console.log("[SEED] Skipping seed - using production Firebase data");
+};
 
-  const seedId = 'system_seed_v4_admin_ent'; 
-  const seedRef = doc(db, 'system_metadata', seedId);
+// ==========================================
+// FIRESTORE QUERIES - REAL TIME UPDATES
+// ==========================================
 
-  try {
-    const seedDoc = await getDoc(seedRef).catch(e => {
-        console.warn("[Seeding] Database unreachable or offline, skipping seed check:", e.message);
-        return { exists: () => true }; 
-    });
-
-    // @ts-ignore
-    if (!seedDoc || seedDoc.exists()) return;
-
-    console.log("[System] Initializing Real Database Schema (RBAC)...");
-
-    // 1. Create Enterprise Company
-    const entCompanyRef = doc(db, COLLECTIONS.COMPANIES, 'c1');
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-    await setDoc(entCompanyRef, {
-      name: 'PT Maju Bersama',
-      tier: 'Enterprise',
-      status: 'Active',
-      adminEmail: 'enterprise@fraudguard.id',
-      joinedDate: new Date().toISOString(),
-      subscription_ends_at: oneYearFromNow.toISOString(),
-      custom_candidate_limit: 0, 
-      verification_credits: 100, 
-      usersCount: 5,
-      logoUrl: '', 
-      brandColor: '#CC5500'
-    });
-
-    // 2. Create Enterprise User
-    const entUserRef = doc(db, COLLECTIONS.USERS, 'u1');
-    await setDoc(entUserRef, {
-      name: 'Budi Santoso',
-      email: 'enterprise@fraudguard.id',
-      password: 'password123',
-      role: 'Company Admin', 
-      companyId: 'c1',
-      avatar: 'https://ui-avatars.com/api/?background=CC5500&color=fff&name=Budi+Santoso'
-    });
-
-    // 3. Create SUPER ADMIN Company (System) - FORCE ENTERPRISE
-    const systemCompRef = doc(db, COLLECTIONS.COMPANIES, 'system');
-    await setDoc(systemCompRef, {
-      name: 'System Admin View',
-      tier: 'Enterprise',
-      status: 'Active',
-      adminEmail: 'admin@fraudguard.id',
-      joinedDate: new Date().toISOString(),
-      subscription_ends_at: new Date(2099, 11, 31).toISOString(), 
-      custom_candidate_limit: 999999,
-      verification_credits: 999999,
-      usersCount: 1,
-      logoUrl: '',
-      brandColor: '#1e293b'
-    });
-
-    // 4. Create SUPER ADMIN User
-    const adminUserRef = doc(db, COLLECTIONS.USERS, 'admin1');
-    await setDoc(adminUserRef, {
-      name: 'Super Admin',
-      email: 'admin@fraudguard.id',
-      password: 'admin123',
-      role: 'System Admin', 
-      companyId: 'system',
-      avatar: 'https://ui-avatars.com/api/?background=0f172a&color=fff&name=Super+Admin'
-    });
-
-    await setDoc(seedRef, { seededAt: new Date().toISOString(), status: 'Production Ready V3' });
-    console.log("[System] Database Initialized with RBAC.");
-
-  } catch (error) {
-    console.warn("Seeding process encountered an issue:", error);
+export const subscribeToSessions = (companyId: string, role: string, onUpdate: (sessions: InterviewSession[]) => void) => {
+  if (!db) {
+    console.error("Database not initialized");
+    return () => {};
   }
-};
-
-// --- SESSION SERVICES ---
-
-export const saveSessionToDB = async (sessionData: any): Promise<string> => {
-  try {
-    if (!db) throw new Error("Database not initialized");
-    const docRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), sessionData);
-    return docRef.id;
-  } catch (e: any) {
-    console.error("Gagal menyimpan ke Cloud:", e);
-    throw e;
-  }
-};
-
-export const updateSessionInDB = async (id: string, sessionData: any) => {
-    try {
-        if (!db) throw new Error("Database not initialized");
-        const docRef = doc(db, COLLECTIONS.SESSIONS, id);
-        await updateDoc(docRef, sessionData);
-    } catch (e: any) {
-        console.error("Gagal update Cloud:", e);
-        throw e;
-    }
-};
-
-// --- SMART FALLBACK SUBSCRIPTION ---
-export const subscribeToSessions = (companyId: string | undefined, role: string, onUpdate: (data: any[]) => void) => {
-  if (!db) return () => {};
-  
-  const collRef = collection(db, COLLECTIONS.SESSIONS);
-  let unsubscribe: () => void = () => {};
-
-  const executeSimpleQuery = () => {
-      // FALLBACK: Simple Query (No OrderBy) -> Sort Client Side
-      console.warn("Using Fallback Query (Client-Side Sorting)");
-      let simpleQ;
-      if (role === 'System Admin') {
-          simpleQ = query(collRef, limit(50));
-      } else if (companyId) {
-          simpleQ = query(collRef, where('companyId', '==', companyId), limit(50));
-      } else {
-          return;
-      }
-
-      unsubscribe = onSnapshot(simpleQ, (snapshot) => {
-          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          // Client-side sort
-          data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          onUpdate(data);
-      });
-  };
 
   try {
-    // ATTEMPT 1: Complex Query (Requires Index)
-    let complexQ;
+    const sessionsRef = collection(db, COLLECTIONS.SESSIONS);
+    let q;
+
     if (role === 'System Admin') {
-        complexQ = query(collRef, orderBy('date', 'desc'), limit(50));
-    } else if (companyId) {
-        complexQ = query(collRef, where('companyId', '==', companyId), orderBy('date', 'desc'), limit(50));
+      q = query(sessionsRef, orderBy('date', 'desc'), limit(100));
     } else {
-        return () => {};
+      q = query(
+        sessionsRef,
+        where('companyId', '==', companyId),
+        orderBy('date', 'desc'),
+        limit(100)
+      );
     }
 
-    unsubscribe = onSnapshot(complexQ, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      onUpdate(data);
-    }, (error) => {
-      if (error.message.includes("requires an index")) {
-         console.warn("⚠️ Index missing. Switching to Fallback Strategy...");
-         // If complex query fails, run simple query
-         executeSimpleQuery();
-      } else if (error.code !== 'permission-denied') {
-          console.error("Subscription Error:", error);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const sessions = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as InterviewSession[];
+        onUpdate(sessions);
+      },
+      (error) => {
+        console.error("[SESSIONS] Snapshot error:", error);
+        window.dispatchEvent(new CustomEvent('firebase-connection-error', { 
+          detail: "Koneksi ke database bermasalah. Refresh halaman."
+        }));
       }
-    });
+    );
 
-    return () => unsubscribe();
-
-  } catch (err) {
-      console.error("Setup Error, using fallback:", err);
-      executeSimpleQuery();
-      return () => unsubscribe();
+    return unsubscribe;
+  } catch (error) {
+    console.error("[SESSIONS] Error setting up listener:", error);
+    return () => {};
   }
 };
 
-// --- COMPANY SERVICES ---
-
-export const inviteCompanyReal = async (companyData: Omit<CompanyProfile, 'id'>) => {
-    if (!db) throw new Error("Database terputus");
-
-    try {
-        const defaultExpiry = new Date();
-        defaultExpiry.setDate(defaultExpiry.getDate() + 30);
-
-        const companyPayload = {
-             ...companyData,
-             status: 'Active', 
-             subscription_ends_at: defaultExpiry.toISOString(),
-             verification_credits: 0,
-             custom_candidate_limit: 0,
-             createdAt: new Date().toISOString()
-        };
-
-        const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyPayload);
-        const generatedPassword = Math.random().toString(36).slice(-8) + "Fg!";
-
-        await addDoc(collection(db, COLLECTIONS.USERS), {
-            name: `Admin ${companyData.name}`,
-            email: companyData.adminEmail,
-            password: generatedPassword, 
-            role: 'Company Admin', 
-            companyId: companyRef.id,
-            avatar: `https://ui-avatars.com/api/?background=random&name=${companyData.name}`,
-            createdAt: new Date().toISOString()
-        });
-
-        try {
-            const emailSent = await sendEmailViaCloudFunction(
-                "business_invitation",
-                companyData.adminEmail,
-                {
-                    companyName: companyData.name,
-                    adminEmail: companyData.adminEmail,
-                    tier: companyData.tier,
-                    password: generatedPassword
-                }
-            );
-
-            if (!emailSent) {
-                return {
-                    success: true,
-                    message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL.`
-                };
-            }
-
-            return { success: true, message: `Perusahaan disimpan. Email kredensial terkirim ke ${companyData.adminEmail}.` };
-
-        } catch (emailError: any) {
-            console.warn("Email Error:", emailError);
-            return {
-                success: true,
-                message: `Akun dibuat (Pass: ${generatedPassword}), tapi Email GAGAL.`
-            };
-        }
-
-    } catch (error: any) {
-        console.error("Invite Error:", error);
-        throw new Error(error.message || "Gagal menyimpan data perusahaan.");
+export const getSessionById = async (sessionId: string): Promise<InterviewSession | null> => {
+  try {
+    const docRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as InterviewSession;
     }
+    return null;
+  } catch (error) {
+    console.error("Error fetching session:", error);
+    return null;
+  }
 };
 
-export const resendInviteEmail = async (companyId: string) => {
-    if (!db) throw new Error("Database terputus");
-
-    try {
-        const compDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, companyId));
-        if (!compDoc.exists()) throw new Error("Perusahaan tidak ditemukan.");
-        const companyData = compDoc.data() as CompanyProfile;
-
-        const usersRef = collection(db, COLLECTIONS.USERS);
-        const q = query(usersRef, where("companyId", "==", companyId));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-             throw new Error("User Admin untuk perusahaan ini tidak ditemukan.");
-        }
-
-        const userData = querySnapshot.docs[0].data() as UserProfile;
-        const userPassword = userData.password || "Hubungi Super Admin";
-
-        const emailSent = await sendEmailViaCloudFunction(
-            "business_invitation",
-            companyData.adminEmail,
-            {
-                companyName: companyData.name,
-                adminEmail: companyData.adminEmail,
-                tier: companyData.tier,
-                password: userPassword
-            }
-        );
-
-        if (!emailSent) {
-            throw new Error("Gagal mengirim email. Silakan coba lagi.");
-        }
-
-        return { success: true, message: `Email kredensial berhasil dikirim ulang ke ${companyData.adminEmail}` };
-
-    } catch (error: any) {
-        console.error("Resend Email Error:", error);
-        throw error;
-    }
+export const updateSession = async (sessionId: string, updates: Partial<InterviewSession>) => {
+  try {
+    const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+    await updateDoc(sessionRef, updates as any);
+    console.log(`[SESSION-UPDATE] Updated session ${sessionId}`);
+  } catch (error) {
+    console.error(`[SESSION-UPDATE] Error updating session ${sessionId}:`, error);
+    throw error;
+  }
 };
 
-export const updateCompany = async (id: string, data: Partial<CompanyProfile>, retries = 3) => {
-    if (!db) {
-        console.error('[UPDATE-COMPANY] Firestore DB not initialized');
-        throw new Error('Database not initialized');
-    }
-
-    console.log('[UPDATE-COMPANY] Updating company:', {
-        id,
-        dataKeys: Object.keys(data),
-        hasLogoUrl: !!data.logoUrl,
-        logoUrlLength: data.logoUrl?.length || 0,
-        retriesLeft: retries
-    });
-
-    const docRef = doc(db, COLLECTIONS.COMPANIES, id);
-
-    for (let attempt = 0; attempt < retries; attempt++) {
-        try {
-            await updateDoc(docRef, data);
-            console.log('[UPDATE-COMPANY] ✅ Update successful');
-            return;
-        } catch (error: any) {
-            console.error(`[UPDATE-COMPANY] Attempt ${attempt + 1} failed:`, error);
-
-            if (attempt === retries - 1) {
-                throw error;
-            }
-
-            const waitTime = Math.min(1000 * Math.pow(2, attempt), 5000);
-            console.log(`[UPDATE-COMPANY] Retrying in ${waitTime}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-    }
+export const createInterviewSession = async (sessionData: Omit<InterviewSession, 'id'>): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), sessionData);
+    console.log('[SESSIONS] New session created:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('[SESSIONS] Error creating session:', error);
+    throw error;
+  }
 };
 
-export const updateCompanySubscription = async (id: string, data: any) => {
-    if (!db) return;
-    const docRef = doc(db, COLLECTIONS.COMPANIES, id);
-    await updateDoc(docRef, data);
+export const deleteSession = async (sessionId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.SESSIONS, sessionId));
+    console.log('[SESSIONS] Session deleted:', sessionId);
+  } catch (error) {
+    console.error('[SESSIONS] Error deleting session:', error);
+    throw error;
+  }
 };
 
-export const deleteCompany = async (id: string) => {
-    if (!db) return;
-    const docRef = doc(db, COLLECTIONS.COMPANIES, id);
-    await deleteDoc(docRef);
-};
-
-export const getCompanies = async (): Promise<CompanyProfile[]> => {
-    if (!db) return [];
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTIONS.COMPANIES));
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CompanyProfile));
-    } catch (e) {
-        console.error("Firestore fetch error:", e);
-        return [];
+export const getCompanyById = async (companyId: string): Promise<CompanyProfile | null> => {
+  try {
+    const docRef = doc(db, COLLECTIONS.COMPANIES, companyId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
     }
+    return null;
+  } catch (error) {
+    console.error('[COMPANIES] Error fetching company:', error);
+    return null;
+  }
 };
 
 export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | null> => {
-    if (!slug || !db) {
-        console.warn('[GET-COMPANY] No slug or DB not initialized');
-        return null;
-    }
-
-    try {
-        const q = query(
-            collection(db, COLLECTIONS.COMPANIES),
-            where('companySlug', '==', slug),
-            limit(1)
-        );
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            return { id: doc.id, ...doc.data() } as CompanyProfile;
-        }
-
-        const companies = await getDocs(collection(db, COLLECTIONS.COMPANIES));
-        const matchedCompany = companies.docs.find(doc => {
-            const generatedSlug = generateSlug(doc.data().name);
-            return generatedSlug === slug;
-        });
-
-        if (matchedCompany) {
-            return { id: matchedCompany.id, ...matchedCompany.data() } as CompanyProfile;
-        }
-
-        return null;
-    } catch (error) {
-        console.error('[GET-COMPANY] Error fetching company by slug:', error);
-        return null;
-    }
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.COMPANIES),
+      where('companySlug', '==', slug),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as CompanyProfile;
+  } catch (error) {
+    console.error('[COMPANIES] Error fetching company by slug:', error);
+    return null;
+  }
 };
 
-export const getCompanyById = async (id: string): Promise<CompanyProfile | null> => {
-    if (!id || !db) {
-        console.warn('[GET-COMPANY] No ID or DB not initialized');
-        return null;
-    }
-
-    console.log('[GET-COMPANY] Fetching company with ID:', id);
-
-    if (id === 'system') {
-        try {
-            const docRef = doc(db, COLLECTIONS.COMPANIES, 'system');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                console.log('[GET-COMPANY] system found in Firestore:', {
-                    hasLogoUrl: !!data.logoUrl,
-                    logoUrlLength: data.logoUrl?.length || 0
-                });
-                return { id: docSnap.id, ...data } as CompanyProfile;
-            }
-        } catch (e) {
-            console.error('[GET-COMPANY] Error fetching system:', e);
-        }
-
-        console.log('[GET-COMPANY] Using fallback data for system');
-        return {
-            id: 'system',
-            name: 'System Admin View',
-            tier: 'Enterprise',
-            status: 'Active',
-            adminEmail: 'admin@fraudguard.id',
-            joinedDate: new Date().toISOString(),
-            subscription_ends_at: new Date(2099, 11, 31).toISOString(),
-            custom_candidate_limit: 999999,
-            usersCount: 1
-        } as CompanyProfile;
-    }
-
-    if (id === 'c1') {
-        try {
-            const docRef = doc(db, COLLECTIONS.COMPANIES, 'c1');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                console.log('[GET-COMPANY] c1 found in Firestore:', {
-                    hasLogoUrl: !!data.logoUrl,
-                    logoUrlLength: data.logoUrl?.length || 0
-                });
-                return { id: docSnap.id, ...data } as CompanyProfile;
-            }
-        } catch (e) {
-            console.error('[GET-COMPANY] Error fetching c1:', e);
-        }
-
-        console.log('[GET-COMPANY] Using fallback data for c1');
-        return {
-            id: 'c1',
-            name: 'PT Maju Bersama',
-            tier: 'Enterprise',
-            status: 'Active',
-            adminEmail: 'enterprise@fraudguard.id',
-            joinedDate: new Date().toISOString()
-        } as CompanyProfile;
-    }
-
-    try {
-        const docRef = doc(db, COLLECTIONS.COMPANIES, id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            console.log('[GET-COMPANY] Company found:', {
-                id,
-                hasLogoUrl: !!data.logoUrl,
-                logoUrlLength: data.logoUrl?.length || 0,
-                logoUrlPreview: data.logoUrl?.substring(0, 100),
-                allFields: Object.keys(data)
-            });
-            return { id: docSnap.id, ...data } as CompanyProfile;
-        } else {
-            console.warn(`[GET-COMPANY] Company ID ${id} not found in Firestore`);
-            return {
-                id: id,
-                name: 'Perusahaan Terdaftar',
-                tier: 'Basic',
-                status: 'Active',
-                adminEmail: 'support@fraudguard.id',
-                joinedDate: new Date().toISOString(),
-                welcomeMessage: 'Silakan lengkapi data asesmen Anda.'
-            } as CompanyProfile;
-        }
-    } catch (e) {
-        console.error("[GET-COMPANY] Error fetching company:", e);
-        return {
-             id: id,
-             name: 'Portal Kandidat FraudGuard',
-             tier: 'Basic',
-             status: 'Active',
-             adminEmail: '',
-             joinedDate: new Date().toISOString(),
-             welcomeMessage: 'Akses database terbatas. Menggunakan profil sementara.'
-        } as CompanyProfile;
-    }
+export const updateCompany = async (companyId: string, updates: Partial<CompanyProfile>): Promise<void> => {
+  try {
+    const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
+    await updateDoc(companyRef, updates as any);
+    console.log('[COMPANIES] Company updated:', companyId);
+  } catch (error) {
+    console.error('[COMPANIES] Error updating company:', error);
+    throw error;
+  }
 };
 
 export const resetConnectionState = () => {
@@ -1737,4 +1324,102 @@ export const generateSlug = (title: string): string => {
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
+};
+
+// ==========================================
+// WORKFLOW MANAGEMENT
+// ==========================================
+
+export const createWorkflow = async (workflowData: Omit<Workflow, 'id'>): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.WORKFLOWS), workflowData);
+    console.log('[WORKFLOWS] Workflow created with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('[WORKFLOWS] Error creating workflow:', error);
+    throw error;
+  }
+};
+
+export const getWorkflowsByCompany = async (companyId: string): Promise<Workflow[]> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.WORKFLOWS),
+      where('companyId', '==', companyId),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workflow));
+  } catch (error: any) {
+    console.error('[WORKFLOWS] Error fetching workflows:', error);
+    if (error.code === 'failed-precondition') {
+      try {
+        const fallbackQ = query(
+          collection(db, COLLECTIONS.WORKFLOWS),
+          where('companyId', '==', companyId)
+        );
+        const fallbackSnapshot = await getDocs(fallbackQ);
+        const workflows = fallbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workflow));
+        return workflows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } catch (fallbackError) {
+        console.error('[WORKFLOWS] Fallback query failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
+    throw error;
+  }
+};
+
+export const updateWorkflow = async (workflowId: string, updates: Partial<Workflow>): Promise<void> => {
+  try {
+    const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, workflowId);
+    await updateDoc(workflowRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+    console.log('[WORKFLOWS] Workflow updated:', workflowId);
+  } catch (error) {
+    console.error('[WORKFLOWS] Error updating workflow:', error);
+    throw error;
+  }
+};
+
+export const deleteWorkflow = async (workflowId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
+    console.log('[WORKFLOWS] Workflow deleted:', workflowId);
+  } catch (error) {
+    console.error('[WORKFLOWS] Error deleting workflow:', error);
+    throw error;
+  }
+};
+
+// Initiate Background Check with Didit KYC
+export const initiateBackgroundCheck = async (candidateId: string, candidateName: string): Promise<string> => {
+  try {
+    if (!functions) {
+      throw new Error("Firebase Functions not initialized");
+    }
+
+    console.log('[DIDIT] Initiating background check for candidate:', candidateId);
+
+    const initiateCheck = httpsCallable(functions, 'initiateBackgroundCheck');
+    const result = await initiateCheck({
+      candidateId,
+      candidateName
+    });
+
+    const response = result.data as { success: boolean; verificationUrl?: string; message?: string };
+
+    if (!response.success || !response.verificationUrl) {
+      throw new Error(response.message || 'Gagal memulai background check');
+    }
+
+    console.log('[DIDIT] ✅ Background check initiated successfully');
+    return response.verificationUrl;
+
+  } catch (error: any) {
+    console.error('[DIDIT] Error initiating background check:', error);
+    throw new Error(`Background check gagal: ${error.message}`);
+  }
 };
