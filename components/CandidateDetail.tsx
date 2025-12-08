@@ -1970,10 +1970,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                  <FileText size={20} className="text-[#D95D00]" />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-800 text-base flex items-center gap-2">
+                  <FileText size={18} className="text-[#D95D00]" />
                   CV Original
                 </h3>
                 {candidate.cvUrl && (
@@ -1981,10 +1981,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     href={candidate.cvUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B84D00] transition-colors flex items-center gap-2 text-sm font-medium"
+                    className="px-3 py-1.5 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors flex items-center gap-2 text-xs font-medium"
                   >
-                    <Download size={16} />
-                    Download CV
+                    <Download size={14} />
+                    Download
                   </a>
                 )}
               </div>
