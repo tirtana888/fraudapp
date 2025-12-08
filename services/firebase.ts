@@ -188,14 +188,15 @@ export const signUpWithFirebase = async (userData: {
       // Don't block signup if email sending fails
     }
 
-    // 3. Create company profile
+    // 3. Create company profile with initial Freemium credits
     const companyData: Omit<CompanyProfile, 'id'> = {
       name: userData.companyName,
-      tier: 'Basic',
+      tier: 'Freemium',
       status: 'Active',
       adminEmail: userData.email,
       joinedDate: new Date().toISOString(),
       usersCount: 1,
+      credits: 1000, // Initial Freemium credits
       verification_credits: 100,
       createdAt: Timestamp.now()
     };
