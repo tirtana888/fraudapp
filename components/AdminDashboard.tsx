@@ -29,7 +29,7 @@ const AdminDashboard: React.FC = () => {
 
   // Subscription Form State
   const [subFormData, setSubFormData] = useState({
-      tier: 'Basic' as 'Basic' | 'Premium' | 'Enterprise',
+      tier: 'Freemium' as 'Freemium' | 'Premium',
       status: 'Active' as 'Active' | 'Suspended' | 'Past Due',
       subscription_ends_at: '',
       custom_candidate_limit: 0, // 0 means default
