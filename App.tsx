@@ -505,7 +505,8 @@ const App: React.FC = () => {
         return <Documentation />;
       case 'credit-management':
         return <CreditManagementPage 
-          company={currentCompany!} 
+          company={currentCompany!}
+          user={currentUser!}
           onCompanyUpdate={handleCompanyUpdate}
         />;
       case 'admin-panel':
