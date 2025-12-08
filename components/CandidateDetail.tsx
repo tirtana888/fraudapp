@@ -1970,9 +1970,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800 text-base flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base flex items-center gap-2">
                   <FileText size={18} className="text-[#D95D00]" />
                   CV Original
                 </h3>
