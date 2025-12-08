@@ -2296,19 +2296,43 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle2 size={20} className="text-green-600" />
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <CheckCircle2 size={20} className="text-green-600 dark:text-green-400" />
                   </div>
-                  <h3 className="font-bold text-gray-800">Gambar Verifikasi ID</h3>
+                  <h3 className="font-bold text-gray-800 dark:text-white">Status Verifikasi</h3>
                 </div>
-                <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center">
-                  <div className="text-center">
-                    <FileText size={48} className="text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-400">Pratinjau Gambar ID</p>
-                    <p className="text-xs text-gray-400">Segera Hadir</p>
-                  </div>
+                <div className="space-y-3">
+                  {candidate.backgroundCheck?.status === 'approved' && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                      <CheckCircle2 size={48} className="text-green-600 dark:text-green-400 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-green-700 dark:text-green-400 mb-1">Verifikasi Berhasil</p>
+                      <p className="text-xs text-green-600 dark:text-green-500">Identitas kandidat telah diverifikasi oleh Didit KYC</p>
+                    </div>
+                  )}
+                  {candidate.backgroundCheck?.status === 'declined' && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+                      <XCircle size={48} className="text-red-600 dark:text-red-400 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-red-700 dark:text-red-400 mb-1">Verifikasi Ditolak</p>
+                      <p className="text-xs text-red-600 dark:text-red-500">Identitas kandidat tidak dapat diverifikasi</p>
+                    </div>
+                  )}
+                  {candidate.backgroundCheck?.status === 'in_progress' && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
+                      <Clock size={48} className="text-blue-600 dark:text-blue-400 mx-auto mb-2 animate-pulse" />
+                      <p className="text-sm font-bold text-blue-700 dark:text-blue-400 mb-1">Sedang Diproses</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-500">Verifikasi sedang berlangsung</p>
+                    </div>
+                  )}
+                  {!candidate.backgroundCheck?.status && (
+                    <div className="bg-gray-100 dark:bg-gray-700 rounded-lg h-48 flex items-center justify-center">
+                      <div className="text-center">
+                        <FileText size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                        <p className="text-sm text-gray-400">Belum Ada Data Verifikasi</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
