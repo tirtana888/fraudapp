@@ -1925,7 +1925,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
         {activeTab === 'documents' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 flex items-center justify-between">
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <Sparkles size={18} />
