@@ -7,6 +7,24 @@ interface ParsedCVDisplayProps {
 }
 
 const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
+  // Calculate total years of experience
+  const calculateTotalExperience = () => {
+    if (!parsedData.experience || parsedData.experience.length === 0) return 0;
+    
+    let totalYears = 0;
+    parsedData.experience.forEach(exp => {
+      // Try to extract years from duration string
+      const match = exp.duration?.match(/(\d+)\s*(tahun|year|yr)/i);
+      if (match) {
+        totalYears += parseInt(match[1]);
+      }
+    });
+    
+    return totalYears;
+  };
+  
+  const totalExperience = calculateTotalExperience();
+  
   return (
     <div className="space-y-4">
       <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] text-white rounded-xl p-6">
@@ -38,6 +56,24 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
             </div>
           </div>
         </div>
+        
+        {/* Quick Stats */}
+        {(totalExperience > 0 || parsedData.education?.length > 0) && (
+          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/20">
+            {totalExperience > 0 && (
+              <div>
+                <div className="text-3xl font-bold">{totalExperience}+</div>
+                <div className="text-sm opacity-90">Tahun Pengalaman</div>
+              </div>
+            )}
+            {parsedData.education && parsedData.education.length > 0 && (
+              <div>
+                <div className="text-3xl font-bold">{parsedData.education[0]?.degree?.split(' ')[0] || 'S1'}</div>
+                <div className="text-sm opacity-90">Pendidikan Terakhir</div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {parsedData.summary && (
