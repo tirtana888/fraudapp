@@ -198,12 +198,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           source: sessionSource,
           timeline: [
             {
-              stage: 'assessment_started',
+              stage: 'screening',
               status: 'current' as const,
               date: now,
-              note: `${candidateName} memulai assessment`
+              note: `Assessment screening dimulai`
             }
-          ]
+          ],
+          workflowId: null  // Will be set if job has workflow
       };
 
       // Add job-related fields if this is a job application
