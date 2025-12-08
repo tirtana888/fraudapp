@@ -52,8 +52,10 @@ const AssessmentSettings: React.FC<AssessmentSettingsProps> = ({ currentCompany,
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const assessmentLink = `${window.location.origin}?mode=assess&cid=${currentCompany.id}`;
-  // FEATURE GATING with safety check
-  const features = currentCompany?.tier ? PLAN_LIMITS[currentCompany.tier] : PLAN_LIMITS['Freemium'];
+  // FEATURE GATING with safety check - Double defensive pattern
+  const features = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier] 
+    ? PLAN_LIMITS[currentCompany.tier] 
+    : PLAN_LIMITS['Freemium'];
 
   useEffect(() => {
     // Only update form if data actually changed (not just reference)
