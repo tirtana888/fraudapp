@@ -393,6 +393,33 @@ const HistoryView: React.FC<HistoryViewProps> = ({
             );
             })}
           </div>
+
+          {/* Upgrade Banner for Freemium Users */}
+          {isFreemium && filteredCandidates.length > viewLimit && (
+            <div className="mt-6 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-2 border-orange-300 dark:border-orange-700 rounded-2xl p-6 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="bg-orange-500 text-white p-3 rounded-full">
+                  <Lock size={32} />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                {filteredCandidates.length - viewLimit} Kandidat Lagi Terkunci
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-1">
+                Paket Freemium terbatas melihat {viewLimit} kandidat pertama
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Upgrade ke Premium untuk akses unlimited kandidat + fitur lengkap
+              </p>
+              <button
+                onClick={() => onUpgradeClick && onUpgradeClick()}
+                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-bold text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Crown size={20} />
+                Upgrade ke Premium Sekarang
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
