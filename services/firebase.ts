@@ -156,7 +156,8 @@ export const sendIntegrityTestInvitation = async (
   }
 };
 
-// --- REAL AUTHENTICATION SERVICE ---
+// --- LEGACY AUTHENTICATION SERVICE (DEPRECATED) ---
+// @deprecated Use loginWithFirebase instead for new implementations
 export const loginWithFirestore = async (email: string, password: string): Promise<UserProfile | null> => {
   if (!db) throw new Error("Koneksi Database terputus.");
 
