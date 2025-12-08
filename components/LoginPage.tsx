@@ -100,10 +100,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
         
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">H</span>
-            </div>
+          <div className="inline-flex items-center gap-3 mb-6">
+            <img 
+              src="/untitled_design_(43).png" 
+              alt="HireGood Logo" 
+              className="w-12 h-12 object-contain"
+            />
             <span className="text-2xl font-bold text-gray-900">HireGood</span>
           </div>
         </div>
