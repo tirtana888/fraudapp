@@ -120,8 +120,8 @@ const AssessmentProgress: React.FC<AssessmentProgressProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Motivational Message */}
+      
+      {/* Motivational Message - Outside sticky container */}
       {percentage >= 80 && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4 text-center animate-fade-in">
           <Trophy className="w-8 h-8 text-green-600 mx-auto mb-2 animate-bounce" />
