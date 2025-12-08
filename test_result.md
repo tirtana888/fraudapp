@@ -232,12 +232,16 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Improved Login Page UI - Friendly Design"
+    - "Credit Management Page Navigation"
+    - "Candidate Blurring (Freemium Restriction)"
+    - "Contact Masking and Unlocking"
+    - "Credit Deduction - Background Check"
+    - "Credit Deduction - Resend Invite"
+  stuck_tasks:
     - "Email Verification Flow - Verification Screen"
     - "Email Verification Flow - Resend Verification Email"
     - "Email Verification Flow - Skip Verification"
     - "Login Flow with Email Verification Check"
-  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
