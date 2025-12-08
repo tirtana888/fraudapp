@@ -165,19 +165,9 @@ const App: React.FC = () => {
 
   // --- TIMELINE ENGINE ---
   // Merges sessions and invites into a single, sorted, real-time feed.
-  useEffect(() => {
-    const handleNavigateToCredits = () => {
-      if (activeView) {
-        setActiveView('credit-management' as any);
-      }
-    };
-    
-    window.addEventListener('navigate-to-credits', handleNavigateToCredits);
-    
-    return () => {
-      window.removeEventListener('navigate-to-credits', handleNavigateToCredits);
-    };
-  }, [activeView]);
+  const handleNavigateToCredits = () => {
+    setActiveTab('credit-management');
+  };
 
   useEffect(() => {
     if (!currentUser) return;
