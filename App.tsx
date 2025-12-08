@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import ActiveInterview from './components/ActiveInterview';
 import ReportView from './components/ReportView';
 import LoginPage from './components/LoginPage';
+import SignUpPage from './components/SignUpPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
