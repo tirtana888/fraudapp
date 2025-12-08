@@ -134,9 +134,38 @@ const App: React.FC = () => {
     setIsLoadingData(true);
     
     const initCompany = async () => {
-       if(currentUser.companyId) {
-           const company = await getCompanyById(currentUser.companyId);
-           setCurrentCompany(company);
+       try {
+         console.log('[APP] Loading company profile for ID:', currentUser.companyId);
+         if(currentUser.companyId) {
+             const company = await getCompanyById(currentUser.companyId);
+             console.log('[APP] Company loaded:', company);
+             
+             if (company) {
+               setCurrentCompany(company);
+             } else {
+               console.error('[APP] Company profile not found for ID:', currentUser.companyId);
+               // Set a minimal company object to prevent infinite loading
+               setCurrentCompany({
+                 id: currentUser.companyId,
+                 name: currentUser.companyName || 'Unknown Company',
+                 industry: '',
+                 credits: 0,
+                 subscription_tier: 'Freemium',
+                 subscription_ends_at: null
+               } as CompanyProfile);
+             }
+         }
+       } catch (error) {
+         console.error('[APP] Error loading company profile:', error);
+         // Set fallback company to prevent infinite loading
+         setCurrentCompany({
+           id: currentUser.companyId || '',
+           name: currentUser.companyName || 'Unknown Company',
+           industry: '',
+           credits: 0,
+           subscription_tier: 'Freemium',
+           subscription_ends_at: null
+         } as CompanyProfile);
        }
     };
     initCompany();
