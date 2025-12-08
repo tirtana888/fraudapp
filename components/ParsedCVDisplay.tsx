@@ -117,8 +117,8 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {parsedData.skills && parsedData.skills.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2 text-sm">
               <Award size={16} className="text-[#D95D00]" />
               Keahlian ({parsedData.skills.length})
             </h3>
@@ -126,7 +126,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
               {parsedData.skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="px-2 py-0.5 bg-[#D95D00]/10 text-[#D95D00] rounded text-xs font-medium"
+                  className="px-2 py-0.5 bg-[#D95D00]/10 dark:bg-[#D95D00]/20 text-[#D95D00] dark:text-orange-400 rounded text-xs font-medium"
                 >
                   {skill}
                 </span>
@@ -136,8 +136,8 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         )}
 
         {parsedData.languages && parsedData.languages.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2 text-sm">
               <Languages size={16} className="text-[#D95D00]" />
               Bahasa
             </h3>
@@ -145,7 +145,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
               {parsedData.languages.map((lang, index) => (
                 <span
                   key={index}
-                  className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                  className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium"
                 >
                   {lang}
                 </span>
