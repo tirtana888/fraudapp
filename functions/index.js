@@ -240,6 +240,212 @@ exports.sendRejectionEmail = functions
     return { success: true };
   });
 
+
+// ==========================================
+// DIDIT WEBHOOK - ASYNC PROCESSING
+// ==========================================
+
+/**
+ * Step 1: Receive webhook and save to queue (< 1 second response)
+ * This function only receives data and immediately returns 200 OK
+ * to prevent timeout issues
+ */
+exports.diditWebhook = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 10, memory: '256MB' })
+  .https.onRequest(async (req, res) => {
+    console.log('[DIDIT-WEBHOOK] Received webhook request');
+    
+    // Enable CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, X-Signature, X-Timestamp');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).send('');
+    }
+    
+    // Only accept POST
+    if (req.method !== 'POST') {
+      console.log('[DIDIT-WEBHOOK] ⚠️ Invalid method:', req.method);
+      return res.status(405).send('Method Not Allowed');
+    }
+    
+    try {
+      const webhookData = req.body;
+      const signature = req.headers['x-signature'] || req.headers['X-Signature'];
+      const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
+      
+      console.log('[DIDIT-WEBHOOK] Webhook type:', webhookData.webhook_type);
+      console.log('[DIDIT-WEBHOOK] Session ID:', webhookData.session_id);
+      console.log('[DIDIT-WEBHOOK] Status:', webhookData.status);
+      console.log('[DIDIT-WEBHOOK] Vendor data:', webhookData.vendor_data);
+      
+      // Validate required fields
+      if (!webhookData.session_id || !webhookData.vendor_data) {
+        console.error('[DIDIT-WEBHOOK] ❌ Missing required fields');
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Missing session_id or vendor_data' 
+        });
+      }
+      
+      // Save to webhook queue for async processing
+      // This is FAST - just a database write
+      const queueRef = await db.collection('didit_webhook_queue').add({
+        webhookData: webhookData,
+        headers: {
+          signature: signature,
+          timestamp: timestamp
+        },
+        receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processed: false,
+        processingStatus: 'pending'
+      });
+      
+      console.log('[DIDIT-WEBHOOK] ✅ Queued for processing:', queueRef.id);
+      
+      // Immediately return success - don't wait for processing
+      // This ensures response is sent within milliseconds
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Webhook received and queued for processing',
+        queueId: queueRef.id
+      });
+      
+    } catch (error) {
+      console.error('[DIDIT-WEBHOOK] ❌ Error queuing webhook:', error);
+      
+      // Still return 200 to prevent Didit from retrying
+      // Error will be logged for investigation
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Webhook received (with errors)',
+        error: error.message 
+      });
+    }
+  });
+
+/**
+ * Step 2: Process webhook from queue (runs in background)
+ * This Firestore trigger automatically processes queued webhooks
+ * No timeout issues because it runs asynchronously
+ */
+exports.processDiditWebhook = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 120, memory: '512MB' })
+  .firestore.document('didit_webhook_queue/{queueId}')
+  .onCreate(async (snapshot, context) => {
+    const queueId = context.params.queueId;
+    const queueData = snapshot.data();
+    
+    console.log('[PROCESS-WEBHOOK] Starting background processing for:', queueId);
+    
+    try {
+      const webhookData = queueData.webhookData;
+      const { 
+        session_id: diditSessionId, 
+        status, 
+        vendor_data: firestoreSessionId,
+        decision,
+        created_at,
+        timestamp: webhookTimestamp,
+        webhook_type
+      } = webhookData;
+      
+      console.log('[PROCESS-WEBHOOK] Didit Session:', diditSessionId);
+      console.log('[PROCESS-WEBHOOK] Firestore Session:', firestoreSessionId);
+      console.log('[PROCESS-WEBHOOK] Status:', status);
+      console.log('[PROCESS-WEBHOOK] Type:', webhook_type);
+      
+      // Map Didit status to our format
+      let mappedStatus = 'pending';
+      if (status === 'Approved') {
+        mappedStatus = 'approved';
+      } else if (status === 'Declined') {
+        mappedStatus = 'declined';
+      } else if (status === 'In Progress') {
+        mappedStatus = 'in_progress';
+      } else if (status === 'In Review') {
+        mappedStatus = 'in_review';
+      }
+      
+      console.log('[PROCESS-WEBHOOK] Mapped status:', mappedStatus);
+      
+      // Extract decision info if available
+      let decisionText = null;
+      if (decision && decision.status) {
+        decisionText = `Verification ${decision.status}`;
+        
+        // Add warnings if any
+        if (decision.id_verification && decision.id_verification.warnings) {
+          const warnings = decision.id_verification.warnings;
+          if (warnings.length > 0) {
+            decisionText += ` (${warnings.length} warning(s) detected)`;
+          }
+        }
+      }
+      
+      // Prepare background check data
+      const backgroundCheckData = {
+        status: mappedStatus,
+        diditSessionId: diditSessionId,
+        decision: decisionText,
+        verificationLink: webhookData.session_url || null,
+        createdAt: admin.firestore.Timestamp.fromMillis(created_at * 1000),
+        lastUpdated: admin.firestore.Timestamp.fromMillis((webhookTimestamp || created_at) * 1000),
+        rawWebhookData: {
+          status: status,
+          webhook_type: webhook_type,
+          session_number: webhookData.session_number
+        }
+      };
+      
+      console.log('[PROCESS-WEBHOOK] Updating Firestore document:', firestoreSessionId);
+      
+      // Update Firestore - use interview_sessions collection
+      await db.collection('interview_sessions').doc(firestoreSessionId).update({
+        backgroundCheck: backgroundCheckData,
+        backgroundCheckStatus: mappedStatus,
+        backgroundCheckCompletedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log('[PROCESS-WEBHOOK] ✅ Firestore updated successfully');
+      
+      // Mark queue item as processed
+      await snapshot.ref.update({
+        processed: true,
+        processingStatus: 'success',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        result: {
+          firestoreSessionId: firestoreSessionId,
+          mappedStatus: mappedStatus,
+          success: true
+        }
+      });
+      
+      console.log('[PROCESS-WEBHOOK] ✅ Queue item marked as processed');
+      
+    } catch (error) {
+      console.error('[PROCESS-WEBHOOK] ❌ Error processing webhook:', error);
+      console.error('[PROCESS-WEBHOOK] Error stack:', error.stack);
+      
+      // Mark queue item as failed
+      await snapshot.ref.update({
+        processed: true,
+        processingStatus: 'failed',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        error: {
+          message: error.message,
+          stack: error.stack
+        }
+      });
+      
+      console.log('[PROCESS-WEBHOOK] ❌ Queue item marked as failed');
+    }
+  });
+
 exports.diditWebhook = functions
   .region('europe-west1')
   .runWith({ timeoutSeconds: 60 })
