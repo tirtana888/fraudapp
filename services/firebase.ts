@@ -1461,8 +1461,9 @@ export const parseCVWithMistral = async (cvUrl: string, sessionId: string): Prom
     const result = await parseDocFunction({ documentUrl: cvUrl, sessionId });
 
     console.log('[DOC-PARSE] ✅ Document parsed successfully');
-    console.log('[DOC-PARSE] File type:', result.data?.fileType);
-    console.log('[DOC-PARSE] Extracted chars:', result.data?.extractedChars);
+    const resultData = result.data as any;
+    console.log('[DOC-PARSE] File type:', resultData?.fileType);
+    console.log('[DOC-PARSE] Extracted chars:', resultData?.extractedChars);
     return result.data;
 
   } catch (error: any) {
