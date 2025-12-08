@@ -767,62 +767,63 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                 <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                   {filteredApplications.map((app) => {
               const stageInfo = getStageInfo(app.recruitmentStage);
-              const isExpanded = expandedApp === app.id;
               const isUpdating = updatingStatus === app.id;
 
               return (
-                <div
+                <tr
                   key={app.id}
-                  className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-all hover:border-[#D95D00]/30"
+                  className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
                 >
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold text-gray-800">{app.candidate.name}</h3>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${stageInfo.color}`}>
-                            {stageInfo.icon}
-                            {stageInfo.label}
-                          </span>
+                  {/* Candidate Column */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                        {getAvatarInitials(app.candidate.name)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900 dark:text-white">
+                          {app.candidate.name}
                         </div>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                          <div className="flex items-center gap-1.5">
-                            <Briefcase size={16} className="text-[#D95D00]" />
-                            <span className="font-medium">{app.jobTitle}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin size={16} className="text-gray-400" />
-                            <span>{app.jobLocation}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Calendar size={16} className="text-gray-400" />
-                            <span>{new Date(app.appliedAt || app.date).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1.5 text-gray-600">
-                            <Mail size={16} className="text-gray-400" />
-                            <a href={`mailto:${app.candidate.email}`} className="hover:text-[#D95D00] transition-colors">
-                              {app.candidate.email}
-                            </a>
-                          </div>
-                          {app.whatsapp && (
-                            <div className="flex items-center gap-1.5 text-gray-600">
-                              <Phone size={16} className="text-gray-400" />
-                              <a href={`https://wa.me/${app.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-[#D95D00] transition-colors">
-                                {app.whatsapp}
-                              </a>
-                            </div>
-                          )}
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {app.candidate.email}
                         </div>
                       </div>
                     </div>
+                  </td>
 
-                    <div className="flex flex-wrap gap-2 mb-4">
+                  {/* Applied For Column */}
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-gray-900 dark:text-white">
+                      {app.jobTitle}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <MapPin size={12} />
+                      {app.jobLocation}
+                    </div>
+                  </td>
+
+                  {/* Applied Date Column */}
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(app.appliedAt || app.date).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  </td>
+
+                  {/* Stage Column */}
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border ${stageInfo.color}`}>
+                      {stageInfo.icon}
+                      {stageInfo.label}
+                    </span>
+                  </td>
+
+                  {/* Action Column */}
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {app.recruitmentStage !== 'rejected' && app.recruitmentStage !== 'integrity_test' && (
                         <>
                           <button
