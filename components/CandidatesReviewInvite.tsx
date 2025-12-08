@@ -902,25 +902,11 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                     </div>
                   </td>
                 </tr>
-                              <a
-                                href={app.cvUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                <FileText size={16} />
-                                Buka CV di Tab Baru
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );})}
+              </tbody>
+            </table>
           </div>
+        </div>
         )}
       </div>
 
