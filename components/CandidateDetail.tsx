@@ -466,21 +466,44 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
-      const updatedTimeline = [
-        ...existingTimeline.map(event => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' as const : event.status
-        })),
-        {
-          stage: 'interview',
+      
+      // Update timeline properly for workflow progression
+      const updatedTimeline = existingTimeline.map((event: any) => {
+        // Mark current step as completed
+        if (event.status === 'current') {
+          return {
+            ...event,
+            status: 'completed' as const,
+            completedAt: now,
+            note: event.note + ` - Selesai, interview dijadwalkan`
+          };
+        }
+        return event;
+      });
+
+      // Find current step index and set next step as current
+      const currentStepIndex = existingTimeline.findIndex((t: any) => t.status === 'current');
+      if (currentStepIndex !== -1 && currentStepIndex + 1 < updatedTimeline.length) {
+        const nextStep = updatedTimeline[currentStepIndex + 1];
+        updatedTimeline[currentStepIndex + 1] = {
+          ...nextStep,
           status: 'current' as const,
           date: now,
-          note: `${candidate.candidate.name} dipanggil untuk tahap wawancara ${interviewType === 'online' ? 'online' : 'offline'} pada ${formattedDate} pukul ${interviewTime}`
-        }
-      ];
+          note: nextStep.note || `${nextStep.stage} - Ready to proceed`
+        };
+      }
+
+      console.log('[INTERVIEW] ✅ Timeline updated with workflow progression');
+      console.log('[INTERVIEW] Current completed, next step set to current');
+
+      // Determine recruitmentStage based on next workflow step
+      let nextStageId = 'interview';
+      if (currentStepIndex !== -1 && currentStepIndex + 1 < updatedTimeline.length) {
+        nextStageId = updatedTimeline[currentStepIndex + 1].stage;
+      }
 
       await updateDoc(sessionRef, {
-        recruitmentStage: 'interview',
+        recruitmentStage: nextStageId,
         timeline: updatedTimeline,
         updatedAt: now,
         interviewEmailSent: true,
