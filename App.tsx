@@ -34,6 +34,7 @@ const App: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showSignUp, setShowSignUp] = useState(false);
 
   // Public Link State (Lazy Initialization to prevent Login Flash)
   const [isPublicMode, setIsPublicMode] = useState(() => {
