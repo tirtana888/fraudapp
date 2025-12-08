@@ -308,10 +308,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           </div>
 
           <div className="md:hidden space-y-4">
-            {filteredCandidates.map((candidate) => (
+            {filteredCandidates.map((candidate, index) => {
+              const isBlurred = isFreemium && index >= viewLimit;
+              
+              return (
               <div
                 key={candidate.id}
-                className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 space-y-4"
+                className={`bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 space-y-4 relative ${isBlurred ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
