@@ -65,7 +65,6 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     setWorkflowName('');
     setWorkflowDescription('');
     setSelectedSteps({
-      integrity_assessment: true,
       hire_decision: true,
       reject_decision: true
     });
