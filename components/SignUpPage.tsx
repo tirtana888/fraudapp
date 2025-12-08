@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { UserProfile } from '../types';
-import { signUpWithFirestore } from '../services/firebase';
+import { signUpWithFirebase } from '../services/firebase';
 
 interface SignUpPageProps {
   onSignUpSuccess: (user: UserProfile) => void;
