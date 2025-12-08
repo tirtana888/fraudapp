@@ -303,15 +303,15 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ user, onBac
                     } ${pkg.popular ? 'ring-2 ring-orange-200' : ''}`}
                   >
                     {pkg.popular && (
-                      <span className=\"inline-block bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded mb-2\">
+                      <span className="inline-block bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded mb-2">
                         Popular
                       </span>
                     )}
-                    <div className=\"flex items-baseline gap-2 mb-2\">
-                      <span className=\"text-3xl font-bold text-gray-900\">{pkg.credits.toLocaleString('id-ID')}</span>
-                      <span className=\"text-sm text-gray-600\">Credits</span>
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{pkg.credits.toLocaleString('id-ID')}</span>
+                      <span className="text-sm text-gray-600">Credits</span>
                     </div>
-                    <p className=\"text-lg font-semibold text-orange-600\">{formatIDR(pkg.price)}</p>
+                    <p className="text-lg font-semibold text-orange-600">{formatIDR(pkg.price)}</p>
                   </button>
                 ))}
               </div>
