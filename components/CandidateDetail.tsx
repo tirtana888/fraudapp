@@ -2192,8 +2192,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
         )}
 
         {activeTab === 'background' && candidate.status === 'completed' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+          <>
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6 mb-6">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-1">Laporan Pemeriksaan Latar Belakang</h2>
