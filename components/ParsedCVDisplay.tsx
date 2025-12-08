@@ -115,18 +115,18 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {parsedData.skills && parsedData.skills.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Award size={18} className="text-[#D95D00]" />
-              Keahlian
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+              <Award size={16} className="text-[#D95D00]" />
+              Keahlian ({parsedData.skills.length})
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {parsedData.skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-[#D95D00]/10 text-[#D95D00] rounded-full text-sm font-medium"
+                  className="px-2 py-0.5 bg-[#D95D00]/10 text-[#D95D00] rounded text-xs font-medium"
                 >
                   {skill}
                 </span>
@@ -136,16 +136,16 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         )}
 
         {parsedData.languages && parsedData.languages.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Languages size={18} className="text-[#D95D00]" />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+              <Languages size={16} className="text-[#D95D00]" />
               Bahasa
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {parsedData.languages.map((lang, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                  className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
                 >
                   {lang}
                 </span>
