@@ -48,8 +48,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
       setIsLoading(true);
 
       try {
-          const result = await resetUserPassword(resetEmail);
-          setSuccessMsg(result.message);
+          await sendPasswordReset(resetEmail);
+          setSuccessMsg(`Email reset password telah dikirim ke ${resetEmail}. Periksa inbox Anda.`);
           setResetEmail('');
       } catch (err: any) {
           setError(err.message || "Gagal mereset password. Pastikan email terdaftar.");
