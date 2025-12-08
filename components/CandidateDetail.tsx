@@ -1990,7 +1990,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
               </div>
               <div className="p-4">
                 {candidate.cvUrl ? (
-                  <div className="bg-gray-100 rounded overflow-hidden" style={{ height: '600px' }}>
+                  <div className="bg-gray-100 dark:bg-gray-900 rounded overflow-hidden" style={{ height: '600px' }}>
                     {candidate.cvUrl.endsWith('.pdf') ? (
                       <iframe
                         src={candidate.cvUrl}
@@ -2000,8 +2000,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
-                          <FileText size={48} className="text-gray-400 mx-auto mb-3" />
-                          <p className="text-gray-600 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
+                          <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
                           <a
                             href={candidate.cvUrl}
                             target="_blank"
