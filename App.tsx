@@ -166,6 +166,18 @@ const App: React.FC = () => {
   // --- TIMELINE ENGINE ---
   // Merges sessions and invites into a single, sorted, real-time feed.
   useEffect(() => {
+    const handleNavigateToCredits = () => {
+      setCurrentView('credit-management');
+    };
+    
+    window.addEventListener('navigate-to-credits', handleNavigateToCredits);
+    
+    return () => {
+      window.removeEventListener('navigate-to-credits', handleNavigateToCredits);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!currentUser) return;
     
     const sessionEvents: TimelineEvent[] = sessions.map(s => ({
