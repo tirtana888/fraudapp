@@ -29,6 +29,18 @@ interface CandidateData extends InterviewSession {
     phone: boolean;
     documents: 'pending' | 'verified' | 'failed';
   };
+  backgroundCheck?: {
+    status?: 'pending' | 'in_progress' | 'approved' | 'declined';
+    decision?: string;
+    diditSessionId?: string;
+    verificationLink?: string;
+    createdAt?: {
+      seconds: number;
+    };
+    lastUpdated?: {
+      seconds: number;
+    };
+  };
 }
 
 const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) => {
