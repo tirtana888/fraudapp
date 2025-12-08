@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Award, Languages, Lightbulb } from 'lucide-react';
+import { User, MapPin, Briefcase, GraduationCap, Award, Languages, Lightbulb } from 'lucide-react';
 import { ParsedCVData } from '../types';
 
 interface ParsedCVDisplayProps {
