@@ -402,7 +402,8 @@ export const COLLECTIONS = {
   INVITES: 'assessment_invites',
   JOBS: 'jobs',
   APPLICATIONS: 'applications',
-  WORKFLOWS: 'workflows'
+  WORKFLOWS: 'workflows',
+  CREDIT_TRANSACTIONS: 'credit_transactions'
 };
 
 // Seed real database with demo data
