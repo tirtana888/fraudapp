@@ -46,7 +46,7 @@ export const analyzeFraudRisk = async (
     
     // Return fallback analysis
     return {
-      riskLevel: 'MEDIUM' as const,
+      riskLevel: 'Medium',
       riskScore: 50,
       pressureScore: 50,
       rationalizationScore: 50,
