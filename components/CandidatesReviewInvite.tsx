@@ -459,6 +459,99 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
         </div>
       </div>
 
+      {/* DASHBOARD STATISTICS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Pending Review */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+              <Clock size={20} className="text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Pending</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalPending}</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Menunggu review & undangan</p>
+        </div>
+
+        {/* Total Completed */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle2 size={20} className="text-green-600 dark:text-green-400" />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Completed</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalCompleted}</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Sudah selesai assessment</p>
+        </div>
+
+        {/* Invite Sent */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Mail size={20} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Invited</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{inviteSentCount}</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Undangan sudah dikirim</p>
+        </div>
+
+        {/* High Risk Count */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">High Risk</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{highRiskCount}</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Kandidat berisiko tinggi</p>
+        </div>
+      </div>
+
+      {/* Risk Distribution Chart */}
+      {completedCandidates.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <TrendingUp size={18} className="text-[#D95D00]" />
+            Distribusi Risk Level
+          </h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400">{lowRiskCount}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Low Risk</p>
+              <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full transition-all duration-500" 
+                  style={{ width: `${totalCompleted > 0 ? (lowRiskCount / totalCompleted * 100) : 0}%` }}
+                ></div>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{mediumRiskCount}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Medium Risk</p>
+              <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-yellow-500 h-2 rounded-full transition-all duration-500" 
+                  style={{ width: `${totalCompleted > 0 ? (mediumRiskCount / totalCompleted * 100) : 0}%` }}
+                ></div>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{highRiskCount}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">High Risk</p>
+              <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-red-500 h-2 rounded-full transition-all duration-500" 
+                  style={{ width: `${totalCompleted > 0 ? (highRiskCount / totalCompleted * 100) : 0}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DASHBOARD KANDIDAT YANG SUDAH COMPLETE */}
       {completedCandidates.length > 0 && (
         <div className="space-y-4">
