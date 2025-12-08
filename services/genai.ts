@@ -46,15 +46,21 @@ export const analyzeFraudRisk = async (
     
     // Return fallback analysis
     return {
-      riskLevel: 'Medium' as any,
-      pressureScore: 50,
-      rationalizationScore: 50,
-      opportunityScore: 50,
+      scores: {
+        pressure: 50,
+        rationalization: 50,
+        opportunity: 50,
+        overall: 50
+      },
+      riskLevel: 'Medium',
+      riskScore: 50,
       keyFindings: ['Unable to complete AI analysis. Manual review recommended.'],
       recommendations: ['Conduct thorough background check', 'Schedule follow-up interview'],
       redFlags: [],
       strengths: [],
       behavioralPatterns: [],
+      transcript: [],
+      assessment: {},
       timestamp: new Date().toISOString()
     };
   }
