@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, ShieldAlert, Eye, EyeOff, KeyRound, ArrowLeft, Send } from 'lucide-react';
 import { UserProfile } from '../types';
-import { loginWithFirestore, resetUserPassword } from '../services/firebase';
+import { loginWithFirebase, sendPasswordReset } from '../services/firebase';
 
 interface LoginPageProps {
   onLogin: (user: UserProfile) => void;
