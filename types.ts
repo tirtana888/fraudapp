@@ -123,11 +123,15 @@ export interface UserProfile {
 export interface CompanyProfile {
   id: string;
   name: string;
-  tier: 'Basic' | 'Premium' | 'Enterprise';
+  tier: 'Freemium' | 'Premium';
   status: 'Active' | 'Pending' | 'Suspended' | 'Past Due';
   adminEmail: string;
   joinedDate: string;
   usersCount?: number;
+  credits: number;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string;
+  monthlyCredits?: number;
   createdAt?: any;
   logoUrl?: string;
   brandColor?: string;
@@ -140,6 +144,51 @@ export interface CompanyProfile {
   whatsapp?: string;
   address?: string;
 }
+
+export interface CreditTransaction {
+  id?: string;
+  companyId: string;
+  type: 'debit' | 'credit';
+  amount: number;
+  action: 'KYC_VERIFICATION' | 'RESEND_INVITE' | 'UNLOCK_PROFILE' | 'TOP_UP' | 'SUBSCRIPTION' | 'INITIAL_CREDIT' | 'MONTHLY_REFILL';
+  description: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  timestamp: string;
+  metadata?: {
+    candidateId?: string;
+    candidateName?: string;
+    sessionId?: string;
+    paymentId?: string;
+    invoiceId?: string;
+  };
+}
+
+export const CREDIT_COSTS = {
+  KYC_VERIFICATION: 100,
+  RESEND_INVITE: 2,
+  UNLOCK_PROFILE: 2
+} as const;
+
+export const SUBSCRIPTION_PLANS = {
+  FREEMIUM: {
+    name: 'Freemium',
+    price: 0,
+    initialCredits: 1000,
+    monthlyCredits: 0,
+    candidateViewLimit: 10,
+    features: ['Unlimited Job Posting', 'Logo Upload', 'Career Page', 'Limited Candidate View (10)']
+  },
+  PREMIUM: {
+    name: 'Premium',
+    price: 150000,
+    monthlyCredits: 1500,
+    candidateViewLimit: null,
+    features: ['All Freemium Features', 'Unlimited Candidate View', 'Full Contact Access', '1500 Monthly Credits']
+  }
+} as const;
+
+export const CREDIT_TO_IDR_RATE = 100; // 1000 credits = Rp 100,000 (100 IDR per credit)
 
 export interface SelfAssessmentAnswers {
     candidateName: string;
