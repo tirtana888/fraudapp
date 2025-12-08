@@ -2240,26 +2240,59 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Shield size={20} className="text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Shield size={20} className="text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h3 className="font-bold text-gray-800">Ringkasan Pemeriksaan Latar Belakang</h3>
+                  <h3 className="font-bold text-gray-800 dark:text-white">Ringkasan Pemeriksaan Latar Belakang</h3>
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Status</span>
-                    <span className="text-sm font-semibold text-gray-400">Menunggu Integrasi</span>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Status</span>
+                    <span className={`text-sm font-semibold ${
+                      candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
+                        : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
+                        : candidate.backgroundCheck?.status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-400'
+                    }`}>
+                      {candidate.backgroundCheck?.status === 'approved' ? 'Approved'
+                        : candidate.backgroundCheck?.status === 'declined' ? 'Declined'
+                        : candidate.backgroundCheck?.status === 'in_progress' ? 'In Progress'
+                        : candidate.backgroundCheck?.status === 'pending' ? 'Pending'
+                        : 'Not Started'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Tanggal Verifikasi</span>
-                    <span className="text-sm font-semibold text-gray-400">--</span>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Tanggal Verifikasi</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {candidate.backgroundCheck?.lastUpdated 
+                        ? new Date(candidate.backgroundCheck.lastUpdated.seconds * 1000).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })
+                        : '--'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Penyedia</span>
-                    <span className="text-sm font-semibold text-blue-600">Didit KYC</span>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Didit Session ID</span>
+                    <span className="text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-[200px]">
+                      {candidate.backgroundCheck?.diditSessionId || '--'}
+                    </span>
                   </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Penyedia</span>
+                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Didit KYC</span>
+                  </div>
+                  {candidate.backgroundCheck?.decision && (
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Decision</span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {candidate.backgroundCheck.decision}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
