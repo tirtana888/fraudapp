@@ -167,16 +167,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
     try {
       setIsParsing(true);
-      toast.info('Memulai parsing CV dengan Mistral AI...');
+      toast.info('Memulai parsing dokumen dengan Mistral AI...');
 
       await parseCVWithMistral(candidate.cvUrl, sessionId);
 
-      toast.success('CV berhasil diparsing! Refresh halaman untuk melihat hasil.');
+      toast.success('Dokumen berhasil diparsing! Refresh halaman untuk melihat hasil.');
       await loadCandidateData();
 
     } catch (error) {
-      console.error('[CANDIDATE-DETAIL] Error parsing CV:', error);
-      toast.error(error instanceof Error ? error.message : 'Gagal parsing CV');
+      console.error('[CANDIDATE-DETAIL] Error parsing document:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal parsing dokumen');
     } finally {
       setIsParsing(false);
     }
