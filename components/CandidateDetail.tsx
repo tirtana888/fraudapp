@@ -667,6 +667,21 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       setIsUpdating(true);
       setShowBgCheckModal(false);
 
+      // Deduct credits for KYC Verification (100 credits)
+      const deductionResult = await deductCredit(
+        company.id,
+        100,
+        'KYC_VERIFICATION',
+        `KYC Background Check - ${candidate.candidate.name}`,
+        { sessionId, candidateName: candidate.candidate.name }
+      );
+
+      if (!deductionResult.success) {
+        toast.error(deductionResult.error || 'Gagal memulai Background Check - Kredit tidak cukup');
+        setIsUpdating(false);
+        return;
+      }
+
       // Update workflow status directly (email sending is optional)
       const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
@@ -701,7 +716,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         console.warn('[BACKGROUND-CHECK] ⚠️ Email failed (continuing without email):', emailError);
       }
 
-      toast.success('Background Check dimulai! (Email notification: best effort)');
+      toast.success(`Background Check dimulai! (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       await loadCandidateData();
     } catch (error) {
       console.error('Error initiating background check:', error);
