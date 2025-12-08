@@ -140,8 +140,10 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
             throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
         }
 
-        const planFeatures = currentCompany?.tier ? PLAN_LIMITS[currentCompany.tier] : PLAN_LIMITS['Freemium'];
-        if (!planFeatures.allow_permanent_link) {
+        const planFeatures = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier] 
+            ? PLAN_LIMITS[currentCompany.tier] 
+            : PLAN_LIMITS['Freemium'];
+        if (planFeatures?.allow_permanent_link !== true) {
             throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
         }
 
