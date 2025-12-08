@@ -2193,19 +2193,48 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
 
         {activeTab === 'background' && candidate.status === 'completed' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl shadow-sm border border-blue-200 p-6">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">Laporan Pemeriksaan Latar Belakang</h2>
-                  <p className="text-sm text-gray-600 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
-                    <Clock size={14} />
-                    SEGERA HADIR
-                  </div>
+                  <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-1">Laporan Pemeriksaan Latar Belakang</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
+                  {candidate.backgroundCheck?.status ? (
+                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+                      candidate.backgroundCheck.status === 'approved' 
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : candidate.backgroundCheck.status === 'in_progress'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : candidate.backgroundCheck.status === 'declined'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    }`}>
+                      {candidate.backgroundCheck.status === 'approved' && <CheckCircle2 size={14} />}
+                      {candidate.backgroundCheck.status === 'in_progress' && <Clock size={14} />}
+                      {candidate.backgroundCheck.status === 'declined' && <XCircle size={14} />}
+                      {candidate.backgroundCheck.status === 'pending' && <Clock size={14} />}
+                      {candidate.backgroundCheck.status === 'approved' ? 'APPROVED' 
+                        : candidate.backgroundCheck.status === 'in_progress' ? 'IN PROGRESS'
+                        : candidate.backgroundCheck.status === 'declined' ? 'DECLINED'
+                        : 'PENDING'}
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-full text-xs font-bold">
+                      <Clock size={14} />
+                      NOT STARTED
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">Status Verifikasi</div>
-                  <div className="text-3xl font-black text-gray-400">--</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Status Verifikasi</div>
+                  <div className={`text-3xl font-black ${
+                    candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400' 
+                      : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-400'
+                  }`}>
+                    {candidate.backgroundCheck?.status === 'approved' ? '✓' 
+                      : candidate.backgroundCheck?.status === 'declined' ? '✗'
+                      : '--'}
+                  </div>
                 </div>
               </div>
             </div>
