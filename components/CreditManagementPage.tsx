@@ -18,11 +18,11 @@ import { createTopUpInvoice, createPremiumSubscriptionInvoice, getTopUpPackages,
 import { getCompanyById } from '../services/firebase';
 
 interface CreditManagementPageProps {
-  user: UserProfile;
-  onBack: () => void;
+  company: CompanyProfile;
+  onCompanyUpdate: () => void;
 }
 
-const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ user, onBack }) => {
+const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: initialCompany, onCompanyUpdate }) => {
   const [creditBalance, setCreditBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
