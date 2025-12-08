@@ -121,6 +121,12 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         return;
       }
 
+      // CRITICAL VALIDATION: Workflow wajib dipilih
+      if (!formData.workflowId) {
+        toast.error('⚠️ Workflow wajib dipilih! Silakan buat workflow terlebih dahulu di menu Workflow sebelum membuat lowongan.');
+        return;
+      }
+
       const slug = generateSlug(formData.title);
       console.log('[JOBS] Generated slug:', slug);
 
