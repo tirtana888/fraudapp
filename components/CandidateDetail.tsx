@@ -75,42 +75,54 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       if (snapshot.exists()) {
         const data = snapshot.data();
         
-        // Update cvParsedData if it changes
-        if (data.cvParsedData && candidate?.cvUrl && !candidate.cvParsedData) {
-          console.log('[CANDIDATE-DETAIL] CV parsed data received via real-time listener');
-          setCandidate(prev => prev ? { ...prev, cvParsedData: data.cvParsedData } : null);
-          toast.success('CV berhasil diparsing!');
-        }
-
-        // Update backgroundCheck if it changes
-        if (data.backgroundCheck) {
-          const currentBgCheck = candidate?.backgroundCheck;
-          const newBgCheck = data.backgroundCheck;
+        setCandidate(prev => {
+          if (!prev) return null;
           
-          // Check if status has changed
-          if (currentBgCheck?.status !== newBgCheck.status) {
-            console.log('[CANDIDATE-DETAIL] Background check status updated via real-time listener:', newBgCheck.status);
-            setCandidate(prev => prev ? { ...prev, backgroundCheck: newBgCheck } : null);
-            
-            // Show toast based on status
-            if (newBgCheck.status === 'approved') {
-              toast.success('✓ Background check berhasil! Kandidat telah diverifikasi.');
-            } else if (newBgCheck.status === 'declined') {
-              toast.error('✗ Background check ditolak. Verifikasi gagal.');
-            } else if (newBgCheck.status === 'in_progress') {
-              toast.info('⏳ Background check sedang diproses...');
-            }
-          } else if (!currentBgCheck && newBgCheck) {
-            // Initial background check data received
-            console.log('[CANDIDATE-DETAIL] Background check data received via real-time listener');
-            setCandidate(prev => prev ? { ...prev, backgroundCheck: newBgCheck } : null);
+          let updated = false;
+          let newCandidate = { ...prev };
+          
+          // Update cvParsedData if it changes
+          if (data.cvParsedData && prev.cvUrl && !prev.cvParsedData) {
+            console.log('[CANDIDATE-DETAIL] CV parsed data received via real-time listener');
+            newCandidate.cvParsedData = data.cvParsedData;
+            updated = true;
+            toast.success('CV berhasil diparsing!');
           }
-        }
+
+          // Update backgroundCheck if it changes
+          if (data.backgroundCheck) {
+            const currentBgCheck = prev.backgroundCheck;
+            const newBgCheck = data.backgroundCheck;
+            
+            // Check if status has changed
+            if (currentBgCheck?.status !== newBgCheck.status) {
+              console.log('[CANDIDATE-DETAIL] Background check status updated via real-time listener:', newBgCheck.status);
+              newCandidate.backgroundCheck = newBgCheck;
+              updated = true;
+              
+              // Show toast based on status
+              if (newBgCheck.status === 'approved') {
+                toast.success('✓ Background check berhasil! Kandidat telah diverifikasi.');
+              } else if (newBgCheck.status === 'declined') {
+                toast.error('✗ Background check ditolak. Verifikasi gagal.');
+              } else if (newBgCheck.status === 'in_progress') {
+                toast.info('⏳ Background check sedang diproses...');
+              }
+            } else if (!currentBgCheck && newBgCheck) {
+              // Initial background check data received
+              console.log('[CANDIDATE-DETAIL] Background check data received via real-time listener');
+              newCandidate.backgroundCheck = newBgCheck;
+              updated = true;
+            }
+          }
+          
+          return updated ? newCandidate : prev;
+        });
       }
     });
 
     return () => unsubscribe();
-  }, [sessionId, candidate?.cvParsedData, candidate?.backgroundCheck?.status]);
+  }, [sessionId]);
 
   const loadCandidateData = async () => {
     try {
