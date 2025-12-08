@@ -32,12 +32,12 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, JobApplication, Workflow } from '../types';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBRq4BjPPkxb0HuiX1pJ-pqxnK6RaHBdRk",
-  authDomain: "hiring-good.firebaseapp.com",
-  projectId: "hiring-good",
-  storageBucket: "hiring-good.firebasestorage.app",
-  messagingSenderId: "618826274963",
-  appId: "1:618826274963:web:6e54bb9f7df9d5a7c6d7a2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "hiring-good.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "hiring-good",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "hiring-good.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "618826274963",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:618826274963:web:6e54bb9f7df9d5a7c6d7a2"
 };
 
 export let db: Firestore;
