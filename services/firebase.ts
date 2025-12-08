@@ -176,6 +176,79 @@ export const loginWithFirestore = async (email: string, password: string): Promi
   }
 };
 
+
+// Sign Up Function
+interface SignUpData {
+  companyName: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+export const signUpWithFirestore = async (data: SignUpData): Promise<UserProfile | null> => {
+  if (!db) throw new Error("Koneksi Database terputus.");
+
+  try {
+    const { companyName, fullName, email, phone, password } = data;
+    
+    // Check if email already exists
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const emailQuery = query(usersRef, where("email", "==", email));
+    const existingUsers = await getDocs(emailQuery);
+    
+    if (!existingUsers.empty) {
+      throw new Error("Email sudah terdaftar. Silakan gunakan email lain atau login.");
+    }
+
+    // Create company first
+    const companiesRef = collection(db, COLLECTIONS.COMPANIES);
+    const newCompany: CompanyProfile = {
+      id: '', // Will be set after creation
+      name: companyName,
+      industry: '',
+      website: '',
+      description: '',
+      logoUrl: '',
+      plan: 'trial', // Default trial plan
+      planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
+      creditsRemaining: 100, // Initial credits
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const companyDoc = await addDoc(companiesRef, newCompany);
+    console.log('[SIGNUP] Company created:', companyDoc.id);
+
+    // Create user
+    const newUser: UserProfile = {
+      id: '', // Will be set after creation
+      name: fullName,
+      email: email,
+      password: password, // In production, this should be hashed
+      role: 'Admin', // First user is admin
+      companyId: companyDoc.id,
+      phone: phone,
+      createdAt: new Date(),
+      avatarUrl: ''
+    };
+
+    const userDoc = await addDoc(usersRef, newUser);
+    console.log('[SIGNUP] User created:', userDoc.id);
+
+    // Return user profile
+    return {
+      ...newUser,
+      id: userDoc.id
+    };
+
+  } catch (error: any) {
+    console.error('[SIGNUP] Error:', error);
+    throw error;
+  }
+};
+
+
 export const resetUserPassword = async (email: string) => {
     if (!db) throw new Error("Database terputus");
 
