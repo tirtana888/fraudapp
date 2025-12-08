@@ -1651,14 +1651,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
                   </h3>
                   {/* Auto-parse badge */}
                   {candidate.cvUrl && !candidate.cvParsedData && (
-                    <span className="px-3 py-1 bg-white/20 text-white rounded-lg text-xs font-medium flex items-center gap-1">
+                    <span className="px-3 py-1.5 bg-white/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 animate-pulse">
                       <span className="animate-spin">⏳</span>
-                      Sedang memproses...
+                      Auto-parsing...
                     </span>
                   )}
                   {candidate.cvParsedData && (
-                    <span className="px-3 py-1 bg-green-500/20 text-white rounded-lg text-xs font-medium flex items-center gap-1">
-                      ✓ Parsed
+                    <span className="px-3 py-1.5 bg-green-500/20 text-white rounded-lg text-xs font-medium flex items-center gap-1.5">
+                      ✓ Parsed Automatically
                     </span>
                   )}
                 </div>
