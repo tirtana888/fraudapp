@@ -317,7 +317,17 @@ const App: React.FC = () => {
   if (!currentUser) {
     return (
       <ToastProvider>
-        <LoginPage onLogin={handleLogin} />
+        {showSignUp ? (
+          <SignUpPage 
+            onSignUpSuccess={handleLogin}
+            onSwitchToLogin={() => setShowSignUp(false)}
+          />
+        ) : (
+          <LoginPage 
+            onLogin={handleLogin}
+            onSwitchToSignUp={() => setShowSignUp(true)}
+          />
+        )}
       </ToastProvider>
     );
   }
