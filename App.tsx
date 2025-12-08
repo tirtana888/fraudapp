@@ -163,10 +163,12 @@ const App: React.FC = () => {
          // Set fallback company to prevent infinite loading
          setCurrentCompany({
            id: currentUser.companyId || '',
-           name: currentUser.companyName || 'Unknown Company',
-           industry: '',
-           credits: 0,
+           name: currentUser.name || 'Unknown Company',
            tier: 'Freemium',
+           status: 'Active',
+           adminEmail: currentUser.email || '',
+           joinedDate: new Date().toISOString(),
+           credits: 0,
            subscription_ends_at: null
          } as CompanyProfile);
        }
