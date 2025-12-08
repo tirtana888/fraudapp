@@ -5,7 +5,23 @@ Dynamic workflow buttons hilang atau revert ke buttons lama setelah kandidat men
 
 ## Root Cause Analysis
 
-### Issue Found
+### Primary Issue #1: workflowId Not Set During Session Creation
+Di `PublicAssessment.tsx` line 209-231, saat session dibuat untuk job application assessment, code **TIDAK mengambil dan menyimpan `workflowId`** dari job!
+
+```typescript
+// ❌ WRONG - Missing workflowId
+if (inviteData?.jobId) {
+    sessionData.jobId = inviteData.jobId;
+    // workflowId NOT fetched or set!
+}
+```
+
+Akibatnya:
+- Session tidak punya `workflowId` reference
+- CandidateDetail tidak bisa load workflow data
+- Buttons tidak render karena `workflowData` = null
+
+### Secondary Issue #2: Non-Workflow Stages Added to Timeline
 Di `PublicAssessment.tsx` line 328-345, saat assessment selesai, code menambahkan **NON-WORKFLOW stages** ke timeline:
 ```typescript
 // ❌ WRONG - Menambahkan stage yang tidak ada di workflow
