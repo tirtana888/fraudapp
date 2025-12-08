@@ -902,11 +902,12 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                     </div>
                   </td>
                 </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
         )}
       </div>
 
