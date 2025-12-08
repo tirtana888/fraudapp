@@ -437,6 +437,7 @@ export const resendVerificationEmail = async (): Promise<void> => {
 };
 
 
+// @deprecated Use sendPasswordReset instead for new implementations
 export const resetUserPassword = async (email: string) => {
     if (!db) throw new Error("Database terputus");
 
