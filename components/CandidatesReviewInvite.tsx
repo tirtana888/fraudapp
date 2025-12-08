@@ -825,43 +825,33 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {app.recruitmentStage !== 'rejected' && app.recruitmentStage !== 'integrity_test' && (
-                        <>
-                          <button
-                            onClick={() => handleSendInvitation(app)}
-                            disabled={sendingInvite === app.id || isUpdating}
-                            className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {sendingInvite === app.id ? (
-                              <>
-                                <Loader2 size={16} className="animate-spin" />
-                                Mengirim...
-                              </>
-                            ) : (
-                              <>
-                                <Mail size={16} />
-                                Kirim Undangan Test
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'integrity_test', 'Kandidat diminta mengikuti test integritas')}
-                            disabled={isUpdating}
-                            className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium border border-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Shield size={16} />
-                            Tandai: Undang Test
-                          </button>
-                        </>
+                        <button
+                          onClick={() => handleSendInvitation(app)}
+                          disabled={sendingInvite === app.id || isUpdating}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sendingInvite === app.id ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Mail size={14} />
+                              Send Invite
+                            </>
+                          )}
+                        </button>
                       )}
 
                       {app.recruitmentStage === 'integrity_test' && (
                         <button
                           onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'interview_office', 'Kandidat diundang untuk interview office')}
                           disabled={isUpdating}
-                          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Video size={16} />
-                          Interview Office
+                          <Video size={14} />
+                          Interview
                         </button>
                       )}
 
@@ -869,7 +859,7 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                         <button
                           onClick={() => updateRecruitmentStage(app.id, app.applicationId, 'kyc', 'Proses KYC dimulai')}
                           disabled={isUpdating}
-                          className="flex items-center gap-2 px-4 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 transition-colors text-sm font-medium border border-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <CheckCircle2 size={16} />
                           Proses KYC
