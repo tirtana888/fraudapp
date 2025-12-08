@@ -36,15 +36,14 @@ const AssessmentProgress: React.FC<AssessmentProgressProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Milestone Celebration */}
-      {showMilestone && (
-        <div className="animate-bounce-in bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-center font-bold">
-          {milestoneMessage}
-        </div>
-      )}
-
-      {/* Progress Bar Container */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 border-2 border-gray-100 dark:border-slate-700">
+      {/* Progress Bar Container - STICKY */}
+      <div className="sticky top-0 z-50 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-4 sm:p-6 border-2 border-gray-100 dark:border-slate-700 backdrop-blur-sm bg-opacity-95">
+        {/* Milestone Celebration - Inside sticky container */}
+        {showMilestone && (
+          <div className="animate-bounce-in bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-xl shadow-lg text-center font-bold mb-4 text-sm sm:text-base">
+            {milestoneMessage}
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
