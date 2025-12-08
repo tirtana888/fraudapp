@@ -539,20 +539,45 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, onBack }) 
       setIsUpdating(true);
       setShowBgCheckModal(false);
 
-      const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
+      // Update workflow status directly (email sending is optional)
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      const now = new Date().toISOString();
 
-      const result = await initiateBackgroundCheck({ sessionId });
-      const data = result.data as { success: boolean; message: string };
+      const existingTimeline = candidate.timeline || [];
+      const updatedTimeline = [
+        ...existingTimeline.map(event => ({
+          ...event,
+          status: event.status === 'current' ? 'completed' as const : event.status
+        })),
+        {
+          stage: 'background_check',
+          status: 'current' as const,
+          date: now,
+          note: `Background check dimulai untuk ${candidate.candidate.name}`
+        }
+      ];
 
-      if (data.success) {
-        toast.success('Email undangan Background Check berhasil dikirim ke kandidat!');
-        await loadCandidateData();
-      } else {
-        throw new Error(data.message || 'Failed to initiate background check');
+      await updateDoc(sessionRef, {
+        recruitmentStage: 'background_check',
+        timeline: updatedTimeline,
+        updatedAt: now
+      });
+
+      // Try to send email (optional - won't block if fails)
+      try {
+        console.log('[BACKGROUND-CHECK] Attempting to send email...');
+        const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
+        await initiateBackgroundCheck({ sessionId });
+        console.log('[BACKGROUND-CHECK] ✅ Email sent successfully');
+      } catch (emailError) {
+        console.warn('[BACKGROUND-CHECK] ⚠️ Email failed (continuing without email):', emailError);
       }
+
+      toast.success('Background Check dimulai! (Email notification: best effort)');
+      await loadCandidateData();
     } catch (error) {
       console.error('Error initiating background check:', error);
-      toast.error(error instanceof Error ? error.message : 'Gagal mengirim undangan Background Check');
+      toast.error(error instanceof Error ? error.message : 'Gagal memulai Background Check');
     } finally {
       setIsUpdating(false);
     }
