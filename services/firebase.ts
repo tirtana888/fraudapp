@@ -1382,10 +1382,21 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
   }
   console.log('[STORAGE] Storage initialized OK');
 
-  const validTypes = ['application/pdf'];
+  // Updated: Support multiple document types
+  const validTypes = [
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'text/plain', // .txt
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif'
+  ];
+  
   if (!validTypes.includes(file.type)) {
     console.error('[STORAGE] Invalid file type:', file.type);
-    throw new Error("Format file tidak valid. Gunakan PDF.");
+    throw new Error("Format file tidak valid. Gunakan PDF, DOC, DOCX, TXT, atau gambar (JPG/PNG).");
   }
   console.log('[STORAGE] File type validation passed');
 
@@ -1410,11 +1421,11 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
     console.log('[STORAGE] File uploaded to storage, getting download URL...');
 
     const downloadURL = await getDownloadURL(snapshot.ref);
-    console.log('[STORAGE] CV uploaded successfully!');
+    console.log('[STORAGE] Document uploaded successfully!');
     console.log('[STORAGE] Download URL:', downloadURL);
     return downloadURL;
   } catch (error: any) {
-    console.error('[STORAGE] CV upload failed!');
+    console.error('[STORAGE] Document upload failed!');
     console.error('[STORAGE] Error:', error);
     console.error('[STORAGE] Error code:', error.code);
     console.error('[STORAGE] Error message:', error.message);
@@ -1428,7 +1439,7 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
       throw new Error('Network error. Cek koneksi internet Anda.');
     }
 
-    throw new Error(`Gagal upload CV: ${error.message}`);
+    throw new Error(`Gagal upload dokumen: ${error.message}`);
   }
 };
 
