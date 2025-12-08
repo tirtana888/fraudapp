@@ -79,6 +79,12 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   };
 
   const handleOpenModal = (job?: Job) => {
+    // Check if there are workflows available when creating new job
+    if (!job && workflows.length === 0) {
+      toast.error('❌ Tidak bisa membuat lowongan! Silakan buat Workflow terlebih dahulu di menu Workflow.');
+      return;
+    }
+
     if (job) {
       setEditingJob(job);
       setFormData({
