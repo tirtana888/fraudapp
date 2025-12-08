@@ -246,7 +246,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     name: 'Assessment Integritas',
     description: 'Test integritas dan AI chatbot untuk menilai kejujuran kandidat',
     credits: 0,
-    isMandatory: true,
+    isMandatory: false,
     icon: 'ShieldCheck',
     category: 'assessment'
   },
