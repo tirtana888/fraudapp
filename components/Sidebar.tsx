@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen, ChevronLeft, Workflow } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen, ChevronLeft, Workflow, CreditCard } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
