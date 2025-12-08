@@ -615,9 +615,66 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
                   <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                        Kandidat
+                        Candidate
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Applied For
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Stage
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Risk Score
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                    {filteredCompletedCandidates.map((candidate) => {
+                      const riskLevel = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
+                      const getAvatarInitials = (name: string) => {
+                        const names = name.split(' ');
+                        if (names.length >= 2) return names[0][0] + names[1][0];
+                        return name.substring(0, 2);
+                      };
+
+                      return (
+                        <tr
+                          key={candidate.id}
+                          className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
+                        >
+                          {/* Candidate Column */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                {getAvatarInitials(candidate.candidate.name)}
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900 dark:text-white">
+                                  {candidate.candidate.name}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  {candidate.candidate.email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Applied For Column */}
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-gray-900 dark:text-white">
+                              {candidate.jobTitle || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <MapPin size={12} />
+                              {candidate.jobLocation || 'N/A'}
+                            </div>
+                          </td>
+
+                          {/* Stage Column */}
+                          <td className="px-6 py-4">
                         Posisi
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
