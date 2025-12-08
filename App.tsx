@@ -494,7 +494,12 @@ const App: React.FC = () => {
             }}
           />;
         }
-        return <HistoryView companyId={currentCompany!.id} onViewCandidate={setViewingCandidateId} />;
+        return <HistoryView 
+          companyId={currentCompany!.id} 
+          company={currentCompany!}
+          onViewCandidate={setViewingCandidateId}
+          onUpgradeClick={() => setActiveTab('settings')}
+        />;
       case 'documentation':
         return <Documentation />;
       case 'admin-panel':
