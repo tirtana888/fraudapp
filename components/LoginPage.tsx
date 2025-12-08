@@ -5,9 +5,10 @@ import { loginWithFirestore, resetUserPassword } from '../services/firebase';
 
 interface LoginPageProps {
   onLogin: (user: UserProfile) => void;
+  onSwitchToSignUp?: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
   const [view, setView] = useState<'login' | 'forgot_password'>('login');
   
   // Login State
