@@ -139,7 +139,7 @@ if (assessmentIndex !== -1 && assessmentIndex + 1 < updatedTimeline.length) {
 }
 ```
 
-### 2. Removed Duplicate Logic in `CandidateDetail.tsx` (line 162-222)
+### 3. Removed Duplicate Logic in `CandidateDetail.tsx` (line 162-222)
 Removed redundant auto-progress `useEffect` karena progression sekarang di-handle di `PublicAssessment.tsx` saat completion.
 
 ## Expected Behavior After Fix
