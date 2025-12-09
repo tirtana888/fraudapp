@@ -206,7 +206,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => setShowTopUpModal(true)}
-              className="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+              className="bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 font-semibold py-3 rounded-xl hover:bg-orange-50 dark:hover:bg-slate-600 transition-all flex items-center justify-center gap-2"
             >
               <CreditCard size={18} />
               Top Up Kredit
