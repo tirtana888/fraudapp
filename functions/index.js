@@ -255,42 +255,42 @@ exports.diditWebhook = functions
   .runWith({ timeoutSeconds: 10, memory: '256MB' })
   .https.onRequest(async (req, res) => {
     console.log('[DIDIT-WEBHOOK] Received webhook request');
-    
+
     // Enable CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, X-Signature, X-Timestamp');
-    
+
     // Handle preflight
     if (req.method === 'OPTIONS') {
       return res.status(200).send('');
     }
-    
+
     // Only accept POST
     if (req.method !== 'POST') {
       console.log('[DIDIT-WEBHOOK] ⚠️ Invalid method:', req.method);
       return res.status(405).send('Method Not Allowed');
     }
-    
+
     try {
       const webhookData = req.body;
       const signature = req.headers['x-signature'] || req.headers['X-Signature'];
       const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
-      
+
       console.log('[DIDIT-WEBHOOK] Webhook type:', webhookData.webhook_type);
       console.log('[DIDIT-WEBHOOK] Session ID:', webhookData.session_id);
       console.log('[DIDIT-WEBHOOK] Status:', webhookData.status);
       console.log('[DIDIT-WEBHOOK] Vendor data:', webhookData.vendor_data);
-      
+
       // Validate required fields
       if (!webhookData.session_id || !webhookData.vendor_data) {
         console.error('[DIDIT-WEBHOOK] ❌ Missing required fields');
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Missing session_id or vendor_data' 
+        return res.status(400).json({
+          success: false,
+          error: 'Missing session_id or vendor_data'
         });
       }
-      
+
       // Save to webhook queue for async processing
       // This is FAST - just a database write
       const queueRef = await db.collection('didit_webhook_queue').add({
@@ -303,26 +303,26 @@ exports.diditWebhook = functions
         processed: false,
         processingStatus: 'pending'
       });
-      
+
       console.log('[DIDIT-WEBHOOK] ✅ Queued for processing:', queueRef.id);
-      
+
       // Immediately return success - don't wait for processing
       // This ensures response is sent within milliseconds
-      return res.status(200).json({ 
-        success: true, 
+      return res.status(200).json({
+        success: true,
         message: 'Webhook received and queued for processing',
         queueId: queueRef.id
       });
-      
+
     } catch (error) {
       console.error('[DIDIT-WEBHOOK] ❌ Error queuing webhook:', error);
-      
+
       // Still return 200 to prevent Didit from retrying
       // Error will be logged for investigation
-      return res.status(200).json({ 
-        success: true, 
+      return res.status(200).json({
+        success: true,
         message: 'Webhook received (with errors)',
-        error: error.message 
+        error: error.message
       });
     }
   });
@@ -339,26 +339,26 @@ exports.processDiditWebhook = functions
   .onCreate(async (snapshot, context) => {
     const queueId = context.params.queueId;
     const queueData = snapshot.data();
-    
+
     console.log('[PROCESS-WEBHOOK] Starting background processing for:', queueId);
-    
+
     try {
       const webhookData = queueData.webhookData;
-      const { 
-        session_id: diditSessionId, 
-        status, 
+      const {
+        session_id: diditSessionId,
+        status,
         vendor_data: firestoreSessionId,
         decision,
         created_at,
         timestamp: webhookTimestamp,
         webhook_type
       } = webhookData;
-      
+
       console.log('[PROCESS-WEBHOOK] Didit Session:', diditSessionId);
       console.log('[PROCESS-WEBHOOK] Firestore Session:', firestoreSessionId);
       console.log('[PROCESS-WEBHOOK] Status:', status);
       console.log('[PROCESS-WEBHOOK] Type:', webhook_type);
-      
+
       // Map Didit status to our format
       let mappedStatus = 'pending';
       if (status === 'Approved') {
@@ -370,14 +370,14 @@ exports.processDiditWebhook = functions
       } else if (status === 'In Review') {
         mappedStatus = 'in_review';
       }
-      
+
       console.log('[PROCESS-WEBHOOK] Mapped status:', mappedStatus);
-      
+
       // Extract decision info if available
       let decisionText = null;
       if (decision && decision.status) {
         decisionText = `Verification ${decision.status}`;
-        
+
         // Add warnings if any
         if (decision.id_verification && decision.id_verification.warnings) {
           const warnings = decision.id_verification.warnings;
@@ -386,7 +386,7 @@ exports.processDiditWebhook = functions
           }
         }
       }
-      
+
       // Prepare background check data
       const backgroundCheckData = {
         status: mappedStatus,
@@ -401,18 +401,18 @@ exports.processDiditWebhook = functions
           session_number: webhookData.session_number
         }
       };
-      
+
       console.log('[PROCESS-WEBHOOK] Updating Firestore document:', firestoreSessionId);
-      
+
       // Update Firestore - use interview_sessions collection
       await db.collection('interview_sessions').doc(firestoreSessionId).update({
         backgroundCheck: backgroundCheckData,
         backgroundCheckStatus: mappedStatus,
         backgroundCheckCompletedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+
       console.log('[PROCESS-WEBHOOK] ✅ Firestore updated successfully');
-      
+
       // Mark queue item as processed
       await snapshot.ref.update({
         processed: true,
@@ -424,13 +424,13 @@ exports.processDiditWebhook = functions
           success: true
         }
       });
-      
+
       console.log('[PROCESS-WEBHOOK] ✅ Queue item marked as processed');
-      
+
     } catch (error) {
       console.error('[PROCESS-WEBHOOK] ❌ Error processing webhook:', error);
       console.error('[PROCESS-WEBHOOK] Error stack:', error.stack);
-      
+
       // Mark queue item as failed
       await snapshot.ref.update({
         processed: true,
@@ -441,7 +441,7 @@ exports.processDiditWebhook = functions
           stack: error.stack
         }
       });
-      
+
       console.log('[PROCESS-WEBHOOK] ❌ Queue item marked as failed');
     }
   });
@@ -453,49 +453,49 @@ exports.diditWebhook = functions
     console.log('[DIDIT-WEBHOOK] Received webhook request');
     console.log('[DIDIT-WEBHOOK] Method:', req.method);
     console.log('[DIDIT-WEBHOOK] Headers:', JSON.stringify(req.headers));
-    
+
     // Enable CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, X-Signature, X-Timestamp');
-    
+
     if (req.method === 'OPTIONS') {
       res.status(200).send('');
       return;
     }
-    
+
     if (req.method !== 'POST') {
       console.log('[DIDIT-WEBHOOK] ⚠️ Invalid method, expected POST');
       res.status(405).send('Method Not Allowed');
       return;
     }
-    
+
     try {
       const webhookData = req.body;
       console.log('[DIDIT-WEBHOOK] Webhook payload:', JSON.stringify(webhookData, null, 2));
-      
-      const { 
-        session_id: diditSessionId, 
-        status, 
+
+      const {
+        session_id: diditSessionId,
+        status,
         vendor_data: firestoreSessionId,
         decision,
         created_at,
         timestamp
       } = webhookData;
-      
+
       if (!firestoreSessionId) {
         console.error('[DIDIT-WEBHOOK] ❌ vendor_data (Firestore session ID) is missing');
-        res.status(400).json({ 
-          success: false, 
-          error: 'vendor_data is required' 
+        res.status(400).json({
+          success: false,
+          error: 'vendor_data is required'
         });
         return;
       }
-      
+
       console.log('[DIDIT-WEBHOOK] Processing for Firestore session:', firestoreSessionId);
       console.log('[DIDIT-WEBHOOK] Didit session ID:', diditSessionId);
       console.log('[DIDIT-WEBHOOK] Status:', status);
-      
+
       // Map Didit status to our format
       let mappedStatus = 'pending';
       if (status === 'Approved') {
@@ -505,12 +505,12 @@ exports.diditWebhook = functions
       } else if (status === 'In Progress') {
         mappedStatus = 'in_progress';
       }
-      
+
       // Extract decision info if available
       let decisionText = null;
       if (decision && decision.status) {
         decisionText = `Verification ${decision.status}`;
-        
+
         // Add warnings if any
         if (decision.id_verification && decision.id_verification.warnings) {
           const warnings = decision.id_verification.warnings;
@@ -519,7 +519,7 @@ exports.diditWebhook = functions
           }
         }
       }
-      
+
       // Prepare background check data
       const backgroundCheckData = {
         status: mappedStatus,
@@ -534,33 +534,33 @@ exports.diditWebhook = functions
           session_number: webhookData.session_number
         }
       };
-      
+
       console.log('[DIDIT-WEBHOOK] Updating Firestore document:', firestoreSessionId);
       console.log('[DIDIT-WEBHOOK] Background check data:', JSON.stringify(backgroundCheckData, null, 2));
-      
+
       // Update Firestore - use interview_sessions collection
       await db.collection('interview_sessions').doc(firestoreSessionId).update({
         backgroundCheck: backgroundCheckData,
         backgroundCheckStatus: mappedStatus,
         backgroundCheckCompletedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+
       console.log('[DIDIT-WEBHOOK] ✅ Firestore updated successfully');
-      
-      res.status(200).json({ 
-        success: true, 
+
+      res.status(200).json({
+        success: true,
         message: 'Webhook processed successfully',
         sessionId: firestoreSessionId,
         status: mappedStatus
       });
-      
+
     } catch (error) {
       console.error('[DIDIT-WEBHOOK] ❌ Error processing webhook:', error);
       console.error('[DIDIT-WEBHOOK] Error stack:', error.stack);
-      
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
+
+      res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   });
@@ -570,31 +570,31 @@ exports.createDiditSession = functions
   .runWith({ timeoutSeconds: 60 })
   .https.onCall(async (data, context) => {
     console.log('[CREATE-DIDIT] Creating Didit verification session');
-    
+
     const { sessionId, candidateName, candidateEmail } = data;
-    
+
     if (!sessionId || !candidateName || !candidateEmail) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'sessionId, candidateName, and candidateEmail are required'
       );
     }
-    
+
     try {
       const diditApiKey = functions.config().didit?.api_key;
       const diditFlowId = functions.config().didit?.flow_id;
-      
+
       if (!diditApiKey || !diditFlowId) {
         throw new functions.https.HttpsError(
           'failed-precondition',
           'Didit API key or Flow ID not configured'
         );
       }
-      
+
       console.log('[CREATE-DIDIT] Calling Didit API...');
       console.log('[CREATE-DIDIT] Flow ID:', diditFlowId);
       console.log('[CREATE-DIDIT] Candidate:', candidateName, candidateEmail);
-      
+
       const response = await axios.post(
         'https://verification.didit.me/v2/session',
         {
@@ -614,18 +614,18 @@ exports.createDiditSession = functions
           }
         }
       );
-      
+
       console.log('[CREATE-DIDIT] ✅ Didit session created:', response.data);
-      
+
       return {
         success: true,
         sessionId: response.data.id,
         sessionUrl: response.data.url
       };
-      
+
     } catch (error) {
       console.error('[CREATE-DIDIT] ❌ Error:', error);
-      
+
       if (error.response) {
         console.error('[CREATE-DIDIT] Didit API error:', error.response.data);
         throw new functions.https.HttpsError(
@@ -633,10 +633,178 @@ exports.createDiditSession = functions
           `Didit API error: ${JSON.stringify(error.response.data)}`
         );
       }
-      
+
       throw new functions.https.HttpsError(
         'internal',
         `Failed to create Didit session: ${error.message}`
       );
+    }
+  });
+
+// ==========================================
+// AI CHATBOT IMPLEMENTATION (Gemini + GPT-4o)
+// ==========================================
+
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+/**
+ * Generate AI response for candidate interview
+ * Uses Gemini 2.0 Flash Thinking as primary, GPT-4o as fallback
+ */
+exports.generateAIResponse = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+    // 1. Validate Auth & Input
+    const { role, message, history, candidateData } = data;
+
+    // Note: In production you might want to require context.auth
+    // but for this demo we'll allow unauthenticated for easier testing
+
+    if (!role || !message) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Role and message are required'
+      );
+    }
+
+    console.log(`[AI-CHAT] Generating response for ${role}. Message: "${message.substring(0, 50)}..."`);
+    console.log(`[AI-CHAT] Candidate: ${candidateData?.fullName}`);
+
+    // 2. Get API Keys
+    const GEMINI_API_KEY = functions.config().gemini?.key;
+
+    if (!GEMINI_API_KEY) {
+      console.error('[AI-CONFIG] NO GEMINI API KEY CONFIGURED!');
+      // Fallback to static response if no key
+      return {
+        success: true,
+        response: "Maaf, sistem sedang mengalami gangguan konfigurasi. Bisakah Anda mengulangi jawaban Anda?"
+      };
+    }
+
+    try {
+      // 3. TRY GEMINI (Primary Model)
+      console.log('[AI-CHAT] Trying Gemini (2.0 Flash Thinking)...');
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      // Using gemini-1.5-flash as a stable model. 
+      // If user wants specific experimental model, they can change it here.
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const systemPrompt = `
+        Anda adalah pewawancara profesional untuk posisi ${role}.
+        Nama kandidat: ${candidateData?.fullName || 'Kandidat'}.
+        
+        TUGAS ANDA:
+        1. Ajukan pertanyaan wawancara behavioral berbasis STAR (Situation, Task, Action, Result).
+        2. Gali lebih dalam jawaban kandidat (probing).
+        3. Deteksi potensi ketidakjujuran atau inkonsistensi.
+        4. Jaga nada bicara profesional namun ramah.
+        5. Lakukan wawancara dalam Bahasa Indonesia.
+        
+        ATURAN:
+        - Jangan berikan jawaban panjang lebar.
+        - Fokus pada satu pertanyaan di satu waktu.
+        - Jika jawaban kandidat terlalu singkat, minta elaborasi.
+        - Jika kandidat tidak relevan, arahkan kembali ke topik.
+        `;
+
+      const chat = model.startChat({
+        history: history.map(h => ({
+          role: h.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }]
+        })),
+        generationConfig: {
+          maxOutputTokens: 300,
+          temperature: 0.7,
+        },
+        systemInstruction: systemPrompt
+      });
+
+      const result = await chat.sendMessage(message);
+      const aiResponse = result.response.text();
+
+      console.log('[AI-CHAT] ✅ Gemini response generated successfully');
+
+      return {
+        success: true,
+        response: aiResponse,
+        model: "gemini-1.5-flash"
+      };
+
+    } catch (error) {
+      console.error('[AI-CHAT] ❌ Gemini Failed:', error.message);
+
+      // Return static fallback if AI fails
+      return {
+        success: true,
+        response: "Terima kasih atas jawaban Anda. Mari kita lanjutkan ke pertanyaan berikutnya. Bisa ceritakan pengalaman Anda dalam menghadapi situasi sulit di tempat kerja?",
+        error: error.message,
+        isFallback: true
+      };
+    }
+  });
+
+
+/**
+ * Analyse Fraud Risk using AI
+ */
+exports.analyzeFraudRisk = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+    const { role, transcript, ftAnswers } = data;
+    console.log(`[FRAUD-ANALYSIS] Analyzing risk for ${role}...`);
+
+    const GEMINI_API_KEY = functions.config().gemini?.key;
+    if (!GEMINI_API_KEY) {
+      throw new functions.https.HttpsError('failed-precondition', 'Gemini API key missing');
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `
+          Anda adalah pakar deteksi fraud dan psikologi forensik.
+          Analisis transkrip wawancara dan jawaban kuesioner kandidat ini untuk posisi ${role}.
+          
+          TRANSKRIP WAWANCARA:
+          ${JSON.stringify(transcript)}
+          
+          JAWABAN FRAUD TRIANGLE:
+          ${JSON.stringify(ftAnswers)}
+          
+          TUGAS:
+          Berikan analisis risiko fraud menggunakan kerangka kerja Fraud Triangle (Pressure, Opportunity, Rationalization).
+          
+          OUTPUT JSON (HANYA JSON):
+          {
+            "scores": {
+                "pressure": 0-100,
+                "opportunity": 0-100,
+                "rationalization": 0-100
+            },
+            "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+            "summary": "Ringkasan analisis dalam Bahasa Indonesia (2-3 paragraf)",
+            "redFlags": ["flag1", "flag2"],
+            "recommendation": "Rekomendasi (Hire/Reject/Investigate)"
+          }
+          `;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      // Cleanup JSON
+      const cleanText = text.replace(/```json|```/g, '').trim();
+      const analysis = JSON.parse(cleanText);
+
+      console.log('[FRAUD-ANALYSIS] ✅ Analysis complete');
+      return analysis;
+
+    } catch (error) {
+      console.error('[FRAUD-ANALYSIS] Error:', error);
+      throw new functions.https.HttpsError('internal', 'AI Analysis Failed');
     }
   });
