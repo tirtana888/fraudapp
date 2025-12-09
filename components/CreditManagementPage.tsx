@@ -304,7 +304,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
       {/* Top-Up Modal */}
       {showTopUpModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-900">Top Up Kredit</h3>
               <p className="text-sm text-gray-600 mt-1">Pilih paket kredit yang sesuai dengan kebutuhan Anda</p>
