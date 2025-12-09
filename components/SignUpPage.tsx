@@ -79,6 +79,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
     }
 
     setIsLoading(true);
+    console.log('[SIGNUP] 🚀 Starting sign up process...');
 
     try {
       const user = await signUpWithFirebase({
@@ -89,15 +90,20 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
         password: formData.password
       });
 
+      console.log('[SIGNUP] ✅ Sign up successful!');
+
       if (user) {
         // Show verification message instead of auto-login
         setRegisteredEmail(formData.email);
         setShowVerificationMessage(true);
       }
     } catch (err: any) {
+      console.error('[SIGNUP] ❌ Sign up error:', err);
+      console.error('[SIGNUP] Error message:', err.message);
       setError(err.message || "Gagal mendaftar. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
+      console.log('[SIGNUP] 🏁 Sign up process complete');
     }
   };
 
