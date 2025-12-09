@@ -13,7 +13,11 @@ export default defineConfig({
     hmr: {
       clientPort: 443,
       protocol: 'wss'
-    }
+    },
+    allowedHosts: [
+      '.preview.emergentagent.com',
+      'localhost'
+    ]
   },
   build: {
     outDir: 'dist',
