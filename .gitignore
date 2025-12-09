@@ -1,9 +1,41 @@
+# Dependencies
 node_modules/
--e 
+
+# Lock files - ONLY use yarn.lock
+package-lock.json
+npm-debug.log*
+
 # Environment files
 *.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Logs
+logs/
+*.log
