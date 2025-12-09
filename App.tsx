@@ -104,27 +104,38 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log('[APP] Setting up Firebase Auth observer...');
+    
     // Set up Firebase Auth state observer
     const unsubscribeAuth = observeAuthState((user) => {
       if (user) {
-        console.log('[APP] Firebase Auth user detected:', user.email);
+        console.log('[APP] Firebase Auth user detected:', user.email, 'Verified:', user.emailVerified);
+        
+        // IMPORTANT: Always update state with Firebase Auth user (source of truth)
         setCurrentUser(user);
         saveSession(user); // Keep local session for backward compatibility
+        
+        console.log('[APP] ✅ User state updated successfully');
       } else {
-        console.log('[APP] No Firebase Auth user');
+        console.log('[APP] No Firebase Auth user detected');
+        
         // Try to restore from local session as fallback for legacy users
         const savedUser = getSession();
         if (savedUser) {
           console.log('[APP] Restoring legacy user session:', savedUser.email);
           setCurrentUser(savedUser);
         } else {
+          console.log('[APP] No session found, user will see login page');
           setCurrentUser(null);
         }
       }
+      
+      // Mark auth check as complete
       setIsCheckingAuth(false);
     });
 
     return () => {
+      console.log('[APP] Cleaning up Firebase Auth observer');
       unsubscribeAuth();
     };
   }, []);
