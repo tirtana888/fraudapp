@@ -278,10 +278,10 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#D95D00' }}></div>
         </div>
       ) : jobs.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <Briefcase className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">Belum ada lowongan</h3>
-          <p className="text-gray-500 mb-6">Mulai buat lowongan pertama Anda dengan klik tombol di atas</p>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-12 text-center">
+          <Briefcase className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+          <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2">Belum ada lowongan</h3>
+          <p className="text-gray-500 dark:text-slate-400 mb-6">Mulai buat lowongan pertama Anda dengan klik tombol di atas</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
