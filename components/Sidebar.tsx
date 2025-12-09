@@ -171,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
           </button>
 
           {!isCollapsed && candidatesExpanded && (
-            <div className="mt-1 space-y-0.5">
+            <div className="mt-1 ml-2 space-y-0.5 border-l-2 border-gray-200 dark:border-slate-700">
               {candidateSubMenus.map((subItem) => {
                 const SubIcon = subItem.icon;
                 const isActive = activeTab === subItem.id;
@@ -179,14 +179,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
                   <button
                     key={subItem.id}
                     onClick={() => setActiveTab(subItem.id)}
-                    className={`w-full flex items-center space-x-2 pl-8 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
+                    className={`w-full flex items-center space-x-2 pl-6 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
                       isActive
-                        ? 'bg-brand-orange text-white shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+                        ? 'bg-brand-orange/10 text-brand-orange border-l-2 border-brand-orange dark:bg-brand-orange/20'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-gray-200 border-l-2 border-transparent'
                     }`}
                   >
-                    <SubIcon size={14} className={isActive ? 'text-white' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
-                    <div className="flex-1 text-left font-medium">{subItem.label}</div>
+                    <SubIcon size={14} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
+                    <span className="flex-1 text-left font-medium">{subItem.label}</span>
                   </button>
                 );
               })}
