@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard } from 'lucide-react';
+import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard, AlertTriangle, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ActiveInterview from './components/ActiveInterview';
