@@ -280,7 +280,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg border border-gray-200">
+                    <div className="p-2 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                       {getTransactionIcon(tx.action)}
                     </div>
                     <div>
