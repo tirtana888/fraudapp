@@ -170,7 +170,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Coins size={24} className="text-orange-600" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manajemen Kredit</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Credit Management</h1>
               </div>
             </div>
             
