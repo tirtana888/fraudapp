@@ -329,19 +329,27 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: UserProfile) => {
-    console.log('[APP] handleLogin called for:', user.email, 'Verified:', user.emailVerified);
+    console.log('[APP] 🔑 handleLogin called for:', user.email, 'Verified:', user.emailVerified);
     
     // Save session for backward compatibility
     saveSession(user);
     
     // IMPORTANT: Set state explicitly to handle immediate UI update
     // The Firebase Auth observer will confirm this shortly after
+    console.log('[APP] 🔄 Updating currentUser state...');
     setCurrentUser(user);
     
+    // Mark auth as initialized if not already
+    if (!isAuthInitialized) {
+      console.log('[APP] ✅ Marking auth as initialized from login');
+      setIsAuthInitialized(true);
+    }
+    
     // Navigate to dashboard
+    console.log('[APP] 🏠 Navigating to dashboard...');
     setActiveTab('dashboard');
     
-    console.log('[APP] ✅ Login handler completed, waiting for Firebase Auth observer to confirm');
+    console.log('[APP] ✅ Login handler completed - NO PAGE REFRESH');
   };
 
   const handleLogout = async () => {
