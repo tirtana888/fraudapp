@@ -682,6 +682,43 @@ const App: React.FC = () => {
 
       <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>
          <div className="max-w-7xl mx-auto">
+            {/* Email Verification Warning Banner */}
+            {showVerificationBanner && (
+              <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg shadow-sm animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <AlertTriangle className="text-orange-600 flex-shrink-0 mt-0.5" size={20} />
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-orange-900 mb-1">Email Belum Diverifikasi</h3>
+                      <p className="text-sm text-orange-800 mb-2">
+                        Silakan verifikasi email Anda ({currentUser.email}) untuk keamanan akun yang lebih baik.
+                      </p>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const { resendVerificationEmail } = await import('./services/firebase');
+                            await resendVerificationEmail();
+                            alert('Email verifikasi telah dikirim! Periksa inbox Anda.');
+                          } catch (error: any) {
+                            alert(error.message || 'Gagal mengirim email verifikasi');
+                          }
+                        }}
+                        className="text-sm font-medium text-orange-700 hover:text-orange-900 underline"
+                      >
+                        Kirim Ulang Email Verifikasi
+                      </button>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowVerificationBanner(false)}
+                    className="text-orange-600 hover:text-orange-800 flex-shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Header / Title */}
             <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div>
