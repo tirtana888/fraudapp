@@ -299,10 +299,19 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: UserProfile) => {
-    console.log('[APP] User logged in:', user.email);
+    console.log('[APP] handleLogin called for:', user.email, 'Verified:', user.emailVerified);
+    
+    // Save session for backward compatibility
     saveSession(user);
+    
+    // IMPORTANT: Set state explicitly to handle immediate UI update
+    // The Firebase Auth observer will confirm this shortly after
     setCurrentUser(user);
+    
+    // Navigate to dashboard
     setActiveTab('dashboard');
+    
+    console.log('[APP] ✅ Login handler completed, waiting for Firebase Auth observer to confirm');
   };
 
   const handleLogout = async () => {
