@@ -376,7 +376,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
       {/* Upgrade Premium Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg">
