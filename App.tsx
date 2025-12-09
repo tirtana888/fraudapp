@@ -306,8 +306,21 @@ const App: React.FC = () => {
     window.addEventListener('firebase-connection-error', handleConnectionError as EventListener);
 
     return () => {
-      if (unsubscribeSessions) unsubscribeSessions();
-      if (unsubscribeInvites) unsubscribeInvites();
+      console.log('[APP] 🧹 Cleaning up dashboard subscriptions');
+      if (unsubscribeSessions) {
+        try {
+          unsubscribeSessions();
+        } catch (e) {
+          console.warn('[APP] Error cleaning up sessions:', e);
+        }
+      }
+      if (unsubscribeInvites) {
+        try {
+          unsubscribeInvites();
+        } catch (e) {
+          console.warn('[APP] Error cleaning up invites:', e);
+        }
+      }
       window.removeEventListener('firebase-connection-error', handleConnectionError as EventListener);
     };
   }, [currentUser, isPublicMode]);
