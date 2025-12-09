@@ -17,7 +17,9 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
     name: company.name || '',
     whatsapp: company.whatsapp || '',
     address: company.address || '',
-    companySlug: company.companySlug || generateSlug(company.name || 'company')
+    companySlug: company.companySlug || generateSlug(company.name || 'company'),
+    logoUrl: company.logoUrl || '',
+    headerTitle: company.headerTitle || ''
   });
 
   useEffect(() => {
@@ -25,7 +27,9 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
       name: company.name || '',
       whatsapp: company.whatsapp || '',
       address: company.address || '',
-      companySlug: company.companySlug || generateSlug(company.name || 'company')
+      companySlug: company.companySlug || generateSlug(company.name || 'company'),
+      logoUrl: company.logoUrl || '',
+      headerTitle: company.headerTitle || ''
     });
   }, [company]);
 
