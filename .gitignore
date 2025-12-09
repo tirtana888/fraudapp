@@ -41,3 +41,11 @@ ui-debug.log
 # Logs
 logs/
 *.log
+-e 
+# Environment files
+*.env
+*.env.*
+-e 
+# Environment files
+*.env
+*.env.*
