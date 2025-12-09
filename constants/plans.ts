@@ -18,9 +18,9 @@ export const PLAN_LIMITS: Record<'Freemium' | 'Premium', PlanConfig> = {
     hasAdvancedAnalytics: false,
     hasAPIAccess: false,
     hasPrioritySupport: false,
-    hasCustomBranding: false,
+    hasCustomBranding: true,  // ✅ ENABLED: Freemium can customize branding
     allow_permanent_link: false,
-    white_label: false
+    white_label: true  // ✅ ENABLED: Freemium can upload logo and customize public page
   },
   Premium: {
     maxCandidates: -1, // Unlimited
