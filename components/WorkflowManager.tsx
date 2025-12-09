@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search,
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES } from '../types';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../services/firebase';
+import { useToast } from './Toast';
 
 interface WorkflowManagerProps {
   companyId: string;
