@@ -103,6 +103,9 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  // Ref to track observer setup
+  const authObserverSetup = React.useRef(false);
+
   useEffect(() => {
     seedRealDatabase();
   }, []);
