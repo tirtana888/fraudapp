@@ -97,7 +97,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
 
   const handleSkipVerification = () => {
     if (unverifiedUser) {
-      onLogin(unverifiedUser);
+      console.log('[LOGIN] User chose to skip email verification');
+      
+      // Wait a bit for Firebase Auth observer to register
+      setTimeout(() => {
+        onLogin(unverifiedUser);
+      }, 100);
     }
   };
 
