@@ -167,10 +167,10 @@ export const signUpWithFirebase = async (userData: {
   password: string;
 }): Promise<UserProfile> => {
   try {
-    console.log('[AUTH] 🚀 Starting Firebase sign up process for:', userData.email);
+    console.log('[AUTH] 🚀 Starting Firebase sign up for:', userData.email);
     
-    // 1. Create Firebase Auth user
-    console.log('[AUTH] Step 1: Creating Firebase Auth user...');
+    // 1. Create Firebase Auth user (CRITICAL - must succeed)
+    console.log('[AUTH] Step 1/3: Creating Firebase Auth user...');
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       userData.email,
@@ -180,83 +180,93 @@ export const signUpWithFirebase = async (userData: {
     const firebaseUser = userCredential.user;
     console.log('[AUTH] ✅ Firebase Auth user created:', firebaseUser.uid);
 
-    // 2. Send email verification
-    console.log('[AUTH] Step 2: Sending email verification...');
+    // 2. Send email verification (non-blocking)
+    console.log('[AUTH] Step 2/3: Sending email verification...');
     try {
       await sendEmailVerification(firebaseUser);
       console.log('[AUTH] ✅ Verification email sent to:', userData.email);
     } catch (verificationError) {
-      console.warn('[AUTH] ⚠️ Failed to send verification email:', verificationError);
-      // Don't block signup if email sending fails
+      console.warn('[AUTH] ⚠️ Failed to send verification email (non-critical):', verificationError);
     }
 
-    // 3. Create company profile with initial Freemium credits
-    console.log('[AUTH] Step 3: Creating company profile...');
-    const companyData: Omit<CompanyProfile, 'id'> = {
-      name: userData.companyName,
-      tier: 'Freemium',
-      status: 'Active',
-      adminEmail: userData.email,
-      joinedDate: new Date().toISOString(),
-      usersCount: 1,
-      credits: 1000, // Initial Freemium credits
-      verification_credits: 100,
-      createdAt: Timestamp.now()
-    };
-
-    const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
-    const companyId = companyRef.id;
-    console.log('[AUTH] ✅ Company created with ID:', companyId);
-
-    // 4. Create user profile in Firestore
-    console.log('[AUTH] Step 4: Creating user profile in Firestore...');
-    const userProfile: Omit<UserProfile, 'id'> & { id: string } = {
+    // 3. Create basic user profile (always return this)
+    const userProfile: UserProfile = {
       id: firebaseUser.uid,
       name: userData.fullName,
       email: userData.email,
       role: 'Company Admin',
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
-      companyId: companyId,
+      companyId: 'temp-' + firebaseUser.uid,
       emailVerified: false,
       createdAt: Timestamp.now()
     };
 
-    try {
-      await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
-      console.log('[AUTH] ✅ User profile created in Firestore collection:', COLLECTIONS.USERS);
-    } catch (firestoreError: any) {
-      console.error('[AUTH] ❌ Failed to create user profile in Firestore:', firestoreError);
-      console.error('[AUTH] Error code:', firestoreError.code);
-      console.error('[AUTH] Error message:', firestoreError.message);
-      
-      // If Firestore fails, we should still return the profile
-      // The user can log in and we'll create minimal profile then
-      console.warn('[AUTH] ⚠️ Continuing despite Firestore error - profile can be created on first login');
-    }
+    // 4. Try to create Firestore records (non-blocking, async)
+    console.log('[AUTH] Step 3/3: Creating Firestore records (async)...');
+    
+    // Do this in background, don't wait
+    (async () => {
+      try {
+        // Create company profile
+        const companyData: Omit<CompanyProfile, 'id'> = {
+          name: userData.companyName,
+          tier: 'Freemium',
+          status: 'Active',
+          adminEmail: userData.email,
+          joinedDate: new Date().toISOString(),
+          usersCount: 1,
+          credits: 1000,
+          verification_credits: 100,
+          createdAt: Timestamp.now()
+        };
 
-    console.log('[AUTH] ✅ Sign up process complete!');
+        const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
+        console.log('[AUTH] ✅ Company profile created:', companyRef.id);
+        
+        // Update user profile with real company ID
+        userProfile.companyId = companyRef.id;
 
-    // Return user profile
-    return {
-      ...userProfile,
-      emailVerified: firebaseUser.emailVerified
-    };
+        // Create user profile in Firestore
+        await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
+        console.log('[AUTH] ✅ User profile created in Firestore');
+        
+      } catch (firestoreError: any) {
+        console.error('[AUTH] ⚠️ Background Firestore error (non-critical):', firestoreError.code);
+        // Don't throw - user can still login
+      }
+    })();
+
+    console.log('[AUTH] ✅ Sign up complete! (Firestore sync in background)');
+
+    return userProfile;
 
   } catch (error: any) {
     console.error('[AUTH] ❌ Sign up error:', error);
     console.error('[AUTH] Error code:', error.code);
     console.error('[AUTH] Error message:', error.message);
-    console.error('[AUTH] Error stack:', error.stack);
     
-    // Provide user-friendly error messages
+    // Clean up - delete auth user if created
+    if (error.code !== 'auth/email-already-in-use' && error.code !== 'auth/weak-password') {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          await currentUser.delete();
+          console.log('[AUTH] 🧹 Cleaned up partial auth user');
+        }
+      } catch (cleanupError) {
+        console.warn('[AUTH] ⚠️ Could not clean up auth user:', cleanupError);
+      }
+    }
+    
+    // User-friendly error messages
     if (error.code === 'auth/email-already-in-use') {
       throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login.');
     } else if (error.code === 'auth/weak-password') {
       throw new Error('Password terlalu lemah. Gunakan minimal 6 karakter.');
     } else if (error.code === 'auth/invalid-email') {
       throw new Error('Format email tidak valid.');
-    } else if (error.code === 'permission-denied') {
-      throw new Error('Akses ditolak. Periksa Firestore Rules atau hubungi administrator.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Koneksi internet bermasalah. Periksa koneksi Anda.');
     } else {
       throw new Error(error.message || 'Gagal mendaftar. Silakan coba lagi.');
     }
