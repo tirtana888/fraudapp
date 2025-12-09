@@ -225,7 +225,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         </div>
 
         {/* Current Plan */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">Paket Saat Ini</h3>
             {isPremium && (
