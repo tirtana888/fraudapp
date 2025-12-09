@@ -284,7 +284,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
           <p className="text-gray-500 dark:text-slate-400 mb-6">Mulai buat lowongan pertama Anda dengan klik tombol di atas</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
