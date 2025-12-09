@@ -261,7 +261,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         </div>
 
         {/* Transaction History */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
           <div className="flex items-center gap-2 mb-6">
             <History size={20} className="text-gray-700" />
             <h3 className="text-lg font-bold text-gray-900">Riwayat Transaksi</h3>
