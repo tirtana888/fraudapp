@@ -94,6 +94,9 @@ const App: React.FC = () => {
   // Connection State
   const [apiError, setApiError] = useState<string | null>(null);
   
+  // Email Verification Banner State
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false);
+  
   // Theme & Mobile State
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
