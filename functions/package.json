@@ -9,7 +9,7 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "18",
+    "node": ">=18",
     "yarn": "1.22.22"
   },
   "packageManager": "yarn@1.22.22",
