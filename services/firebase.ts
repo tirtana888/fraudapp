@@ -247,29 +247,66 @@ export const signUpWithFirebase = async (userData: {
  */
 export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile> => {
   try {
-    console.log('[AUTH] Attempting login for:', email);
+    console.log('[AUTH] 🔐 Attempting login for:', email);
     
     // 1. Sign in with Firebase Auth
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
     
-    console.log('[AUTH] Firebase login successful:', firebaseUser.uid);
+    console.log('[AUTH] ✅ Firebase Auth successful:', firebaseUser.uid);
     console.log('[AUTH] Email verified:', firebaseUser.emailVerified);
 
     // 2. Fetch user profile from Firestore
+    console.log('[AUTH] 📄 Fetching user profile from Firestore...');
     const usersRef = collection(db, COLLECTIONS.USERS);
     const q = query(usersRef, where('email', '==', email), limit(1));
+    
+    console.log('[AUTH] 🔍 Querying Firestore collection:', COLLECTIONS.USERS);
     const snapshot = await getDocs(q);
+    console.log('[AUTH] 📊 Query result - documents found:', snapshot.size);
 
     if (snapshot.empty) {
-      throw new Error('Profil pengguna tidak ditemukan');
+      console.error('[AUTH] ❌ No user profile found in Firestore for:', email);
+      console.error('[AUTH] This might mean:');
+      console.error('[AUTH] 1. User signed up with Firebase Auth but profile creation failed');
+      console.error('[AUTH] 2. Profile was deleted but Auth user still exists');
+      console.error('[AUTH] 3. Email mismatch between Auth and Firestore');
+      
+      // Create a minimal profile for this user
+      console.log('[AUTH] 🔧 Creating minimal user profile...');
+      const minimalProfile: Omit<UserProfile, 'id'> & { id: string } = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || email.split('@')[0],
+        email: email,
+        role: 'Company Admin',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=random`,
+        companyId: 'temp-' + firebaseUser.uid,
+        emailVerified: firebaseUser.emailVerified,
+        createdAt: Timestamp.now()
+      };
+      
+      try {
+        await addDoc(collection(db, COLLECTIONS.USERS), minimalProfile);
+        console.log('[AUTH] ✅ Minimal profile created');
+        
+        return {
+          ...minimalProfile,
+          id: firebaseUser.uid,
+          emailVerified: firebaseUser.emailVerified
+        };
+      } catch (createError) {
+        console.error('[AUTH] ❌ Failed to create minimal profile:', createError);
+        throw new Error('Profil pengguna tidak ditemukan dan gagal membuat profil baru. Silakan hubungi administrator.');
+      }
     }
 
     const userDoc = snapshot.docs[0];
     const userData = userDoc.data() as UserProfile;
+    console.log('[AUTH] ✅ User profile found:', userData.name);
 
     // 3. Update email verification status in Firestore if changed
     if (userData.emailVerified !== firebaseUser.emailVerified) {
+      console.log('[AUTH] 🔄 Updating email verification status...');
       await updateDoc(userDoc.ref, {
         emailVerified: firebaseUser.emailVerified
       });
@@ -284,12 +321,16 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     };
 
   } catch (error: any) {
-    console.error('[AUTH] Login error:', error);
+    console.error('[AUTH] ❌ Login error:', error);
+    console.error('[AUTH] Error code:', error.code);
+    console.error('[AUTH] Error message:', error.message);
     
     if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
       throw new Error('Email atau password salah. Silakan coba lagi.');
     } else if (error.code === 'auth/too-many-requests') {
       throw new Error('Terlalu banyak percobaan login. Silakan coba lagi nanti.');
+    } else if (error.code === 'permission-denied') {
+      throw new Error('Akses ditolak. Periksa Firestore Rules atau hubungi administrator.');
     } else {
       throw new Error(error.message || 'Gagal login. Silakan coba lagi.');
     }
