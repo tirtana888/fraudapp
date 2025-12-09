@@ -34,7 +34,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
     setIsLoading(true);
 
     try {
+      console.log('[LOGIN] Attempting login for:', email);
       const user = await loginWithFirebase(email, password);
+      console.log('[LOGIN] Firebase login successful:', user.email, 'Verified:', user.emailVerified);
       
       // Check if email is verified
       if (!user.emailVerified) {
@@ -46,12 +48,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
       }
 
       // Email verified, proceed with login
+      console.log('[LOGIN] Email verified, calling onLogin handler');
       if (user) {
-        onLogin(user);
+        // IMPORTANT: Wait a bit for Firebase Auth observer to register the user
+        // This prevents race condition where observer hasn't updated yet
+        setTimeout(() => {
+          onLogin(user);
+        }, 100);
       }
     } catch (err: any) {
+      console.error('[LOGIN] Login error:', err);
       setError(err.message || "Gagal masuk. Periksa email dan password.");
-    } finally {
       setIsLoading(false);
     }
   };
