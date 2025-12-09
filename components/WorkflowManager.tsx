@@ -23,10 +23,12 @@ const iconMap: { [key: string]: any } = {
 };
 
 const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode }) => {
+  const toast = useToast();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [workflowName, setWorkflowName] = useState('');
