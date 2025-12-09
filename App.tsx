@@ -111,15 +111,34 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Prevent multiple observer setups
+    // Prevent multiple observer setups (even in StrictMode)
     if (authObserverSetup.current) {
-      console.log('[APP] ⚠️ Auth observer already set up, skipping...');
+      console.log('[APP] ⚠️ Auth observer already set up, skipping duplicate mount...');
+      // In StrictMode, this might run twice, but we only set up once
+      // We still need to mark initialization properly
+      if (!isAuthInitialized) {
+        // Check if user exists in local storage
+        const savedUser = getSession();
+        if (savedUser) {
+          console.log('[APP] 🔄 Fast restore from session:', savedUser.email);
+          setCurrentUser(savedUser);
+        }
+        // Mark as initialized to unblock UI
+        setTimeout(() => {
+          if (!isAuthInitialized) {
+            console.log('[APP] ✅ Marking auth as initialized (fallback)');
+            setIsAuthInitialized(true);
+            setIsCheckingAuth(false);
+          }
+        }, 1000);
+      }
       return;
     }
 
     console.log('[APP] 🔧 Setting up Firebase Auth observer...');
     authObserverSetup.current = true;
     let isSubscribed = true; // Prevent state updates after unmount
+    let initializationTimeout: NodeJS.Timeout;
     
     // Set up Firebase Auth state observer
     const unsubscribeAuth = observeAuthState((user) => {
@@ -130,6 +149,11 @@ const App: React.FC = () => {
       }
 
       console.log('[APP] 📡 Auth state changed:', user ? user.email : 'null');
+
+      // Clear timeout since we got callback
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
+      }
 
       if (user) {
         console.log('[APP] ✅ Firebase Auth user detected:', user.email, 'Verified:', user.emailVerified);
@@ -154,18 +178,26 @@ const App: React.FC = () => {
       }
       
       // Mark auth as initialized (first callback received)
-      if (!isAuthInitialized) {
-        console.log('[APP] ✅ Auth initialization complete');
-        setIsAuthInitialized(true);
-      }
-      
-      // Mark auth check as complete
+      console.log('[APP] ✅ Auth initialization complete');
+      setIsAuthInitialized(true);
       setIsCheckingAuth(false);
     });
+
+    // Fallback: If observer doesn't fire within 2s, mark as initialized anyway
+    initializationTimeout = setTimeout(() => {
+      if (!isAuthInitialized) {
+        console.log('[APP] ⏰ Auth observer timeout - marking as initialized anyway');
+        setIsAuthInitialized(true);
+        setIsCheckingAuth(false);
+      }
+    }, 2000);
 
     return () => {
       console.log('[APP] 🧹 Cleaning up Firebase Auth observer');
       isSubscribed = false;
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
+      }
       unsubscribeAuth();
     };
   }, []); // Empty dependency array - should only run once
