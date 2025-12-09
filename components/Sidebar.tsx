@@ -144,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         })}
 
         {/* Kandidat - Parent Menu dengan Submenu */}
-        <div className="mt-1">
+        <div className="mt-2">
           <button
             onClick={() => isCollapsed ? null : setCandidatesExpanded(!candidatesExpanded)}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
@@ -171,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
           </button>
 
           {!isCollapsed && candidatesExpanded && (
-            <div className="mt-1 ml-2 space-y-0.5 border-l-2 border-gray-200 dark:border-slate-700">
+            <div className="mt-1 ml-2 pl-2 space-y-0.5 border-l-2 border-gray-200 dark:border-slate-700">
               {candidateSubMenus.map((subItem) => {
                 const SubIcon = subItem.icon;
                 const isActive = activeTab === subItem.id;
@@ -179,14 +179,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
                   <button
                     key={subItem.id}
                     onClick={() => setActiveTab(subItem.id)}
-                    className={`w-full flex items-center space-x-2 pl-6 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
+                    className={`w-full flex items-center space-x-2 pl-4 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
                       isActive
-                        ? 'bg-brand-orange/10 text-brand-orange border-l-2 border-brand-orange dark:bg-brand-orange/20'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-gray-200 border-l-2 border-transparent'
+                        ? 'bg-brand-orange/10 text-brand-orange dark:bg-brand-orange/20'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
                   >
                     <SubIcon size={14} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
-                    <span className="flex-1 text-left font-medium">{subItem.label}</span>
+                    <span className="flex-1 text-left font-medium leading-snug">{subItem.label}</span>
                   </button>
                 );
               })}
@@ -195,27 +195,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         </div>
 
         {/* Link Asesmen */}
-        <button
-          onClick={() => setActiveTab(linkMenuItem.id)}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-            activeTab === linkMenuItem.id
-              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-          }`}
-          title={isCollapsed ? linkMenuItem.label : ''}
-        >
-          <LinkIcon size={18} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-          {!isCollapsed && <span className="text-sm">{linkMenuItem.label}</span>}
-          {isCollapsed && (
-            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-              {linkMenuItem.label}
-            </span>
-          )}
-        </button>
+        <div className="mt-2">
+          <button
+            onClick={() => setActiveTab(linkMenuItem.id)}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
+              activeTab === linkMenuItem.id
+                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+            title={isCollapsed ? linkMenuItem.label : ''}
+          >
+            <LinkIcon size={18} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+            {!isCollapsed && <span className="text-sm">{linkMenuItem.label}</span>}
+            {isCollapsed && (
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                {linkMenuItem.label}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* BAGIAN 2: DATA & LOG */}
-        <div className="mt-3">
-          {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 mt-2">Data</p>}
+        <div className="mt-4 pt-3 border-t border-gray-200 dark:border-slate-700">
+          {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Data</p>}
           {dataLogMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
