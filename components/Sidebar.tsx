@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
     { id: 'documentation', label: 'Dokumentasi', icon: BookOpen },
   ];
 
-  const creditMenuItem = { id: 'credit-management', label: 'Manajemen Kredit', icon: CreditCard };
+  const creditMenuItem = { id: 'credit-management', label: 'Credit', icon: CreditCard };
   const systemMenuItem = { id: 'settings', label: 'Pengaturan', icon: Settings };
 
   const isCandidateSubmenu = activeTab.startsWith('candidates-');
