@@ -3,10 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "yarn@1.22.22",
   "engines": {
-    "node": ">=18.0.0",
-    "yarn": ">=1.22.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
