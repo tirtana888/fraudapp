@@ -110,11 +110,15 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
 
   const handleSaveWorkflow = async () => {
     if (!workflowName.trim()) {
-      alert('Nama workflow wajib diisi!');
+      toast.error('Nama workflow wajib diisi!');
       return;
     }
 
+    if (isSaving) return; // Prevent double-click
+
     try {
+      setIsSaving(true);
+      
       const steps: WorkflowStep[] = WORKFLOW_TEMPLATES
         .filter(template => selectedSteps[template.id])
         .map((template, index) => ({
@@ -143,6 +147,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
         const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, editingWorkflow.id!);
         await updateDoc(workflowRef, workflowData);
         console.log('[WORKFLOW] Updated workflow:', editingWorkflow.id);
+        toast.success('Workflow berhasil diupdate!');
       } else {
         // Create new workflow
         await addDoc(collection(db, COLLECTIONS.WORKFLOWS), {
@@ -150,14 +155,17 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           createdAt: new Date().toISOString()
         });
         console.log('[WORKFLOW] Created new workflow');
+        toast.success('Workflow berhasil dibuat!');
       }
 
       setIsCreating(false);
       setEditingWorkflow(null);
-      loadWorkflows();
+      await loadWorkflows();
     } catch (error) {
       console.error('[WORKFLOW] Error saving workflow:', error);
-      alert('Gagal menyimpan workflow. Silakan coba lagi.');
+      toast.error('Gagal menyimpan workflow. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
