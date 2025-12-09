@@ -473,7 +473,9 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser) {
+  // Only show login page after auth is fully initialized and confirmed no user
+  if (!currentUser && isAuthInitialized) {
+    console.log('[APP] 🚪 No user detected after initialization, showing login page');
     return (
       <ToastProvider>
         {showSignUp ? (
