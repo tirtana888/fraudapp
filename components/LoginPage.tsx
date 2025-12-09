@@ -34,13 +34,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
     setIsLoading(true);
 
     try {
-      console.log('[LOGIN] Attempting login for:', email);
+      console.log('[LOGIN] 🔐 Attempting login for:', email);
       const user = await loginWithFirebase(email, password);
-      console.log('[LOGIN] Firebase login successful:', user.email, 'Verified:', user.emailVerified);
+      console.log('[LOGIN] ✅ Firebase login successful:', user.email, 'Verified:', user.emailVerified);
       
       // Check if email is verified
       if (!user.emailVerified) {
-        console.log('[LOGIN] Email not verified, showing verification prompt');
+        console.log('[LOGIN] ⚠️ Email not verified, showing verification prompt');
         setUnverifiedUser(user);
         setView('verify_email');
         setIsLoading(false);
@@ -48,7 +48,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
       }
 
       // Email verified, proceed with login
-      console.log('[LOGIN] Email verified, calling onLogin handler');
+      console.log('[LOGIN] ✅ Email verified, calling onLogin handler');
+      setIsLoading(false); // Stop loading before transition
+      
       if (user) {
         // IMPORTANT: Wait a bit for Firebase Auth observer to register the user
         // This prevents race condition where observer hasn't updated yet
@@ -57,7 +59,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
         }, 100);
       }
     } catch (err: any) {
-      console.error('[LOGIN] Login error:', err);
+      console.error('[LOGIN] ❌ Login error:', err);
+      console.error('[LOGIN] Error details:', err.message, err.code);
       setError(err.message || "Gagal masuk. Periksa email dan password.");
       setIsLoading(false);
     }
