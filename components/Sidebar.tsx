@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   const linkMenuItem = { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon };
 
   const dataLogMenuItems = [
-    { id: 'history', label: 'Riwayat Audit', icon: History },
+    { id: 'history', label: 'Riwayat', icon: History },
     { id: 'documentation', label: 'Dokumentasi', icon: BookOpen },
   ];
 
