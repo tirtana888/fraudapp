@@ -108,12 +108,21 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    console.log('[APP] Setting up Firebase Auth observer...');
+    console.log('[APP] 🔧 Setting up Firebase Auth observer...');
+    let isSubscribed = true; // Prevent state updates after unmount
     
     // Set up Firebase Auth state observer
     const unsubscribeAuth = observeAuthState((user) => {
+      // Only update state if component is still mounted
+      if (!isSubscribed) {
+        console.log('[APP] ⚠️ Component unmounted, ignoring auth update');
+        return;
+      }
+
+      console.log('[APP] 📡 Auth state changed:', user ? user.email : 'null');
+
       if (user) {
-        console.log('[APP] Firebase Auth user detected:', user.email, 'Verified:', user.emailVerified);
+        console.log('[APP] ✅ Firebase Auth user detected:', user.email, 'Verified:', user.emailVerified);
         
         // IMPORTANT: Always update state with Firebase Auth user (source of truth)
         setCurrentUser(user);
@@ -121,17 +130,23 @@ const App: React.FC = () => {
         
         console.log('[APP] ✅ User state updated successfully');
       } else {
-        console.log('[APP] No Firebase Auth user detected');
+        console.log('[APP] ℹ️ No Firebase Auth user detected');
         
         // Try to restore from local session as fallback for legacy users
         const savedUser = getSession();
         if (savedUser) {
-          console.log('[APP] Restoring legacy user session:', savedUser.email);
+          console.log('[APP] 🔄 Restoring legacy user session:', savedUser.email);
           setCurrentUser(savedUser);
         } else {
-          console.log('[APP] No session found, user will see login page');
+          console.log('[APP] 🚪 No session found, user will see login page');
           setCurrentUser(null);
         }
+      }
+      
+      // Mark auth as initialized (first callback received)
+      if (!isAuthInitialized) {
+        console.log('[APP] ✅ Auth initialization complete');
+        setIsAuthInitialized(true);
       }
       
       // Mark auth check as complete
@@ -139,10 +154,11 @@ const App: React.FC = () => {
     });
 
     return () => {
-      console.log('[APP] Cleaning up Firebase Auth observer');
+      console.log('[APP] 🧹 Cleaning up Firebase Auth observer');
+      isSubscribed = false;
       unsubscribeAuth();
     };
-  }, []);
+  }, []); // Empty dependency array - should only run once
 
   useEffect(() => {
     if (!currentUser || isPublicMode) return;
