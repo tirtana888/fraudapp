@@ -1,4 +1,21 @@
 ---
+## Testing Protocol
+
+### When to Update This File
+- Before invoking any testing agent (backend or frontend)
+- After receiving testing results (pass/fail/issues found)
+
+### Workflow Steps
+1. **Before Testing**: Add new task entries with status "working: NA"
+2. **After Testing**: Update working status and add testing agent comments
+3. **For Failures**: Increment stuck_count and set needs_retesting: true
+
+### Incorporate User Feedback
+- If user reports a feature as broken after testing: Update status to working: false
+- User-reported issues take priority over agent testing results
+- Always re-test after implementing user-reported fixes
+
+---
 frontend:
   - task: "Firebase Authentication - Sign Up Flow"
     implemented: true
