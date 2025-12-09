@@ -54,9 +54,7 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
         address: formData.address.trim(),
-        companySlug: formData.companySlug,
-        logoUrl: formData.logoUrl.trim(),
-        headerTitle: formData.headerTitle.trim()
+        companySlug: formData.companySlug
       });
 
       toast.success('Informasi perusahaan berhasil diperbarui');
