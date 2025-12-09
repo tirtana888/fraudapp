@@ -270,76 +270,71 @@ export const loginWithFirebase = async (email: string, password: string): Promis
   try {
     console.log('[AUTH] 🔐 Attempting login for:', email);
     
-    // 1. Sign in with Firebase Auth
+    // 1. Sign in with Firebase Auth (PRIMARY SOURCE OF TRUTH)
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
     
     console.log('[AUTH] ✅ Firebase Auth successful:', firebaseUser.uid);
     console.log('[AUTH] Email verified:', firebaseUser.emailVerified);
 
-    // 2. Fetch user profile from Firestore
-    console.log('[AUTH] 📄 Fetching user profile from Firestore...');
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    const q = query(usersRef, where('email', '==', email), limit(1));
-    
-    console.log('[AUTH] 🔍 Querying Firestore collection:', COLLECTIONS.USERS);
-    const snapshot = await getDocs(q);
-    console.log('[AUTH] 📊 Query result - documents found:', snapshot.size);
+    // 2. Create basic profile from Firebase Auth
+    // We'll use this as fallback if Firestore fails
+    const basicProfile: UserProfile = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || email.split('@')[0],
+      email: email,
+      role: 'Company Admin',
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=random`,
+      companyId: 'temp-' + firebaseUser.uid,
+      emailVerified: firebaseUser.emailVerified,
+      createdAt: Timestamp.now()
+    };
 
-    if (snapshot.empty) {
-      console.error('[AUTH] ❌ No user profile found in Firestore for:', email);
-      console.error('[AUTH] This might mean:');
-      console.error('[AUTH] 1. User signed up with Firebase Auth but profile creation failed');
-      console.error('[AUTH] 2. Profile was deleted but Auth user still exists');
-      console.error('[AUTH] 3. Email mismatch between Auth and Firestore');
-      
-      // Create a minimal profile for this user
-      console.log('[AUTH] 🔧 Creating minimal user profile...');
-      const minimalProfile: Omit<UserProfile, 'id'> & { id: string } = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || email.split('@')[0],
-        email: email,
-        role: 'Company Admin',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=random`,
-        companyId: 'temp-' + firebaseUser.uid,
-        emailVerified: firebaseUser.emailVerified,
-        createdAt: Timestamp.now()
-      };
-      
-      try {
-        await addDoc(collection(db, COLLECTIONS.USERS), minimalProfile);
-        console.log('[AUTH] ✅ Minimal profile created');
+    // 3. Try to fetch extended profile from Firestore (with timeout)
+    console.log('[AUTH] 📄 Attempting to fetch Firestore profile...');
+    
+    try {
+      // Create promise with timeout
+      const firestorePromise = (async () => {
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, where('email', '==', email), limit(1));
+        const snapshot = await getDocs(q);
         
+        if (!snapshot.empty) {
+          const userData = snapshot.docs[0].data() as UserProfile;
+          console.log('[AUTH] ✅ Firestore profile found:', userData.name);
+          return userData;
+        }
+        
+        return null;
+      })();
+
+      // Race between Firestore query and timeout
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => {
+          console.log('[AUTH] ⏰ Firestore query timeout, using basic profile');
+          resolve(null);
+        }, 3000) // 3 second timeout
+      );
+
+      const firestoreData = await Promise.race([firestorePromise, timeoutPromise]);
+      
+      if (firestoreData) {
+        // Use Firestore data if available
+        console.log('[AUTH] ✅ Using Firestore profile');
         return {
-          ...minimalProfile,
+          ...firestoreData,
           id: firebaseUser.uid,
           emailVerified: firebaseUser.emailVerified
         };
-      } catch (createError) {
-        console.error('[AUTH] ❌ Failed to create minimal profile:', createError);
-        throw new Error('Profil pengguna tidak ditemukan dan gagal membuat profil baru. Silakan hubungi administrator.');
       }
+    } catch (firestoreError: any) {
+      console.warn('[AUTH] ⚠️ Firestore error (non-blocking):', firestoreError.code || firestoreError.message);
     }
 
-    const userDoc = snapshot.docs[0];
-    const userData = userDoc.data() as UserProfile;
-    console.log('[AUTH] ✅ User profile found:', userData.name);
-
-    // 3. Update email verification status in Firestore if changed
-    if (userData.emailVerified !== firebaseUser.emailVerified) {
-      console.log('[AUTH] 🔄 Updating email verification status...');
-      await updateDoc(userDoc.ref, {
-        emailVerified: firebaseUser.emailVerified
-      });
-    }
-
-    console.log('[AUTH] ✅ Login complete');
-
-    return {
-      ...userData,
-      id: firebaseUser.uid,
-      emailVerified: firebaseUser.emailVerified
-    };
+    // 4. Return basic profile (either Firestore failed or timed out)
+    console.log('[AUTH] ✅ Login complete with basic profile');
+    return basicProfile;
 
   } catch (error: any) {
     console.error('[AUTH] ❌ Login error:', error);
@@ -350,8 +345,8 @@ export const loginWithFirebase = async (email: string, password: string): Promis
       throw new Error('Email atau password salah. Silakan coba lagi.');
     } else if (error.code === 'auth/too-many-requests') {
       throw new Error('Terlalu banyak percobaan login. Silakan coba lagi nanti.');
-    } else if (error.code === 'permission-denied') {
-      throw new Error('Akses ditolak. Periksa Firestore Rules atau hubungi administrator.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Koneksi internet bermasalah. Periksa koneksi Anda.');
     } else {
       throw new Error(error.message || 'Gagal login. Silakan coba lagi.');
     }
