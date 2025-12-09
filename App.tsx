@@ -240,7 +240,17 @@ const App: React.FC = () => {
       if (unsubscribeInvites) unsubscribeInvites();
       window.removeEventListener('firebase-connection-error', handleConnectionError as EventListener);
     };
-  }, [currentUser, isPublicMode]); 
+  }, [currentUser, isPublicMode]);
+
+  // Check email verification status and show banner if needed
+  useEffect(() => {
+    if (currentUser && currentUser.emailVerified === false) {
+      console.log('[APP] Email not verified, showing banner');
+      setShowVerificationBanner(true);
+    } else {
+      setShowVerificationBanner(false);
+    }
+  }, [currentUser]); 
 
   // --- TIMELINE ENGINE ---
   // Merges sessions and invites into a single, sorted, real-time feed.
