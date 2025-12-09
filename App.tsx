@@ -111,7 +111,14 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Prevent multiple observer setups
+    if (authObserverSetup.current) {
+      console.log('[APP] ⚠️ Auth observer already set up, skipping...');
+      return;
+    }
+
     console.log('[APP] 🔧 Setting up Firebase Auth observer...');
+    authObserverSetup.current = true;
     let isSubscribed = true; // Prevent state updates after unmount
     
     // Set up Firebase Auth state observer
