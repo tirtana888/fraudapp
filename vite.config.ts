@@ -9,6 +9,10 @@ export default defineConfig({
     port: 3000,
     watch: {
       ignored: ['**/frontend/**']
+    },
+    hmr: {
+      clientPort: 443,
+      protocol: 'wss'
     }
   },
   build: {
