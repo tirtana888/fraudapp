@@ -145,6 +145,33 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
             </div>
           </div>
 
+          {/* Logo Preview */}
+          <div className="flex items-start gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+            <Building2 size={20} className="text-gray-400 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">Logo Perusahaan (Public Page)</div>
+              {company.logoUrl ? (
+                <div className="flex items-center gap-3">
+                  <img src={company.logoUrl} alt="Company Logo" className="h-12 w-auto object-contain rounded border border-gray-200 dark:border-slate-600 p-1" />
+                  <div className="text-xs text-green-600 dark:text-green-400">✓ Logo aktif</div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-slate-400 italic">Belum ada logo</div>
+              )}
+            </div>
+          </div>
+
+          {/* Header Title */}
+          <div className="flex items-start gap-3">
+            <Building2 size={20} className="text-gray-400 mt-0.5" />
+            <div>
+              <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Judul Halaman Public</div>
+              <div className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                {company.headerTitle || company.name || '-'}
+              </div>
+            </div>
+          </div>
+
           {company.companySlug && (
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
               <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">URL Job Career Page</div>
