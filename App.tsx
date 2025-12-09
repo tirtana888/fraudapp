@@ -205,13 +205,32 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!currentUser || isPublicMode) return;
 
+    console.log('[APP] 🚀 Starting dashboard data load...');
+    
+    // OPTIMIZATION 1: Set minimal loading state
     setIsLoadingData(true);
+    
+    // OPTIMIZATION 2: Create fallback company immediately (show dashboard faster)
+    const fallbackCompany: CompanyProfile = {
+      id: currentUser.companyId || 'default',
+      name: currentUser.name || 'Loading...',
+      tier: 'Freemium',
+      status: 'Active',
+      adminEmail: currentUser.email || '',
+      joinedDate: new Date().toISOString(),
+      credits: 0,
+      subscription_ends_at: null
+    };
+    
+    // Set fallback immediately to unblock UI
+    setCurrentCompany(fallbackCompany);
+    setIsLoadingData(false); // Unblock UI immediately!
     
     const initCompany = async () => {
        try {
          // Special handling for superadmin (no company needed)
          if (currentUser.role === 'superadmin') {
-           console.log('[APP] Superadmin detected, skipping company load');
+           console.log('[APP] ✅ Superadmin detected');
            setCurrentCompany({
              id: 'superadmin',
              name: 'System Administrator',
@@ -222,71 +241,63 @@ const App: React.FC = () => {
              credits: 999999,
              subscription_ends_at: null
            } as CompanyProfile);
-           setIsLoadingData(false);
            return;
          }
 
-         console.log('[APP] Loading company profile for ID:', currentUser.companyId);
+         console.log('[APP] 📄 Loading company profile for ID:', currentUser.companyId);
          if(currentUser.companyId) {
-             const company = await getCompanyById(currentUser.companyId);
-             console.log('[APP] Company loaded:', company);
+             // OPTIMIZATION 3: Add timeout to company fetch
+             const companyPromise = getCompanyById(currentUser.companyId);
+             const timeoutPromise = new Promise<null>((resolve) => 
+               setTimeout(() => {
+                 console.log('[APP] ⏰ Company fetch timeout, using fallback');
+                 resolve(null);
+               }, 2000) // 2 second timeout
+             );
+             
+             const company = await Promise.race([companyPromise, timeoutPromise]);
              
              if (company) {
+               console.log('[APP] ✅ Company loaded:', company.name);
                setCurrentCompany(company);
              } else {
-               console.error('[APP] Company profile not found for ID:', currentUser.companyId);
-               // Set a minimal company object to prevent infinite loading
-               setCurrentCompany({
-                 id: currentUser.companyId,
-                 name: currentUser.name || 'Unknown Company',
-                 tier: 'Freemium',
-                 status: 'Active',
-                 adminEmail: currentUser.email || '',
-                 joinedDate: new Date().toISOString(),
-                 credits: 0,
-                 subscription_ends_at: null
-               } as CompanyProfile);
+               console.log('[APP] ⚠️ Using fallback company (timeout or not found)');
+               // Keep fallback company
              }
          } else {
-           console.error('[APP] No company ID found for user');
-           // Set fallback company
-           setCurrentCompany({
-             id: 'default',
-             name: currentUser.name || 'Unknown Company',
-             tier: 'Freemium',
-             status: 'Active',
-             adminEmail: currentUser.email || '',
-             joinedDate: new Date().toISOString(),
-             credits: 0,
-             subscription_ends_at: null
-           } as CompanyProfile);
+           console.log('[APP] ⚠️ No company ID, using fallback');
          }
        } catch (error) {
-         console.error('[APP] Error loading company profile:', error);
-         // Set fallback company to prevent infinite loading
-         setCurrentCompany({
-           id: currentUser.companyId || 'default',
-           name: currentUser.name || 'Unknown Company',
-           tier: 'Freemium',
-           status: 'Active',
-           adminEmail: currentUser.email || '',
-           joinedDate: new Date().toISOString(),
-           credits: 0,
-           subscription_ends_at: null
-         } as CompanyProfile);
+         console.error('[APP] ❌ Error loading company:', error);
+         // Keep fallback company
        }
-       setIsLoadingData(false);
     };
+    
+    // OPTIMIZATION 4: Run company fetch in background (don't block)
     initCompany();
 
-    const unsubscribeSessions = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
-      setSessions(fetchedSessions as InterviewSession[]);
-      setIsLoadingData(false);
-    });
+    // OPTIMIZATION 5: Subscribe to sessions (async, non-blocking)
+    let unsubscribeSessions: (() => void) | undefined;
+    let unsubscribeInvites: (() => void) | undefined;
+    
+    // Don't block on subscriptions
+    (async () => {
+      try {
+        unsubscribeSessions = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
+          console.log('[APP] 📊 Sessions updated:', fetchedSessions.length);
+          setSessions(fetchedSessions as InterviewSession[]);
+        });
 
-    const unsubscribeInvites = currentUser.companyId ? subscribeToInvites(currentUser.companyId, (fetchedInvites) => {
-      setInvites(fetchedInvites as AssessmentInvite[]);
-    }) : () => {};
+        if (currentUser.companyId) {
+          unsubscribeInvites = subscribeToInvites(currentUser.companyId, (fetchedInvites) => {
+            console.log('[APP] 📨 Invites updated:', fetchedInvites.length);
+            setInvites(fetchedInvites as AssessmentInvite[]);
+          });
+        }
+      } catch (error) {
+        console.error('[APP] ⚠️ Error setting up subscriptions:', error);
+      }
+    })();
 
     const handleConnectionError = (e: any) => {
        setApiError(e.detail || "Koneksi database bermasalah.");
