@@ -447,11 +447,18 @@ const App: React.FC = () => {
     );
   }
 
-  if (isCheckingAuth) {
+  // CRITICAL: Wait for auth initialization before rendering anything
+  // This prevents login loops caused by premature redirects
+  if (isCheckingAuth || !isAuthInitialized) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-brand-slate-900">
         <Loader2 className="w-12 h-12 text-brand-orange animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Memeriksa sesi login...</p>
+        <p className="text-gray-500 font-medium">
+          {isCheckingAuth ? 'Memeriksa sesi login...' : 'Menginisialisasi autentikasi...'}
+        </p>
+        <p className="text-xs text-gray-400 mt-2">
+          {isCheckingAuth ? 'Checking auth state...' : 'Initializing Firebase Auth...'}
+        </p>
       </div>
     );
   }
