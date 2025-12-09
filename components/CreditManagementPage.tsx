@@ -36,31 +36,54 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
   const topUpPackages = getTopUpPackages();
 
   useEffect(() => {
+    // OPTIMIZATION: Show UI immediately with initial data
+    console.log('[CREDIT] 🚀 Initializing Credit Management page...');
+    
+    // Set initial data immediately (no blocking)
+    setCreditBalance(initialCompany.credits || 0);
+    setCompany(initialCompany);
+    setIsLoading(false); // ✅ Unblock UI immediately!
+    
+    // Load fresh data in background (non-blocking)
     loadCreditData();
   }, [initialCompany.id]);
 
   const loadCreditData = async () => {
     if (!initialCompany.id) return;
 
-    setIsLoading(true);
+    console.log('[CREDIT] 📊 Loading credit data in background...');
+    
     try {
-      const [balance, txHistory] = await Promise.all([
+      // Add timeout protection
+      const dataPromise = Promise.all([
         getCreditBalance(initialCompany.id),
-        getCreditTransactions(initialCompany.id, 50)
+        getCreditTransactions(initialCompany.id, 50),
+        getCompanyById(initialCompany.id)
       ]);
-
-      setCreditBalance(balance);
-      setTransactions(txHistory);
       
-      // Refresh company data
-      const updatedCompany = await getCompanyById(initialCompany.id);
-      if (updatedCompany) {
-        setCompany(updatedCompany);
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => {
+          console.log('[CREDIT] ⏰ Data fetch timeout, using initial data');
+          resolve(null);
+        }, 3000) // 3 second timeout
+      );
+
+      const result = await Promise.race([dataPromise, timeoutPromise]);
+
+      if (result) {
+        const [balance, txHistory, updatedCompany] = result;
+        
+        console.log('[CREDIT] ✅ Data loaded:', { balance, transactions: txHistory.length });
+        setCreditBalance(balance);
+        setTransactions(txHistory);
+        
+        if (updatedCompany) {
+          setCompany(updatedCompany);
+        }
       }
     } catch (error) {
-      console.error('[CREDIT] Error loading data:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('[CREDIT] ⚠️ Error loading data (non-critical):', error);
+      // Keep using initial data - page still works
     }
   };
 
