@@ -388,17 +388,28 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           <div className="flex gap-3">
             <button
               onClick={handleSaveWorkflow}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium"
+              disabled={isSaving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-orange"
             >
-              <Save size={20} />
-              <span>{editingWorkflow ? 'Update Workflow' : 'Simpan Workflow'}</span>
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  <span>{editingWorkflow ? 'Update Workflow' : 'Simpan Workflow'}</span>
+                </>
+              )}
             </button>
             <button
               onClick={() => {
                 setIsCreating(false);
                 setEditingWorkflow(null);
               }}
-              className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
+              disabled={isSaving}
+              className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Batal
             </button>
