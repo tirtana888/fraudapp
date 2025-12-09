@@ -9,10 +9,8 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": ">=18",
-    "yarn": "1.22.22"
+    "node": ">=18"
   },
-  "packageManager": "yarn@1.22.22",
   "main": "index.js",
   "dependencies": {
     "firebase-admin": "^12.0.0",
