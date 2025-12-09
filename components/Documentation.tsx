@@ -408,7 +408,7 @@ const Documentation: React.FC = () => {
           <div
             key={section.id}
             ref={(el) => (sectionRefs.current[section.id] = el)}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
+            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden transition-all hover:shadow-md"
           >
             {/* Section Header */}
             <button
