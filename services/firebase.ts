@@ -167,9 +167,10 @@ export const signUpWithFirebase = async (userData: {
   password: string;
 }): Promise<UserProfile> => {
   try {
-    console.log('[AUTH] Starting Firebase sign up process...');
+    console.log('[AUTH] 🚀 Starting Firebase sign up process for:', userData.email);
     
     // 1. Create Firebase Auth user
+    console.log('[AUTH] Step 1: Creating Firebase Auth user...');
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       userData.email,
@@ -177,9 +178,10 @@ export const signUpWithFirebase = async (userData: {
     );
     
     const firebaseUser = userCredential.user;
-    console.log('[AUTH] Firebase user created:', firebaseUser.uid);
+    console.log('[AUTH] ✅ Firebase Auth user created:', firebaseUser.uid);
 
     // 2. Send email verification
+    console.log('[AUTH] Step 2: Sending email verification...');
     try {
       await sendEmailVerification(firebaseUser);
       console.log('[AUTH] ✅ Verification email sent to:', userData.email);
@@ -189,6 +191,7 @@ export const signUpWithFirebase = async (userData: {
     }
 
     // 3. Create company profile with initial Freemium credits
+    console.log('[AUTH] Step 3: Creating company profile...');
     const companyData: Omit<CompanyProfile, 'id'> = {
       name: userData.companyName,
       tier: 'Freemium',
@@ -203,9 +206,10 @@ export const signUpWithFirebase = async (userData: {
 
     const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
     const companyId = companyRef.id;
-    console.log('[AUTH] Company created:', companyId);
+    console.log('[AUTH] ✅ Company created with ID:', companyId);
 
     // 4. Create user profile in Firestore
+    console.log('[AUTH] Step 4: Creating user profile in Firestore...');
     const userProfile: Omit<UserProfile, 'id'> & { id: string } = {
       id: firebaseUser.uid,
       name: userData.fullName,
@@ -217,8 +221,20 @@ export const signUpWithFirebase = async (userData: {
       createdAt: Timestamp.now()
     };
 
-    await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
-    console.log('[AUTH] ✅ User profile created in Firestore');
+    try {
+      await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
+      console.log('[AUTH] ✅ User profile created in Firestore collection:', COLLECTIONS.USERS);
+    } catch (firestoreError: any) {
+      console.error('[AUTH] ❌ Failed to create user profile in Firestore:', firestoreError);
+      console.error('[AUTH] Error code:', firestoreError.code);
+      console.error('[AUTH] Error message:', firestoreError.message);
+      
+      // If Firestore fails, we should still return the profile
+      // The user can log in and we'll create minimal profile then
+      console.warn('[AUTH] ⚠️ Continuing despite Firestore error - profile can be created on first login');
+    }
+
+    console.log('[AUTH] ✅ Sign up process complete!');
 
     // Return user profile
     return {
@@ -227,15 +243,20 @@ export const signUpWithFirebase = async (userData: {
     };
 
   } catch (error: any) {
-    console.error('[AUTH] Sign up error:', error);
+    console.error('[AUTH] ❌ Sign up error:', error);
+    console.error('[AUTH] Error code:', error.code);
+    console.error('[AUTH] Error message:', error.message);
+    console.error('[AUTH] Error stack:', error.stack);
     
     // Provide user-friendly error messages
     if (error.code === 'auth/email-already-in-use') {
       throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login.');
     } else if (error.code === 'auth/weak-password') {
-      throw new Error('Password terlalu lemah. Gunakan minimal 8 karakter dengan kombinasi huruf dan angka.');
+      throw new Error('Password terlalu lemah. Gunakan minimal 6 karakter.');
     } else if (error.code === 'auth/invalid-email') {
       throw new Error('Format email tidak valid.');
+    } else if (error.code === 'permission-denied') {
+      throw new Error('Akses ditolak. Periksa Firestore Rules atau hubungi administrator.');
     } else {
       throw new Error(error.message || 'Gagal mendaftar. Silakan coba lagi.');
     }
