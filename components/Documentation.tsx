@@ -375,7 +375,7 @@ const Documentation: React.FC = () => {
       {/* Quick Start Guide */}
       <div className="bg-gradient-to-br from-orange-50 to-blue-50 rounded-2xl p-6 mb-8 border-2 border-[#D95D00]">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white rounded-xl shadow-sm flex-shrink-0">
+          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex-shrink-0">
             <Lightbulb className="w-6 h-6 text-[#D95D00]" />
           </div>
           <div className="flex-1 min-w-0">
