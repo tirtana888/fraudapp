@@ -78,13 +78,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        
+
         setCandidate(prev => {
           if (!prev) return null;
-          
+
           let updated = false;
           let newCandidate = { ...prev };
-          
+
           // Update cvParsedData if it changes
           if (data.cvParsedData && prev.cvUrl && !prev.cvParsedData) {
             console.log('[CANDIDATE-DETAIL] CV parsed data received via real-time listener');
@@ -97,13 +97,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           if (data.backgroundCheck) {
             const currentBgCheck = prev.backgroundCheck;
             const newBgCheck = data.backgroundCheck;
-            
+
             // Check if status has changed
             if (currentBgCheck?.status !== newBgCheck.status) {
               console.log('[CANDIDATE-DETAIL] Background check status updated via real-time listener:', newBgCheck.status);
               newCandidate.backgroundCheck = newBgCheck;
               updated = true;
-              
+
               // Show toast based on status
               if (newBgCheck.status === 'approved') {
                 toast.success('✓ Background check berhasil! Kandidat telah diverifikasi.');
@@ -119,7 +119,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               updated = true;
             }
           }
-          
+
           return updated ? newCandidate : prev;
         });
       }
@@ -244,7 +244,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     // For Freemium users, deduct 2 credits
     try {
       setIsUnlocking(true);
-      
+
       const result = await deductCredit(
         company.id,
         2,
@@ -348,8 +348,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         tooltip: !isBackgroundCheckAvailable()
           ? 'Upgrade ke Premium atau Enterprise untuk menggunakan Background Check'
           : !canMoveToStage(normalizedStage, 'bc_check')
-          ? 'Lakukan background check'
-          : 'Mulai background check verification'
+            ? 'Lakukan background check'
+            : 'Mulai background check verification'
       },
       hired: {
         enabled: canMoveToStage(normalizedStage, 'hired'),
@@ -395,7 +395,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       // Validate sequential execution
       const currentTimeline = candidate.timeline || [];
-      const workflowSteps = currentTimeline.filter((t: any) => 
+      const workflowSteps = currentTimeline.filter((t: any) =>
         workflowData.steps.some((s: any) => s.id === t.stage)
       );
 
@@ -424,7 +424,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       // Find next workflow step and set as current
       const nextStepIndex = stepIndex + 1;
       const nextWorkflowStep = workflowSteps[nextStepIndex];
-      
+
       if (nextWorkflowStep) {
         updatedTimeline.forEach((item: any, idx: number) => {
           if (item.stage === nextWorkflowStep.stage && item.status === 'pending') {
@@ -437,7 +437,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const existingTimeline = candidate.timeline || [];
       const completedStepName = workflowData.steps.find((s: any) => s.id === stageId)?.name;
       const nextStepName = nextWorkflowStep ? workflowData.steps.find((s: any) => s.id === nextWorkflowStep.stage)?.name : null;
-      
+
       const timelineUpdate = [
         ...existingTimeline.map((event: any) => {
           if (event.stage === stageId && event.status === 'current') {
@@ -468,15 +468,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       try {
         const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
         const companySnap = await getDoc(companyRef);
-        
+
         if (companySnap.exists()) {
           const companyData = companySnap.data();
-          
+
           // TODO: Call email function for workflow step completion
           // For now, just log
           console.log(`[WORKFLOW] Email notification: ${completedStepName} completed for ${candidate.candidate.email}`);
           console.log(`[WORKFLOW] Company: ${companyData.name}, Next step: ${nextStepName || 'Final'}`);
-          
+
           // You can implement email sending here based on step type
           // await sendEmailViaCloudFunction("workflow_step_complete", candidate.candidate.email, {...});
         }
@@ -571,7 +571,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
-      
+
       // Update timeline properly for workflow progression
       const updatedTimeline = existingTimeline.map((event: any) => {
         // Mark current step as completed
@@ -880,40 +880,40 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
     try {
       setIsUpdating(true);
-        const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-        const now = new Date().toISOString();
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+      const now = new Date().toISOString();
 
-        const existingTimeline = candidate.timeline || [];
-        const updatedTimeline = [
-          ...existingTimeline.map(event => ({
-            ...event,
-            status: event.status === 'current' ? 'completed' as const : event.status
-          })),
-          {
-            stage: newStage,
-            status: (newStage === 'rejected' || newStage === 'hired' || newStage === 'approved') ? 'completed' as const : 'current' as const,
-            date: now,
-            note: getStageNote(newStage, candidate.candidate.name)
-          }
-        ];
+      const existingTimeline = candidate.timeline || [];
+      const updatedTimeline = [
+        ...existingTimeline.map(event => ({
+          ...event,
+          status: event.status === 'current' ? 'completed' as const : event.status
+        })),
+        {
+          stage: newStage,
+          status: (newStage === 'rejected' || newStage === 'hired' || newStage === 'approved') ? 'completed' as const : 'current' as const,
+          date: now,
+          note: getStageNote(newStage, candidate.candidate.name)
+        }
+      ];
 
-        await updateDoc(sessionRef, {
-          recruitmentStage: newStage,
-          timeline: updatedTimeline,
-          updatedAt: now
-        });
+      await updateDoc(sessionRef, {
+        recruitmentStage: newStage,
+        timeline: updatedTimeline,
+        updatedAt: now
+      });
 
-        await loadCandidateData();
+      await loadCandidateData();
 
-        const stageLabels: { [key: string]: string } = {
-          'interview': 'Wawancara',
-          'hired': 'Rekrut',
-          'rejected': 'Ditolak',
-          'bc_check': 'Background Check',
-          'background_check': 'Background Check'
-        };
+      const stageLabels: { [key: string]: string } = {
+        'interview': 'Wawancara',
+        'hired': 'Rekrut',
+        'rejected': 'Ditolak',
+        'bc_check': 'Background Check',
+        'background_check': 'Background Check'
+      };
 
-        toast.success(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
+      toast.success(`Status kandidat diupdate ke: ${stageLabels[newStage] || newStage}`);
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(error instanceof Error ? error.message : 'Gagal mengupdate status');
@@ -1168,16 +1168,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     <button
                       type="button"
                       onClick={() => setInterviewType('online')}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        interviewType === 'online'
+                      className={`p-4 rounded-xl border-2 transition-all ${interviewType === 'online'
                           ? 'border-[#D95D00] bg-orange-50 shadow-sm'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          interviewType === 'online' ? 'bg-[#D95D00]' : 'bg-gray-200'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${interviewType === 'online' ? 'bg-[#D95D00]' : 'bg-gray-200'
+                          }`}>
                           <Globe size={20} className={interviewType === 'online' ? 'text-white' : 'text-gray-600'} />
                         </div>
                         <div className="text-left">
@@ -1189,16 +1187,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     <button
                       type="button"
                       onClick={() => setInterviewType('offline')}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        interviewType === 'offline'
+                      className={`p-4 rounded-xl border-2 transition-all ${interviewType === 'offline'
                           ? 'border-[#D95D00] bg-orange-50 shadow-sm'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          interviewType === 'offline' ? 'bg-[#D95D00]' : 'bg-gray-200'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${interviewType === 'offline' ? 'bg-[#D95D00]' : 'bg-gray-200'
+                          }`}>
                           <MapPin size={20} className={interviewType === 'offline' ? 'text-white' : 'text-gray-600'} />
                         </div>
                         <div className="text-left">
@@ -1552,18 +1548,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
                 // If workflow exists, use workflow steps as stage buttons
                 console.log('[BUTTONS] Rendering buttons. workflowData:', workflowData ? 'EXISTS' : 'NULL', 'recruitmentStage:', candidate.recruitmentStage);
-                
+
                 if (workflowData) {
                   console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: any) => s.name).join(', '));
-                  const workflowTimeline = candidate.timeline?.filter((t: any) => 
+                  const workflowTimeline = candidate.timeline?.filter((t: any) =>
                     workflowData.steps.some((s: any) => s.id === t.stage)
                   ) || [];
                   console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map((t: any) => `${t.stage}:${t.status}`).join(', '));
-                  
+
                   const currentStepIndex = workflowTimeline.findIndex((t: any) => t.status === 'current');
                   const currentStep = workflowTimeline[currentStepIndex];
                   const nextStep = workflowTimeline[currentStepIndex + 1];
-                  
+
                   // Check if assessment is completed
                   const assessmentStep = workflowTimeline.find((t: any) => t.stage === 'integrity_assessment');
                   const isAssessmentCompleted = assessmentStep?.status === 'completed';
@@ -1614,7 +1610,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                               {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Next'}
                             </button>
                           )}
-                          
+
                           {/* Show waiting message if assessment not complete */}
                           {!isAssessmentCompleted && isCurrentStepAssessment && (
                             <span className="text-xs text-gray-500 dark:text-gray-400 italic ml-2">
@@ -1681,61 +1677,55 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           <div className="flex items-center gap-1 mt-4 border-b border-gray-200 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'overview'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'overview'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Ringkasan
             </button>
             <button
               onClick={() => setActiveTab('documents')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'documents'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'documents'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               CV & Dokumen
             </button>
             <button
               onClick={() => setActiveTab('integrity')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'integrity'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'integrity'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Laporan Integritas
             </button>
             <button
               onClick={() => setActiveTab('interview')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'interview'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'interview'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Wawancara AI
             </button>
             <button
               onClick={() => setActiveTab('background')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'background'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'background'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Pemeriksaan Latar Belakang
             </button>
             <button
               onClick={() => setActiveTab('activity')}
-              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'activity'
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'activity'
                   ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Riwayat Aktivitas
             </button>
@@ -1744,9 +1734,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {activeTab === 'overview' && candidate.status !== 'completed' && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center animate-in fade-in slide-in-from-bottom-4">
+            <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Assessment Belum Selesai</h3>
+            <p className="text-gray-600">Summary akan tersedia setelah kandidat menyelesaikan assessment.</p>
+          </div>
+        )}
+
         {activeTab === 'overview' && candidate.status === 'completed' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <h3 className="font-semibold text-white flex items-center gap-2">
@@ -1803,7 +1801,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     </span>
                   )}
                 </div>
-                
+
                 {company.tier === 'Freemium' && !isContactUnlocked ? (
                   <div className="space-y-4">
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
@@ -2306,11 +2304,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                         key={idx}
                         className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}
                       >
-                        <div className={`max-w-2xl rounded-lg p-4 ${
-                          isAI
+                        <div className={`max-w-2xl rounded-lg p-4 ${isAI
                             ? 'bg-white text-gray-800 border border-gray-200'
                             : 'bg-[#D95D00] text-white'
-                        }`}>
+                          }`}>
                           <div className="text-xs font-semibold mb-1 opacity-70">
                             {isAI ? '🤖 Pewawancara AI' : `👤 ${candidate.candidate.name}`}
                           </div>
@@ -2348,23 +2345,22 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-1">Laporan Pemeriksaan Latar Belakang</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
                   {candidate.backgroundCheck?.status ? (
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
-                      candidate.backgroundCheck.status === 'approved' 
+                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${candidate.backgroundCheck.status === 'approved'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         : candidate.backgroundCheck.status === 'in_progress'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : candidate.backgroundCheck.status === 'declined'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    }`}>
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : candidate.backgroundCheck.status === 'declined'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
                       {candidate.backgroundCheck.status === 'approved' && <CheckCircle2 size={14} />}
                       {candidate.backgroundCheck.status === 'in_progress' && <Clock size={14} />}
                       {candidate.backgroundCheck.status === 'declined' && <XCircle size={14} />}
                       {candidate.backgroundCheck.status === 'pending' && <Clock size={14} />}
-                      {candidate.backgroundCheck.status === 'approved' ? 'APPROVED' 
+                      {candidate.backgroundCheck.status === 'approved' ? 'APPROVED'
                         : candidate.backgroundCheck.status === 'in_progress' ? 'IN PROGRESS'
-                        : candidate.backgroundCheck.status === 'declined' ? 'DECLINED'
-                        : 'PENDING'}
+                          : candidate.backgroundCheck.status === 'declined' ? 'DECLINED'
+                            : 'PENDING'}
                     </div>
                   ) : (
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-full text-xs font-bold">
@@ -2375,14 +2371,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Status Verifikasi</div>
-                  <div className={`text-3xl font-black ${
-                    candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400' 
+                  <div className={`text-3xl font-black ${candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
                       : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
-                      : 'text-gray-400'
-                  }`}>
-                    {candidate.backgroundCheck?.status === 'approved' ? '✓' 
+                        : 'text-gray-400'
+                    }`}>
+                    {candidate.backgroundCheck?.status === 'approved' ? '✓'
                       : candidate.backgroundCheck?.status === 'declined' ? '✗'
-                      : '--'}
+                        : '--'}
                   </div>
                 </div>
               </div>
@@ -2399,28 +2394,27 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <span className="text-sm text-gray-700 dark:text-gray-300">Status</span>
-                    <span className={`text-sm font-semibold ${
-                      candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
+                    <span className={`text-sm font-semibold ${candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
                         : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
-                        : candidate.backgroundCheck?.status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-400'
-                    }`}>
+                          : candidate.backgroundCheck?.status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-400'
+                      }`}>
                       {candidate.backgroundCheck?.status === 'approved' ? 'Approved'
                         : candidate.backgroundCheck?.status === 'declined' ? 'Declined'
-                        : candidate.backgroundCheck?.status === 'in_progress' ? 'In Progress'
-                        : candidate.backgroundCheck?.status === 'pending' ? 'Pending'
-                        : 'Not Started'}
+                          : candidate.backgroundCheck?.status === 'in_progress' ? 'In Progress'
+                            : candidate.backgroundCheck?.status === 'pending' ? 'Pending'
+                              : 'Not Started'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <span className="text-sm text-gray-700 dark:text-gray-300">Tanggal Verifikasi</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                      {candidate.backgroundCheck?.lastUpdated 
+                      {candidate.backgroundCheck?.lastUpdated
                         ? new Date(candidate.backgroundCheck.lastUpdated.seconds * 1000).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })
                         : '--'}
                     </span>
                   </div>
