@@ -1,4 +1,21 @@
 ---
+## Testing Protocol
+
+### When to Update This File
+- Before invoking any testing agent (backend or frontend)
+- After receiving testing results (pass/fail/issues found)
+
+### Workflow Steps
+1. **Before Testing**: Add new task entries with status "working: NA"
+2. **After Testing**: Update working status and add testing agent comments
+3. **For Failures**: Increment stuck_count and set needs_retesting: true
+
+### Incorporate User Feedback
+- If user reports a feature as broken after testing: Update status to working: false
+- User-reported issues take priority over agent testing results
+- Always re-test after implementing user-reported fixes
+
+---
 frontend:
   - task: "Firebase Authentication - Sign Up Flow"
     implemented: true
@@ -305,3 +322,26 @@ agent_communication:
     message: "🎯 NEW BUILD WHITE SCREEN VERIFICATION COMPLETE - Tested new build with index-DQoNSjgI.js as requested. ✅ CRITICAL WHITE SCREEN TEST PASSED: Fresh browser context with no cache loads login page perfectly within 2-8 seconds. All critical checks passed: login page visible, NO allow_permanent_link console errors, all form elements visible, new JS bundle loaded correctly. ⚠️ BACKEND ISSUE DISCOVERED: Backend service not running (supervisor shows FATAL status, /app/backend directory missing), preventing full login flow testing. However, the frontend white screen issue is completely resolved - application loads immediately with proper UI elements, no JavaScript errors, and correct functionality. The optional chaining and defensive patterns successfully fixed the allow_permanent_link errors."
   - agent: "testing"
     message: "🎊 SUPERADMIN LOGIN TESTING COMPLETE - Successfully tested superadmin login functionality with credentials superadmin@hiregood.com / SuperAdmin123!. ✅ CRITICAL CHECKS PASSED: Login successful (no 'profile not found' error), Dashboard loads WITHOUT errors, Console logs show '[APP] Superadmin detected, skipping company load', Sidebar menu visible with all items, Company name shows 'System Administrator', Can navigate to different pages (Workflow, etc.). ✅ CORE FUNCTIONALITY WORKING: Superadmin authentication, role detection, dashboard access, and navigation all functional. ⚠️ MINOR ISSUE: Admin Panel menu not visible in sidebar (requires Sidebar.tsx role check fix for 'superadmin' role). The superadmin login system is production-ready with proper Firebase Auth integration and role-based access control."
+  - task: "Workflow Save Button - Loading State and Success Notification"
+    implemented: true
+    working: "NA"
+    file: "components/WorkflowManager.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed workflow save functionality to prevent double-click duplicates. Added isSaving state to disable save button during save operation, added spinner animation during save, implemented success toast notification using useToast hook after successful save/update. Button shows 'Menyimpan...' during save operation."
+
+  - task: "Company Profile Settings - Logo and Title Fields Removal"
+    implemented: true
+    working: "NA"
+    file: "components/CompanyProfileSettings.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Removed redundant logoUrl and headerTitle edit fields from CompanyProfileSettings.tsx. These fields are now only managed through AssessmentSettings (Link Assessment menu) as per user requirements. Kept read-only display in view mode for reference."

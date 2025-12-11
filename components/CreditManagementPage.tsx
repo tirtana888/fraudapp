@@ -206,7 +206,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => setShowTopUpModal(true)}
-              className="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+              className="bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 font-semibold py-3 rounded-xl hover:bg-orange-50 dark:hover:bg-slate-600 transition-all flex items-center justify-center gap-2"
             >
               <CreditCard size={18} />
               Top Up Kredit
@@ -225,7 +225,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         </div>
 
         {/* Current Plan */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">Paket Saat Ini</h3>
             {isPremium && (
@@ -261,7 +261,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         </div>
 
         {/* Transaction History */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
           <div className="flex items-center gap-2 mb-6">
             <History size={20} className="text-gray-700" />
             <h3 className="text-lg font-bold text-gray-900">Riwayat Transaksi</h3>
@@ -280,7 +280,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg border border-gray-200">
+                    <div className="p-2 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                       {getTransactionIcon(tx.action)}
                     </div>
                     <div>
@@ -304,7 +304,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
       {/* Top-Up Modal */}
       {showTopUpModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-900">Top Up Kredit</h3>
               <p className="text-sm text-gray-600 mt-1">Pilih paket kredit yang sesuai dengan kebutuhan Anda</p>
@@ -376,7 +376,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
       {/* Upgrade Premium Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg">

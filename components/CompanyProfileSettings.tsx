@@ -17,9 +17,7 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
     name: company.name || '',
     whatsapp: company.whatsapp || '',
     address: company.address || '',
-    companySlug: company.companySlug || generateSlug(company.name || 'company'),
-    logoUrl: company.logoUrl || '',
-    headerTitle: company.headerTitle || ''
+    companySlug: company.companySlug || generateSlug(company.name || 'company')
   });
 
   useEffect(() => {
@@ -27,9 +25,7 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
       name: company.name || '',
       whatsapp: company.whatsapp || '',
       address: company.address || '',
-      companySlug: company.companySlug || generateSlug(company.name || 'company'),
-      logoUrl: company.logoUrl || '',
-      headerTitle: company.headerTitle || ''
+      companySlug: company.companySlug || generateSlug(company.name || 'company')
     });
   }, [company]);
 
@@ -58,9 +54,7 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
         address: formData.address.trim(),
-        companySlug: formData.companySlug,
-        logoUrl: formData.logoUrl.trim(),
-        headerTitle: formData.headerTitle.trim()
+        companySlug: formData.companySlug
       });
 
       toast.success('Informasi perusahaan berhasil diperbarui');
@@ -79,9 +73,7 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
       name: company.name || '',
       whatsapp: company.whatsapp || '',
       address: company.address || '',
-      companySlug: company.companySlug || generateSlug(company.name || 'company'),
-      logoUrl: company.logoUrl || '',
-      headerTitle: company.headerTitle || ''
+      companySlug: company.companySlug || generateSlug(company.name || 'company')
     });
     setIsEditing(false);
   };
@@ -250,57 +242,6 @@ const CompanyProfileSettings: React.FC<CompanyProfileSettingsProps> = ({ company
               placeholder="Jl. Contoh No. 123, Jakarta"
             />
           </div>
-        </div>
-
-        {/* Logo URL Field - Available for ALL tiers including Freemium */}
-        <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-            URL Logo Perusahaan (Public Page)
-            <span className="ml-2 text-xs font-normal text-gray-500">✓ Tersedia untuk {company.tier}</span>
-          </label>
-          <input
-            type="url"
-            value={formData.logoUrl}
-            onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent dark:bg-slate-700 dark:text-slate-100"
-            placeholder="https://example.com/logo.png"
-          />
-          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-            Logo akan tampil di halaman job public Anda. Format: PNG, JPG, SVG (Max 200KB recommended)
-          </p>
-          {formData.logoUrl && (
-            <div className="mt-2 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
-              <div className="text-xs text-gray-600 dark:text-slate-400 mb-2">Preview:</div>
-              <img 
-                src={formData.logoUrl} 
-                alt="Logo Preview" 
-                className="h-12 w-auto object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling!.classList.remove('hidden');
-                }}
-              />
-              <div className="hidden text-xs text-red-500 mt-1">❌ URL logo tidak valid atau tidak bisa diakses</div>
-            </div>
-          )}
-        </div>
-
-        {/* Header Title Field - Available for ALL tiers including Freemium */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-            Judul Halaman Public
-            <span className="ml-2 text-xs font-normal text-gray-500">✓ Tersedia untuk {company.tier}</span>
-          </label>
-          <input
-            type="text"
-            value={formData.headerTitle}
-            onChange={(e) => setFormData({ ...formData, headerTitle: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent dark:bg-slate-700 dark:text-slate-100"
-            placeholder={formData.name || "Nama Perusahaan"}
-          />
-          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-            Judul ini akan tampil di halaman job public. Kosongkan untuk menggunakan nama perusahaan.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 pt-4">

@@ -375,7 +375,7 @@ const Documentation: React.FC = () => {
       {/* Quick Start Guide */}
       <div className="bg-gradient-to-br from-orange-50 to-blue-50 rounded-2xl p-6 mb-8 border-2 border-[#D95D00]">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white rounded-xl shadow-sm flex-shrink-0">
+          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex-shrink-0">
             <Lightbulb className="w-6 h-6 text-[#D95D00]" />
           </div>
           <div className="flex-1 min-w-0">
@@ -408,7 +408,7 @@ const Documentation: React.FC = () => {
           <div
             key={section.id}
             ref={(el) => (sectionRefs.current[section.id] = el)}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
+            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden transition-all hover:shadow-md"
           >
             {/* Section Header */}
             <button
@@ -512,7 +512,7 @@ const Documentation: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
             <a
               href="mailto:support@hiregood.one"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
             >
               <Mail className="w-5 h-5 flex-shrink-0" />
               <span>Email Support</span>

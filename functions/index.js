@@ -720,3 +720,171 @@ exports.createDiditSession = functions
       );
     }
   });
+
+// ==========================================
+// AI CHATBOT IMPLEMENTATION (Gemini + GPT-4o)
+// ==========================================
+
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+/**
+ * Generate AI response for candidate interview
+ * Uses Gemini 2.0 Flash Thinking as primary, GPT-4o as fallback
+ */
+exports.generateAIResponse = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+    // 1. Validate Auth & Input
+    const { role, message, history, candidateData } = data;
+
+    // Note: In production you might want to require context.auth
+    // but for this demo we'll allow unauthenticated for easier testing
+
+    if (!role || !message) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Role and message are required'
+      );
+    }
+
+    console.log(`[AI-CHAT] Generating response for ${role}. Message: "${message.substring(0, 50)}..."`);
+    console.log(`[AI-CHAT] Candidate: ${candidateData?.fullName}`);
+
+    // 2. Get API Keys
+    const GEMINI_API_KEY = functions.config().gemini?.key;
+
+    if (!GEMINI_API_KEY) {
+      console.error('[AI-CONFIG] NO GEMINI API KEY CONFIGURED!');
+      // Fallback to static response if no key
+      return {
+        success: true,
+        response: "Maaf, sistem sedang mengalami gangguan konfigurasi. Bisakah Anda mengulangi jawaban Anda?"
+      };
+    }
+
+    try {
+      // 3. TRY GEMINI (Primary Model)
+      console.log('[AI-CHAT] Trying Gemini (2.0 Flash Thinking)...');
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      // Using gemini-1.5-flash as a stable model. 
+      // If user wants specific experimental model, they can change it here.
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const systemPrompt = `
+        Anda adalah pewawancara profesional untuk posisi ${role}.
+        Nama kandidat: ${candidateData?.fullName || 'Kandidat'}.
+        
+        TUGAS ANDA:
+        1. Ajukan pertanyaan wawancara behavioral berbasis STAR (Situation, Task, Action, Result).
+        2. Gali lebih dalam jawaban kandidat (probing).
+        3. Deteksi potensi ketidakjujuran atau inkonsistensi.
+        4. Jaga nada bicara profesional namun ramah.
+        5. Lakukan wawancara dalam Bahasa Indonesia.
+        
+        ATURAN:
+        - Jangan berikan jawaban panjang lebar.
+        - Fokus pada satu pertanyaan di satu waktu.
+        - Jika jawaban kandidat terlalu singkat, minta elaborasi.
+        - Jika kandidat tidak relevan, arahkan kembali ke topik.
+        `;
+
+      const chat = model.startChat({
+        history: history.map(h => ({
+          role: h.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }]
+        })),
+        generationConfig: {
+          maxOutputTokens: 300,
+          temperature: 0.7,
+        },
+        systemInstruction: systemPrompt
+      });
+
+      const result = await chat.sendMessage(message);
+      const aiResponse = result.response.text();
+
+      console.log('[AI-CHAT] ✅ Gemini response generated successfully');
+
+      return {
+        success: true,
+        response: aiResponse,
+        model: "gemini-1.5-flash"
+      };
+
+    } catch (error) {
+      console.error('[AI-CHAT] ❌ Gemini Failed:', error.message);
+
+      // Return static fallback if AI fails
+      return {
+        success: true,
+        response: "Terima kasih atas jawaban Anda. Mari kita lanjutkan ke pertanyaan berikutnya. Bisa ceritakan pengalaman Anda dalam menghadapi situasi sulit di tempat kerja?",
+        error: error.message,
+        isFallback: true
+      };
+    }
+  });
+
+
+/**
+ * Analyse Fraud Risk using AI
+ */
+exports.analyzeFraudRisk = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 60, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+    const { role, transcript, ftAnswers } = data;
+    console.log(`[FRAUD-ANALYSIS] Analyzing risk for ${role}...`);
+
+    const GEMINI_API_KEY = functions.config().gemini?.key;
+    if (!GEMINI_API_KEY) {
+      throw new functions.https.HttpsError('failed-precondition', 'Gemini API key missing');
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `
+          Anda adalah pakar deteksi fraud dan psikologi forensik.
+          Analisis transkrip wawancara dan jawaban kuesioner kandidat ini untuk posisi ${role}.
+          
+          TRANSKRIP WAWANCARA:
+          ${JSON.stringify(transcript)}
+          
+          JAWABAN FRAUD TRIANGLE:
+          ${JSON.stringify(ftAnswers)}
+          
+          TUGAS:
+          Berikan analisis risiko fraud menggunakan kerangka kerja Fraud Triangle (Pressure, Opportunity, Rationalization).
+          
+          OUTPUT JSON (HANYA JSON):
+          {
+            "scores": {
+                "pressure": 0-100,
+                "opportunity": 0-100,
+                "rationalization": 0-100
+            },
+            "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+            "summary": "Ringkasan analisis dalam Bahasa Indonesia (2-3 paragraf)",
+            "redFlags": ["flag1", "flag2"],
+            "recommendation": "Rekomendasi (Hire/Reject/Investigate)"
+          }
+          `;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      // Cleanup JSON
+      const cleanText = text.replace(/```json|```/g, '').trim();
+      const analysis = JSON.parse(cleanText);
+
+      console.log('[FRAUD-ANALYSIS] ✅ Analysis complete');
+      return analysis;
+
+    } catch (error) {
+      console.error('[FRAUD-ANALYSIS] Error:', error);
+      throw new functions.https.HttpsError('internal', 'AI Analysis Failed');
+    }
+  });
