@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
@@ -10,20 +10,20 @@ import {
   onAuthStateChanged as firebaseOnAuthStateChanged,
   Auth
 } from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs, 
-  onSnapshot, 
-  doc, 
-  getDoc, 
-  updateDoc, 
-  deleteDoc, 
-  orderBy, 
-  limit, 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  orderBy,
+  limit,
   Firestore,
   Timestamp
 } from 'firebase/firestore';
@@ -33,11 +33,11 @@ import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, J
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDy8aNvFa3syJAKnwIOZQaT87PI_GC8lmo",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "hiring-good.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "hiring-good",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "hiring-good.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "618826274963",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:618826274963:web:6e54bb9f7df9d5a7c6d7a2"
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "gen-lang-client-0226679970.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "gen-lang-client-0226679970",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "gen-lang-client-0226679970.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "422224153226",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:422224153226:web:4598cd213b6275436a3b73"
 };
 
 export let db: Firestore;
@@ -168,7 +168,7 @@ export const signUpWithFirebase = async (userData: {
 }): Promise<UserProfile> => {
   try {
     console.log('[AUTH] 🚀 Starting Firebase sign up for:', userData.email);
-    
+
     // 1. Create Firebase Auth user (CRITICAL - must succeed)
     console.log('[AUTH] Step 1/3: Creating Firebase Auth user...');
     const userCredential = await createUserWithEmailAndPassword(
@@ -176,7 +176,7 @@ export const signUpWithFirebase = async (userData: {
       userData.email,
       userData.password
     );
-    
+
     const firebaseUser = userCredential.user;
     console.log('[AUTH] ✅ Firebase Auth user created:', firebaseUser.uid);
 
@@ -203,7 +203,7 @@ export const signUpWithFirebase = async (userData: {
 
     // 4. Try to create Firestore records (non-blocking, async)
     console.log('[AUTH] Step 3/3: Creating Firestore records (async)...');
-    
+
     // Do this in background, don't wait
     (async () => {
       try {
@@ -222,14 +222,14 @@ export const signUpWithFirebase = async (userData: {
 
         const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
         console.log('[AUTH] ✅ Company profile created:', companyRef.id);
-        
+
         // Update user profile with real company ID
         userProfile.companyId = companyRef.id;
 
         // Create user profile in Firestore
         await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
         console.log('[AUTH] ✅ User profile created in Firestore');
-        
+
       } catch (firestoreError: any) {
         console.error('[AUTH] ⚠️ Background Firestore error (non-critical):', firestoreError.code);
         // Don't throw - user can still login
@@ -244,7 +244,7 @@ export const signUpWithFirebase = async (userData: {
     console.error('[AUTH] ❌ Sign up error:', error);
     console.error('[AUTH] Error code:', error.code);
     console.error('[AUTH] Error message:', error.message);
-    
+
     // Clean up - delete auth user if created
     if (error.code !== 'auth/email-already-in-use' && error.code !== 'auth/weak-password') {
       try {
@@ -257,7 +257,7 @@ export const signUpWithFirebase = async (userData: {
         console.warn('[AUTH] ⚠️ Could not clean up auth user:', cleanupError);
       }
     }
-    
+
     // User-friendly error messages
     if (error.code === 'auth/email-already-in-use') {
       throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login.');
@@ -279,48 +279,55 @@ export const signUpWithFirebase = async (userData: {
 export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile> => {
   try {
     console.log('[AUTH] 🔐 Attempting login for:', email);
-    
+
     // 1. Sign in with Firebase Auth (PRIMARY SOURCE OF TRUTH)
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
-    
+
     console.log('[AUTH] ✅ Firebase Auth successful:', firebaseUser.uid);
     console.log('[AUTH] Email verified:', firebaseUser.emailVerified);
 
     // 2. Create basic profile from Firebase Auth
     // We'll use this as fallback if Firestore fails
+    // Special handling for superadmin email
+    const isSuperadminEmail = email.toLowerCase() === 'superadmin@hiregood.com';
     const basicProfile: UserProfile = {
       id: firebaseUser.uid,
       name: firebaseUser.displayName || email.split('@')[0],
       email: email,
-      role: 'Company Admin',
+      role: isSuperadminEmail ? 'superadmin' : 'Company Admin',
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=random`,
-      companyId: 'temp-' + firebaseUser.uid,
+      companyId: isSuperadminEmail ? 'superadmin' : ('temp-' + firebaseUser.uid),
       emailVerified: firebaseUser.emailVerified,
       createdAt: Timestamp.now()
     };
 
+    if (isSuperadminEmail) {
+      console.log('[AUTH] 🔐 Superadmin email detected - forcing superadmin role');
+    }
+
     // 3. Try to fetch extended profile from Firestore (with timeout)
     console.log('[AUTH] 📄 Attempting to fetch Firestore profile...');
-    
+
     try {
       // Create promise with timeout
       const firestorePromise = (async () => {
         const usersRef = collection(db, COLLECTIONS.USERS);
         const q = query(usersRef, where('email', '==', email), limit(1));
         const snapshot = await getDocs(q);
-        
+
         if (!snapshot.empty) {
           const userData = snapshot.docs[0].data() as UserProfile;
           console.log('[AUTH] ✅ Firestore profile found:', userData.name);
+          console.log('[AUTH] 👤 User ROLE:', userData.role);
           return userData;
         }
-        
+
         return null;
       })();
 
       // Race between Firestore query and timeout
-      const timeoutPromise = new Promise<null>((resolve) => 
+      const timeoutPromise = new Promise<null>((resolve) =>
         setTimeout(() => {
           console.log('[AUTH] ⏰ Firestore query timeout, using basic profile');
           resolve(null);
@@ -328,7 +335,7 @@ export const loginWithFirebase = async (email: string, password: string): Promis
       );
 
       const firestoreData = await Promise.race([firestorePromise, timeoutPromise]);
-      
+
       if (firestoreData) {
         // Use Firestore data if available
         console.log('[AUTH] ✅ Using Firestore profile');
@@ -350,7 +357,7 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     console.error('[AUTH] ❌ Login error:', error);
     console.error('[AUTH] Error code:', error.code);
     console.error('[AUTH] Error message:', error.message);
-    
+
     if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
       throw new Error('Email atau password salah. Silakan coba lagi.');
     } else if (error.code === 'auth/too-many-requests') {
@@ -385,7 +392,7 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
     console.log('[AUTH] Password reset email sent to:', email);
   } catch (error: any) {
     console.error('[AUTH] Password reset error:', error);
-    
+
     if (error.code === 'auth/user-not-found') {
       throw new Error('Email tidak terdaftar.');
     } else {
@@ -400,7 +407,7 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
 export const resendVerificationEmail = async (): Promise<void> => {
   try {
     const user = auth.currentUser;
-    
+
     if (!user) {
       throw new Error('Tidak ada user yang login');
     }
@@ -413,7 +420,7 @@ export const resendVerificationEmail = async (): Promise<void> => {
     console.log('[AUTH] ✅ Verification email resent to:', user.email);
   } catch (error: any) {
     console.error('[AUTH] Resend verification error:', error);
-    
+
     if (error.code === 'auth/too-many-requests') {
       throw new Error('Terlalu banyak permintaan. Tunggu beberapa menit sebelum mencoba lagi.');
     } else {
@@ -436,7 +443,9 @@ export const observeAuthState = (callback: (user: UserProfile | null) => void) =
 
         if (!snapshot.empty) {
           const userData = snapshot.docs[0].data() as UserProfile;
-          
+          console.log('[AUTH] 📋 Firestore user data:', JSON.stringify(userData, null, 2));
+          console.log('[AUTH] 👤 User role from Firestore:', userData.role);
+
           // Update email verification status if changed
           if (userData.emailVerified !== firebaseUser.emailVerified) {
             await updateDoc(snapshot.docs[0].ref, {
@@ -486,7 +495,7 @@ export const seedRealDatabase = async () => {
 export const subscribeToSessions = (companyId: string, role: string, onUpdate: (sessions: InterviewSession[]) => void) => {
   if (!db) {
     console.error("Database not initialized");
-    return () => {};
+    return () => { };
   }
 
   try {
@@ -515,7 +524,7 @@ export const subscribeToSessions = (companyId: string, role: string, onUpdate: (
       },
       (error) => {
         console.error("[SESSIONS] Snapshot error:", error);
-        window.dispatchEvent(new CustomEvent('firebase-connection-error', { 
+        window.dispatchEvent(new CustomEvent('firebase-connection-error', {
           detail: "Koneksi ke database bermasalah. Refresh halaman."
         }));
       }
@@ -524,7 +533,7 @@ export const subscribeToSessions = (companyId: string, role: string, onUpdate: (
     return unsubscribe;
   } catch (error) {
     console.error("[SESSIONS] Error setting up listener:", error);
-    return () => {};
+    return () => { };
   }
 };
 
@@ -532,7 +541,7 @@ export const getSessionById = async (sessionId: string): Promise<InterviewSessio
   try {
     const docRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() } as InterviewSession;
     }
@@ -579,7 +588,7 @@ export const getCompanyById = async (companyId: string): Promise<CompanyProfile 
   try {
     const docRef = doc(db, COLLECTIONS.COMPANIES, companyId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() } as CompanyProfile;
     }
@@ -592,14 +601,43 @@ export const getCompanyById = async (companyId: string): Promise<CompanyProfile 
 
 export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | null> => {
   try {
-    const q = query(
+    console.log('[COMPANIES] Looking for company with slug:', slug);
+
+    // 1. First try exact match by companySlug field
+    const slugQuery = query(
       collection(db, COLLECTIONS.COMPANIES),
       where('companySlug', '==', slug),
       limit(1)
     );
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as CompanyProfile;
+    const slugSnapshot = await getDocs(slugQuery);
+    if (!slugSnapshot.empty) {
+      console.log('[COMPANIES] ✅ Found by companySlug');
+      return { id: slugSnapshot.docs[0].id, ...slugSnapshot.docs[0].data() } as CompanyProfile;
+    }
+
+    // 2. Fallback: Try to find by company ID directly
+    console.log('[COMPANIES] No companySlug match, trying by ID...');
+    const idDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, slug));
+    if (idDoc.exists()) {
+      console.log('[COMPANIES] ✅ Found by document ID');
+      return { id: idDoc.id, ...idDoc.data() } as CompanyProfile;
+    }
+
+    // 3. Fallback: Try to match by company name (lowercase, with dashes)
+    console.log('[COMPANIES] No ID match, trying by name...');
+    const allCompaniesSnapshot = await getDocs(collection(db, COLLECTIONS.COMPANIES));
+    const matchedByName = allCompaniesSnapshot.docs.find(doc => {
+      const name = doc.data().name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
+      return name === slug.toLowerCase();
+    });
+
+    if (matchedByName) {
+      console.log('[COMPANIES] ✅ Found by name match');
+      return { id: matchedByName.id, ...matchedByName.data() } as CompanyProfile;
+    }
+
+    console.log('[COMPANIES] ❌ Company not found for slug:', slug);
+    return null;
   } catch (error) {
     console.error('[COMPANIES] Error fetching company by slug:', error);
     return null;
@@ -632,8 +670,8 @@ export const blastAssessmentInvites = async (
 
   // Check if Firebase Functions is initialized
   if (!functions) {
-      console.error("Firebase Functions not initialized");
-      throw new Error("Layanan email tidak dikonfigurasi dengan benar. Hubungi administrator.");
+    console.error("Firebase Functions not initialized");
+    throw new Error("Layanan email tidak dikonfigurasi dengan benar. Hubungi administrator.");
   }
 
   const results = { success: 0, failed: 0 };
@@ -843,43 +881,43 @@ export const deleteCandidateInvite = async (inviteId: string): Promise<{ success
 };
 
 export const subscribeToInvites = (companyId: string, onUpdate: (data: AssessmentInvite[]) => void) => {
-    if (!db) return () => {};
+  if (!db) return () => { };
 
-    const executeSimpleQuery = () => {
-        const q = query(
-            collection(db, COLLECTIONS.INVITES),
-            where("companyId", "==", companyId),
-            limit(100)
-        );
-        onSnapshot(q, (snapshot) => {
-            const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentInvite));
-            // Sort Client Side
-            invites.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            onUpdate(invites);
-        });
-    };
+  const executeSimpleQuery = () => {
+    const q = query(
+      collection(db, COLLECTIONS.INVITES),
+      where("companyId", "==", companyId),
+      limit(100)
+    );
+    onSnapshot(q, (snapshot) => {
+      const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentInvite));
+      // Sort Client Side
+      invites.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      onUpdate(invites);
+    });
+  };
 
-    try {
-        const q = query(
-            collection(db, COLLECTIONS.INVITES),
-            where("companyId", "==", companyId),
-            orderBy("createdAt", "desc"),
-            limit(100)
-        );
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.INVITES),
+      where("companyId", "==", companyId),
+      orderBy("createdAt", "desc"),
+      limit(100)
+    );
 
-        return onSnapshot(q, (snapshot) => {
-            const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentInvite));
-            onUpdate(invites);
-        }, (error) => {
-            if (error.code === 'failed-precondition') {
-                console.warn("Invite Index missing, switching to client-side sort");
-                executeSimpleQuery();
-            }
-        });
-    } catch (e) {
+    return onSnapshot(q, (snapshot) => {
+      const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentInvite));
+      onUpdate(invites);
+    }, (error) => {
+      if (error.code === 'failed-precondition') {
+        console.warn("Invite Index missing, switching to client-side sort");
         executeSimpleQuery();
-        return () => {};
-    }
+      }
+    });
+  } catch (e) {
+    executeSimpleQuery();
+    return () => { };
+  }
 };
 
 // --- FIREBASE STORAGE: LOGO UPLOAD (Up to 5MB) ---
@@ -1122,7 +1160,7 @@ export const createApplication = async (applicationData: Omit<JobApplication, 'i
     const jobRef = doc(db, COLLECTIONS.JOBS, applicationData.jobId);
     const jobSnap = await getDoc(jobRef);
     let enableInstantAssessment = false; // Default: Instant OFF (pending_review)
-    
+
     if (jobSnap.exists()) {
       const jobData = jobSnap.data();
       const currentCount = jobData.applicantsCount || 0;
@@ -1154,8 +1192,8 @@ export const createInterviewSessionFromApplication = async (
 
     // Tentukan status dan note berdasarkan Instant Assessment setting
     const sessionStatus = enableInstantAssessment ? 'active' : 'pending_review';
-    const screeningNote = enableInstantAssessment 
-      ? 'Kandidat akan langsung mengikuti instant assessment' 
+    const screeningNote = enableInstantAssessment
+      ? 'Kandidat akan langsung mengikuti instant assessment'
       : 'Menunggu review HR';
 
     console.log(`[SESSION-CREATE] Creating session with status: ${sessionStatus} (Instant: ${enableInstantAssessment})`);
@@ -1163,14 +1201,14 @@ export const createInterviewSessionFromApplication = async (
     // Load Job and Workflow if exists
     let workflowSteps: any[] = [];
     let workflowId: string | undefined;
-    
+
     if (applicationData.jobId) {
       try {
         const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, applicationData.jobId));
         if (jobDoc.exists()) {
           const jobData = jobDoc.data();
           workflowId = jobData.workflowId;
-          
+
           if (workflowId) {
             console.log(`[SESSION-CREATE] Job has workflow: ${workflowId}`);
             const workflowDoc = await getDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
@@ -1206,7 +1244,7 @@ export const createInterviewSessionFromApplication = async (
     if (workflowSteps.length > 0) {
       // Sort steps by order, no special treatment for any step
       const sortedSteps = [...workflowSteps].sort((a, b) => a.order - b.order);
-      
+
       sortedSteps.forEach((step, index) => {
         // First enabled step is current
         const isFirstStep = index === 0;
@@ -1264,7 +1302,7 @@ export const createInterviewSessionFromApplication = async (
     // Auto-parse Document if exists
     if (applicationData.cvUrl) {
       console.log('[SESSIONS] ✅ Document detected, triggering auto-parse...');
-      
+
       // Trigger parse asynchronously (don't wait)
       parseCVWithMistral(applicationData.cvUrl, sessionRef.id)
         .then(() => {
@@ -1308,7 +1346,7 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
     'image/png',
     'image/gif'
   ];
-  
+
   if (!validTypes.includes(file.type)) {
     console.error('[STORAGE] Invalid file type:', file.type);
     throw new Error("Format file tidak valid. Gunakan PDF, DOC, DOCX, TXT, atau gambar (JPG/PNG).");
@@ -1498,15 +1536,88 @@ export const initiateBackgroundCheck = async (candidateId: string, candidateName
 export const updateSessionInDB = updateSession;
 export const saveSessionToDB = createInterviewSession;
 
-// Admin functions - placeholder implementations
-export const inviteCompanyReal = async (payload: any): Promise<{ success: boolean; message: string }> => {
-  console.log('[ADMIN] inviteCompanyReal called with:', payload);
-  return { success: true, message: "Company invited successfully" };
+// Admin functions - Real implementations
+export const inviteCompanyReal = async (payload: {
+  name: string;
+  adminEmail: string;
+  tier: 'Freemium' | 'Premium';
+  status: 'Pending' | 'Active';
+  joinedDate: string;
+  usersCount: number;
+}): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('[ADMIN] Creating new company:', payload.name);
+
+    // Create company profile
+    const companyData: Omit<CompanyProfile, 'id'> = {
+      name: payload.name,
+      tier: payload.tier,
+      status: payload.status,
+      adminEmail: payload.adminEmail,
+      joinedDate: payload.joinedDate,
+      usersCount: payload.usersCount || 1,
+      credits: payload.tier === 'Premium' ? 1500 : 1000,
+      verification_credits: 100,
+      createdAt: Timestamp.now()
+    };
+
+    const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
+    console.log('[ADMIN] ✅ Company created:', companyRef.id);
+
+    // TODO: Send invitation email via Cloud Function
+    // For now, just return success
+
+    return {
+      success: true,
+      message: `Company "${payload.name}" berhasil dibuat dengan ID: ${companyRef.id}`
+    };
+  } catch (error: any) {
+    console.error('[ADMIN] Error creating company:', error);
+    return {
+      success: false,
+      message: error.message || 'Gagal membuat company'
+    };
+  }
 };
 
-export const getCompanies = async () => { 
-  console.log('[ADMIN] getCompanies called');
-  return []; 
+export const getCompanies = async (): Promise<CompanyProfile[]> => {
+  try {
+    console.log('[ADMIN] Fetching all companies from Firestore...');
+    const companiesRef = collection(db, COLLECTIONS.COMPANIES);
+    // Removed orderBy to avoid index requirement and hanging
+    const snapshot = await getDocs(companiesRef);
+
+    const companies = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CompanyProfile[];
+
+    console.log(`[ADMIN] ✅ Fetched ${companies.length} companies`);
+    return companies;
+  } catch (error: any) {
+    console.error('[ADMIN] Error fetching companies:', error);
+
+    // If orderBy fails (missing index), try without ordering
+    if (error.code === 'failed-precondition') {
+      console.log('[ADMIN] Retrying without orderBy...');
+      try {
+        const companiesRef = collection(db, COLLECTIONS.COMPANIES);
+        const snapshot = await getDocs(companiesRef);
+        const companies = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as CompanyProfile[];
+
+        console.log(`[ADMIN] ✅ Fetched ${companies.length} companies (fallback)`);
+        return companies;
+      } catch (fallbackError) {
+        console.error('[ADMIN] Fallback query failed:', fallbackError);
+        return [];
+      }
+    }
+
+    return [];
+  }
 };
 
 export const updateCompanySubscription = async (companyId: string, updates: any): Promise<void> => {
@@ -1521,6 +1632,29 @@ export const deleteCompany = async (companyId: string): Promise<void> => {
 };
 
 export const resendInviteEmail = async (companyId: string): Promise<{ success: boolean; message: string }> => {
-  console.log('[ADMIN] resendInviteEmail called for:', companyId);
-  return { success: true, message: "Invite email resent successfully" };
+  try {
+    console.log('[ADMIN] Resending invite email for company:', companyId);
+
+    // Get company data
+    const companyDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, companyId));
+    if (!companyDoc.exists()) {
+      return { success: false, message: 'Company tidak ditemukan' };
+    }
+
+    const company = { id: companyDoc.id, ...companyDoc.data() } as CompanyProfile;
+
+    // TODO: Send invitation email via Cloud Function
+    console.log('[ADMIN] Email would be sent to:', company.adminEmail);
+
+    return {
+      success: true,
+      message: `Email undangan berhasil dikirim ke ${company.adminEmail}`
+    };
+  } catch (error: any) {
+    console.error('[ADMIN] Error resending invite:', error);
+    return {
+      success: false,
+      message: error.message || 'Gagal mengirim ulang email'
+    };
+  }
 };

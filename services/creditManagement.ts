@@ -32,7 +32,7 @@ export const deductCredit = async (
     // Use Firestore transaction for atomic credit deduction
     const result = await runTransaction(db, async (transaction) => {
       const companyDoc = await transaction.get(companyRef);
-      
+
       if (!companyDoc.exists()) {
         throw new Error('Company not found');
       }
@@ -104,7 +104,7 @@ export const addCredit = async (
 
     const result = await runTransaction(db, async (transaction) => {
       const companyDoc = await transaction.get(companyRef);
-      
+
       if (!companyDoc.exists()) {
         throw new Error('Company not found');
       }
@@ -161,7 +161,7 @@ export const getCreditBalance = async (companyId: string): Promise<number> => {
   try {
     const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
     const companyDoc = await getDoc(companyRef);
-    
+
     if (!companyDoc.exists()) {
       return 0;
     }
@@ -231,7 +231,7 @@ export const upgradeToPremium = async (
 
     await runTransaction(db, async (transaction) => {
       const companyDoc = await transaction.get(companyRef);
-      
+
       if (!companyDoc.exists()) {
         throw new Error('Company not found');
       }
@@ -296,7 +296,7 @@ export const canViewCandidate = async (
   try {
     const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
     const companyDoc = await getDoc(companyRef);
-    
+
     if (!companyDoc.exists()) {
       return { canView: false, reason: 'Company not found' };
     }
@@ -311,7 +311,7 @@ export const canViewCandidate = async (
 
     // Freemium users limited to first 10 candidates
     const limit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
-    
+
     if (candidateIndex >= limit) {
       return {
         canView: false,
@@ -334,7 +334,7 @@ export const shouldMaskContacts = async (companyId: string): Promise<boolean> =>
   try {
     const companyRef = doc(db, COLLECTIONS.COMPANIES, companyId);
     const companyDoc = await getDoc(companyRef);
-    
+
     if (!companyDoc.exists()) {
       return true; // Mask by default
     }
@@ -398,4 +398,81 @@ function getAddCreditDescription(
     default:
       return `Credit added - ${amount} credits`;
   }
+}
+
+// ==========================================
+// APPLICATION ORDER RANKING
+// ==========================================
+
+interface CandidateWithDate {
+  id?: string;
+  date?: string;
+  appliedAt?: string;
+  createdAt?: any;
+}
+
+/**
+ * Calculate application ranks for candidates based on apply date (oldest first = rank 1)
+ * Used to determine which candidates should be blurred for Freemium users
+ * @param candidates - Array of candidates with date fields
+ * @returns Map of candidate ID to their application rank (1 = first applied)
+ */
+export const calculateApplicationRanks = (
+  candidates: CandidateWithDate[]
+): Map<string, number> => {
+  // Sort by apply date (oldest first = first to apply = rank 1)
+  const sorted = [...candidates].sort((a, b) => {
+    const dateA = getApplyDate(a);
+    const dateB = getApplyDate(b);
+    return dateA - dateB; // Ascending = oldest first
+  });
+
+  // Assign ranks (1-indexed)
+  const rankMap = new Map<string, number>();
+  sorted.forEach((c, idx) => {
+    if (c.id) {
+      rankMap.set(c.id, idx + 1); // rank 1, 2, 3...
+    }
+  });
+
+  return rankMap;
+};
+
+/**
+ * Check if a candidate should be blurred based on their application rank
+ * @param applicationRank - The candidate's rank (1 = first applied)
+ * @param tier - Company tier ('Freemium' or 'Premium')
+ * @returns true if should be blurred
+ */
+export const shouldBlurByApplicationRank = (
+  applicationRank: number,
+  tier: 'Freemium' | 'Premium'
+): boolean => {
+  if (tier === 'Premium') {
+    return false; // Premium sees all
+  }
+
+  const limit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
+  return applicationRank > limit; // Blur if rank > 10
+};
+
+/**
+ * Helper to extract apply date from various candidate formats
+ */
+function getApplyDate(candidate: CandidateWithDate): number {
+  // Priority: appliedAt > date > createdAt > 0
+  if (candidate.appliedAt) {
+    return new Date(candidate.appliedAt).getTime();
+  }
+  if (candidate.date) {
+    return new Date(candidate.date).getTime();
+  }
+  if (candidate.createdAt) {
+    // Handle Firestore Timestamp
+    if (candidate.createdAt.toDate) {
+      return candidate.createdAt.toDate().getTime();
+    }
+    return new Date(candidate.createdAt).getTime();
+  }
+  return 0;
 }

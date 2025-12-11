@@ -1,1 +1,29 @@
-https://stackblitz.com/storage/blobs/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NzM1MzA1NzIsInB1ciI6ImJsb2JfaWQifX0=--6cae32f9bbeffc280a74535e794bcc55e60c1ecc/-firestore.rules
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Companies collection - Allow all authenticated users to read
+    // This is temporary for debugging
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // All other collections - allow authenticated access
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

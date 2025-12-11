@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User, Bot, Shield } from 'lucide-react';
-import { InterviewSession, Job, RiskLevel } from '../types';
+import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User, Bot, Shield, Lock, Crown, Unlock, X, CreditCard } from 'lucide-react';
+import { InterviewSession, Job, RiskLevel, SUBSCRIPTION_PLANS, CompanyProfile, CREDIT_COSTS } from '../types';
 import { db, COLLECTIONS } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from './Toast';
 import { calculateAssessmentScores } from '../services/genai';
+import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
 
 interface CandidatesAutoViewProps {
   companyId: string;
@@ -27,6 +28,13 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [stageFilter, setStageFilter] = useState<string>('all');
+  const [companyTier, setCompanyTier] = useState<'Freemium' | 'Premium'>('Freemium');
+  const [applicationRanks, setApplicationRanks] = useState<Map<string, number>>(new Map());
+  const [unlockedCandidates, setUnlockedCandidates] = useState<Set<string>>(new Set());
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [selectedCandidateForUnlock, setSelectedCandidateForUnlock] = useState<AutoCandidate | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number>(0);
 
   useEffect(() => {
     loadData();
@@ -98,12 +106,94 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
         return new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime();
       });
 
+      // Calculate application ranks based on apply date (oldest first = rank 1)
+      const ranks = calculateApplicationRanks(candidatesWithDetails);
+      setApplicationRanks(ranks);
+      console.log('[CANDIDATES-AUTO] Application ranks calculated:', ranks.size);
+
+      // Load previously unlocked candidates from session data
+      const unlockedIds = new Set<string>();
+      candidatesWithDetails.forEach(c => {
+        if ((c as any).unlockedAt) {
+          unlockedIds.add(c.id);
+        }
+      });
+      setUnlockedCandidates(unlockedIds);
+      console.log('[CANDIDATES-AUTO] Previously unlocked candidates:', unlockedIds.size);
+
+      // Fetch company tier
+      const companyDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, companyId));
+      if (companyDoc.exists()) {
+        const tier = (companyDoc.data() as CompanyProfile).tier || 'Freemium';
+        setCompanyTier(tier);
+        console.log('[CANDIDATES-AUTO] Company tier:', tier);
+      }
+
       setCandidates(candidatesWithDetails);
       console.log('[CANDIDATES-AUTO] ✅ Total candidates loaded:', candidatesWithDetails.length);
     } catch (error) {
       console.error('[CANDIDATES-AUTO] Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUnlockClick = async (candidate: AutoCandidate) => {
+    // Fetch current credit balance
+    const balance = await getCreditBalance(companyId);
+    setCreditBalance(balance);
+    setSelectedCandidateForUnlock(candidate);
+    setShowUnlockModal(true);
+  };
+
+  const confirmUnlock = async () => {
+    if (!selectedCandidateForUnlock) return;
+
+    const unlockCost = CREDIT_COSTS.UNLOCK_PROFILE;
+
+    if (creditBalance < unlockCost) {
+      toast.error(`Kredit tidak cukup. Dibutuhkan: ${unlockCost}, Tersedia: ${creditBalance}`);
+      setShowUnlockModal(false);
+      return;
+    }
+
+    setIsUnlocking(true);
+    try {
+      const result = await deductCredit(
+        companyId,
+        unlockCost,
+        'UNLOCK_PROFILE',
+        `Unlock kandidat: ${selectedCandidateForUnlock.candidate.name}`,
+        {
+          candidateId: selectedCandidateForUnlock.id,
+          candidateName: selectedCandidateForUnlock.candidate.name,
+          sessionId: selectedCandidateForUnlock.id
+        }
+      );
+
+      if (result.success) {
+        // Save unlock status to Firestore
+        const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
+        await updateDoc(sessionRef, {
+          unlockedAt: new Date().toISOString(),
+          unlockedByCompanyId: companyId
+        });
+
+        // Add to unlocked set
+        setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
+        toast.success(`Kandidat ${selectedCandidateForUnlock.candidate.name} berhasil di-unlock! Sisa kredit: ${result.remainingCredits}`);
+        setShowUnlockModal(false);
+        // View the candidate immediately
+        onViewSession(selectedCandidateForUnlock.id);
+      } else {
+        toast.error(result.error || 'Gagal unlock kandidat');
+      }
+    } catch (error: any) {
+      console.error('[UNLOCK] Error:', error);
+      toast.error('Terjadi kesalahan saat unlock kandidat');
+    } finally {
+      setIsUnlocking(false);
+      setSelectedCandidateForUnlock(null);
     }
   };
 
@@ -309,160 +399,279 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <Zap className="text-brand-orange" size={28} />
-            Otomatis (Instant Assessment)
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Kandidat yang auto-complete test via Job Portal
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-white dark:bg-brand-slate-850 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
-            <span className="text-2xl font-bold text-gray-800 dark:text-white">{filteredCandidates.length}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">Kandidat</span>
-          </div>
-        </div>
-      </div>
+    <>
+      {/* Unlock Confirmation Modal */}
+      {showUnlockModal && selectedCandidateForUnlock && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white">Konfirmasi Unlock Kandidat</h3>
+              <button
+                onClick={() => setShowUnlockModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
 
-      <div className="bg-white dark:bg-brand-slate-850 p-4 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-gray-400" />
-          <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Filter:</span>
-        </div>
-        <select
-          value={selectedJob}
-          onChange={(e) => setSelectedJob(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
-        >
-          <option value="all">Semua Posisi</option>
-          {jobs.map(job => (
-            <option key={job.id} value={job.id}>{job.title}</option>
-          ))}
-        </select>
-        <select
-          value={stageFilter}
-          onChange={(e) => setStageFilter(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
-        >
-          <option value="all">Semua Stage</option>
-          <option value="screening">Screening 🤖</option>
-          <option value="review">Review 📋</option>
-          <option value="interview">Interview 🤝</option>
-          <option value="bc_check">BC Check 🛡️</option>
-          <option value="hired">Hired 🎉</option>
-          <option value="rejected">Rejected</option>
-        </select>
-        <select
-          value={riskFilter}
-          onChange={(e) => setRiskFilter(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
-        >
-          <option value="all">Semua Risk Level</option>
-          <option value="low">Low Risk</option>
-          <option value="medium">Medium Risk</option>
-          <option value="high">High Risk</option>
-          <option value="critical">Critical Risk</option>
-        </select>
-      </div>
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold">
+                  {selectedCandidateForUnlock.candidate.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+                <div>
+                  <p className="font-bold text-gray-800 dark:text-white">{selectedCandidateForUnlock.candidate.name}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCandidateForUnlock.jobTitle || 'Unknown Position'}</p>
+                </div>
+              </div>
+            </div>
 
-      {filteredCandidates.length === 0 ? (
-        <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-12 text-center">
-          <Zap className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">Belum Ada Kandidat Otomatis</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            Kandidat yang complete instant assessment akan muncul di sini
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Candidate
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Applied For
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Stage
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Risk Score
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                {filteredCandidates.map((candidate) => (
-                  <tr
-                    key={candidate.id}
-                    className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
-                  >
-                    {/* Candidate Column */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                          {getAvatarInitials(candidate.candidate.name)}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white">
-                            {candidate.candidate.name}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {candidate.candidate.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="text-blue-600" size={20} />
+                  <span className="font-semibold text-gray-800 dark:text-white">Biaya Unlock:</span>
+                </div>
+                <span className="text-xl font-bold text-blue-600">{CREDIT_COSTS.UNLOCK_PROFILE} Credit</span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Anda:</span>
+                <span className={`font-bold ${creditBalance >= CREDIT_COSTS.UNLOCK_PROFILE ? 'text-green-600' : 'text-red-600'}`}>
+                  {creditBalance} Credit
+                </span>
+              </div>
+            </div>
 
-                    {/* Applied For Column */}
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-900 dark:text-white">
-                        {candidate.jobTitle}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                        <MapPin size={12} />
-                        {candidate.jobLocation}
-                      </div>
-                    </td>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Dengan menggunakan {CREDIT_COSTS.UNLOCK_PROFILE} credit, Anda akan mendapatkan akses penuh untuk melihat profil dan detail assessment kandidat ini.
+            </p>
 
-                    {/* Stage Column */}
-                    <td className="px-6 py-4">
-                      {getStageBadge(candidate)}
-                    </td>
-
-                    {/* Risk Score Column */}
-                    <td className="px-6 py-4">
-                      {getRiskScoreBadge(candidate)}
-                    </td>
-
-                    {/* Action Column */}
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => onViewSession(candidate.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors"
-                      >
-                        <Eye size={14} />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUnlockModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmUnlock}
+                disabled={isUnlocking || creditBalance < CREDIT_COSTS.UNLOCK_PROFILE}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isUnlocking ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Unlock size={18} />
+                    Unlock Kandidat
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+              <Zap className="text-brand-orange" size={28} />
+              Otomatis (Instant Assessment)
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Kandidat yang auto-complete test via Job Portal
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-white dark:bg-brand-slate-850 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+              <span className="text-2xl font-bold text-gray-800 dark:text-white">{filteredCandidates.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">Kandidat</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-brand-slate-850 p-4 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-gray-400" />
+            <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Filter:</span>
+          </div>
+          <select
+            value={selectedJob}
+            onChange={(e) => setSelectedJob(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+          >
+            <option value="all">Semua Posisi</option>
+            {jobs.map(job => (
+              <option key={job.id} value={job.id}>{job.title}</option>
+            ))}
+          </select>
+          <select
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+          >
+            <option value="all">Semua Stage</option>
+            <option value="screening">Screening 🤖</option>
+            <option value="review">Review 📋</option>
+            <option value="interview">Interview 🤝</option>
+            <option value="bc_check">BC Check 🛡️</option>
+            <option value="hired">Hired 🎉</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+          >
+            <option value="all">Semua Risk Level</option>
+            <option value="low">Low Risk</option>
+            <option value="medium">Medium Risk</option>
+            <option value="high">High Risk</option>
+            <option value="critical">Critical Risk</option>
+          </select>
+        </div>
+
+        {filteredCandidates.length === 0 ? (
+          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-12 text-center">
+            <Zap className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">Belum Ada Kandidat Otomatis</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              Kandidat yang complete instant assessment akan muncul di sini
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Candidate
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Applied For
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Stage
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Risk Score
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                  {filteredCandidates.map((candidate) => {
+                    const rank = applicationRanks.get(candidate.id) || 999;
+                    const isBlurred = shouldBlurByApplicationRank(rank, companyTier) && !unlockedCandidates.has(candidate.id);
+                    const viewLimit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
+
+                    return (
+                      <tr
+                        key={candidate.id}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors relative"
+                      >
+                        {/* Candidate Column */}
+                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                              {getAvatarInitials(candidate.candidate.name)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-white">
+                                {candidate.candidate.name}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {isBlurred ? '••••••@••••••' : candidate.candidate.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Applied For Column */}
+                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {candidate.jobTitle}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            <MapPin size={12} />
+                            {candidate.jobLocation}
+                          </div>
+                        </td>
+
+                        {/* Stage Column */}
+                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
+                          {getStageBadge(candidate)}
+                        </td>
+
+                        {/* Risk Score Column */}
+                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
+                          {getRiskScoreBadge(candidate)}
+                        </td>
+
+                        {/* Action Column - NOT BLURRED */}
+                        <td className="px-6 py-4 text-right">
+                          {isBlurred ? (
+                            <button
+                              onClick={() => handleUnlockClick(candidate)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-md text-xs font-semibold transition-colors shadow-sm"
+                            >
+                              <Unlock size={14} />
+                              Unlock (2 Credit)
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => onViewSession(candidate.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors"
+                            >
+                              <Eye size={14} />
+                              View
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Upgrade Banner for Freemium */}
+            {companyTier === 'Freemium' && candidates.length > SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit && (
+              <div className="p-4 bg-gradient-to-r from-orange-50 to-blue-50 dark:from-orange-900/20 dark:to-blue-900/20 border-t border-orange-200 dark:border-orange-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-full">
+                      <Lock size={20} className="text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 dark:text-white">
+                        Freemium: Hanya {SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit} kandidat pertama yang apply dapat dilihat
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {candidates.length - SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit} kandidat lainnya tersembunyi. Upgrade untuk akses penuh!
+                      </p>
+                    </div>
+                  </div>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
+                    <Crown size={16} />
+                    Upgrade Premium
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
 export default CandidatesAutoView;
+
