@@ -8,15 +8,40 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Companies collection - Allow all authenticated users to read
-    // This is temporary for debugging
+    // ==========================================
+    // PUBLIC ACCESS FOR CAREER PAGES
+    // ==========================================
+    
+    // Companies collection - PUBLIC READ for career pages
     match /companies/{companyId} {
+      allow read: if true; // ✅ Allow public read for career pages
+      allow write: if isAuthenticated();
+    }
+    
+    // Jobs collection - PUBLIC READ for career pages
+    match /jobs/{jobId} {
+      allow read: if true; // ✅ Allow public read for job listings
+      allow write: if isAuthenticated();
+    }
+    
+    // ==========================================
+    // AUTHENTICATED-ONLY COLLECTIONS
+    // ==========================================
+    
+    // Users collection
+    match /users/{userId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     
-    // Users collection
-    match /users/{userId} {
+    // Interview sessions - authenticated only
+    match /interview_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Stats - authenticated only
+    match /stats/{statId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }

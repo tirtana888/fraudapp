@@ -28,7 +28,7 @@ export const analyzeFraudRisk = async (
 ): Promise<FraudAnalysis> => {
   try {
     console.log('[GENAI] Calling analyzeFraudRisk Cloud Function...');
-    
+
     const analyzeRisk = httpsCallable(functions, "analyzeFraudRisk");
     const result = await analyzeRisk({
       role,
@@ -43,7 +43,7 @@ export const analyzeFraudRisk = async (
 
   } catch (error: any) {
     console.error('[GENAI] Error analyzing fraud risk:', error);
-    
+
     // Return fallback analysis
     return {
       scores: {
@@ -71,7 +71,7 @@ export const generateAIReport = async (
 ): Promise<any> => {
   try {
     console.log('[GENAI] Generating AI report for session:', sessionId);
-    
+
     const generateReport = httpsCallable(functions, "generateReport");
     const result = await generateReport({
       sessionId,
@@ -106,9 +106,49 @@ export const calculateAssessmentScores = (
 };
 
 /**
- * Legacy function - Generate next question
+ * Generate next interview question using AI
+ * Calls Cloud Function to get contextual follow-up questions
  */
-export const generateNextQuestion = async (context: any): Promise<string> => {
-  return 'Ceritakan tentang pengalaman kerja Anda.';
+export const generateNextQuestion = async (context: {
+  role: string;
+  history: Array<{ speaker: string; text: string }>;
+  assessmentData?: any;
+}): Promise<string> => {
+  try {
+    console.log('[GENAI] Generating next AI question...');
+
+    const generateAI = httpsCallable(functions, "generateAIResponse");
+    const result = await generateAI({
+      prompt: context.history[context.history.length - 1]?.text || '',
+      role: context.role,
+      history: context.history,
+      assessmentData: context.assessmentData
+    });
+
+    const response = (result.data as any)?.response;
+
+    if (!response) {
+      throw new Error('No response from AI');
+    }
+
+    console.log('[GENAI] ✅ AI question generated');
+    return response;
+
+  } catch (error: any) {
+    console.error('[GENAI] Error generating AI question:', error);
+
+    // Fallback questions based on conversation length
+    const questionCount = context.history.filter(h => h.speaker === 'ai').length;
+
+    const fallbackQuestions = [
+      'Ceritakan tentang pengalaman kerja Anda yang paling menantang.',
+      'Bagaimana Anda menangani situasi di mana Anda harus membuat keputusan etis yang sulit?',
+      'Apakah Anda pernah menghadapi tekanan untuk melanggar aturan? Bagaimana Anda meresponsnya?',
+      'Apa yang akan Anda lakukan jika Anda melihat rekan kerja melakukan sesuatu yang tidak etis?',
+      'Terima kasih atas jawaban Anda. Sesi wawancara telah selesai.'
+    ];
+
+    return fallbackQuestions[Math.min(questionCount, fallbackQuestions.length - 1)];
+  }
 };
 

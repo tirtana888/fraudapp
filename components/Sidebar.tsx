@@ -30,7 +30,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   const candidateSubMenus = [
     { id: 'candidates-auto', label: 'Sourcing Otomatis', icon: Zap },
     { id: 'candidates-manual', label: 'Undang Manual', icon: UserPlus },
-    { id: 'candidates-review', label: 'Review & Invite', icon: ClipboardCheck },
   ];
 
   const linkMenuItem = { id: 'link-assessment', label: 'Link Asesmen', icon: LinkIcon };

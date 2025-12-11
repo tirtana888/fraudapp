@@ -14,7 +14,7 @@ import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidatesManualInvite from './components/CandidatesManualInvite';
 import CandidatesAutoView from './components/CandidatesAutoView';
-import CandidatesReviewInvite from './components/CandidatesReviewInvite';
+
 import JobManager from './components/JobManager';
 import PublicJobPage from './components/PublicJobPage';
 import PublicCareerPage from './components/PublicCareerPage';
@@ -489,7 +489,7 @@ const App: React.FC = () => {
       case 'workflows': return 'Workflow Rekrutmen';
       case 'candidates-auto': return 'Otomatis (Instant Assessment)';
       case 'candidates-manual': return 'Manual Invite';
-      case 'candidates-review': return 'Review & Invite';
+
       case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
       case 'history': return 'Riwayat Audit';
       case 'settings': return 'Pengaturan';
@@ -658,23 +658,6 @@ const App: React.FC = () => {
         }
         return <CandidatesManualInvite
           currentCompany={currentCompany!}
-          onViewSession={(sessionId) => {
-            setViewingCandidateId(sessionId);
-          }}
-        />;
-      case 'candidates-review':
-        if (viewingCandidateId) {
-          return <CandidateDetail
-            sessionId={viewingCandidateId}
-            company={currentCompany!}
-            onBack={() => {
-              setViewingCandidateId(null);
-            }}
-          />;
-        }
-        return <CandidatesReviewInvite
-          companyId={currentCompany!.id}
-          companyName={currentCompany!.name}
           onViewSession={(sessionId) => {
             setViewingCandidateId(sessionId);
           }}
