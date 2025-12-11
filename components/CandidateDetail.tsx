@@ -363,7 +363,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
   };
 
   const isBackgroundCheckAvailable = (): boolean => {
-    return companyTier === 'Premium';
+    return true; // KYC now available for all tiers including Freemium
   };
 
   const getStageButtonConfig = (currentStage: string) => {
@@ -378,11 +378,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       },
       bc_check: {
         enabled: canMoveToStage(normalizedStage, 'bc_check') && isBackgroundCheckAvailable(),
-        tooltip: !isBackgroundCheckAvailable()
-          ? 'Upgrade ke Premium atau Enterprise untuk menggunakan Background Check'
-          : !canMoveToStage(normalizedStage, 'bc_check')
-            ? 'Lakukan background check'
-            : 'Mulai background check verification'
+        tooltip: !canMoveToStage(normalizedStage, 'bc_check')
+          ? 'Lakukan background check'
+          : 'Mulai background check verification'
       },
       hired: {
         enabled: canMoveToStage(normalizedStage, 'hired'),
@@ -896,10 +894,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     }
 
     if (newStage === 'bc_check') {
-      if (!isBackgroundCheckAvailable()) {
-        toast.error('Background Check hanya tersedia untuk tier Premium dan Enterprise. Silakan upgrade paket Anda.');
-        return;
-      }
+      // Background Check now available for all tiers
       setShowBgCheckModal(true);
       return;
     }
