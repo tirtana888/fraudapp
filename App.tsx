@@ -56,7 +56,7 @@ const App: React.FC = () => {
     return params.get('cid');
   });
 
-  const [publicJobRoute, setPublicJobRoute] = useState<{companySlug: string; jobSlug?: string} | null>(() => {
+  const [publicJobRoute, setPublicJobRoute] = useState<{ companySlug: string; jobSlug?: string } | null>(() => {
     const pathname = window.location.pathname;
     const jobPageMatch = pathname.match(/^\/jobs\/([^/]+)\/([^/]+)$/);
     if (jobPageMatch) {
@@ -78,12 +78,12 @@ const App: React.FC = () => {
   // App State
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentCompany, setCurrentCompany] = useState<CompanyProfile | null>(null);
-  
+
   // Real-time Data States
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [invites, setInvites] = useState<AssessmentInvite[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
-  
+
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [reviewingSession, setReviewingSession] = useState<InterviewSession | null>(null);
@@ -94,10 +94,10 @@ const App: React.FC = () => {
 
   // Connection State
   const [apiError, setApiError] = useState<string | null>(null);
-  
+
   // Email Verification Banner State
   const [showVerificationBanner, setShowVerificationBanner] = useState(false);
-  
+
   // Theme & Mobile State
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -139,7 +139,7 @@ const App: React.FC = () => {
     authObserverSetup.current = true;
     let isSubscribed = true; // Prevent state updates after unmount
     let initializationTimeout: NodeJS.Timeout;
-    
+
     // Set up Firebase Auth state observer
     const unsubscribeAuth = observeAuthState((user) => {
       // Only update state if component is still mounted
@@ -157,15 +157,15 @@ const App: React.FC = () => {
 
       if (user) {
         console.log('[APP] ✅ Firebase Auth user detected:', user.email, 'Verified:', user.emailVerified);
-        
+
         // IMPORTANT: Always update state with Firebase Auth user (source of truth)
         setCurrentUser(user);
         saveSession(user); // Keep local session for backward compatibility
-        
+
         console.log('[APP] ✅ User state updated successfully');
       } else {
         console.log('[APP] ℹ️ No Firebase Auth user detected');
-        
+
         // Try to restore from local session as fallback for legacy users
         const savedUser = getSession();
         if (savedUser) {
@@ -176,7 +176,7 @@ const App: React.FC = () => {
           setCurrentUser(null);
         }
       }
-      
+
       // Mark auth as initialized (first callback received)
       console.log('[APP] ✅ Auth initialization complete');
       setIsAuthInitialized(true);
@@ -206,10 +206,10 @@ const App: React.FC = () => {
     if (!currentUser || isPublicMode) return;
 
     console.log('[APP] 🚀 Starting dashboard data load...');
-    
+
     // OPTIMIZATION 1: Set minimal loading state
     setIsLoadingData(true);
-    
+
     // OPTIMIZATION 2: Create fallback company immediately (show dashboard faster)
     const fallbackCompany: CompanyProfile = {
       id: currentUser.companyId || 'default',
@@ -221,65 +221,65 @@ const App: React.FC = () => {
       credits: 0,
       subscription_ends_at: null
     };
-    
+
     // Set fallback immediately to unblock UI
     setCurrentCompany(fallbackCompany);
     setIsLoadingData(false); // Unblock UI immediately!
-    
-    const initCompany = async () => {
-       try {
-         // Special handling for superadmin (no company needed)
-         if (currentUser.role === 'superadmin') {
-           console.log('[APP] ✅ Superadmin detected');
-           setCurrentCompany({
-             id: 'superadmin',
-             name: 'System Administrator',
-             tier: 'Premium',
-             status: 'Active',
-             adminEmail: currentUser.email || '',
-             joinedDate: new Date().toISOString(),
-             credits: 999999,
-             subscription_ends_at: null
-           } as CompanyProfile);
-           return;
-         }
 
-         console.log('[APP] 📄 Loading company profile for ID:', currentUser.companyId);
-         if(currentUser.companyId) {
-             // OPTIMIZATION 3: Add timeout to company fetch
-             const companyPromise = getCompanyById(currentUser.companyId);
-             const timeoutPromise = new Promise<null>((resolve) => 
-               setTimeout(() => {
-                 console.log('[APP] ⏰ Company fetch timeout, using fallback');
-                 resolve(null);
-               }, 2000) // 2 second timeout
-             );
-             
-             const company = await Promise.race([companyPromise, timeoutPromise]);
-             
-             if (company) {
-               console.log('[APP] ✅ Company loaded:', company.name);
-               setCurrentCompany(company);
-             } else {
-               console.log('[APP] ⚠️ Using fallback company (timeout or not found)');
-               // Keep fallback company
-             }
-         } else {
-           console.log('[APP] ⚠️ No company ID, using fallback');
-         }
-       } catch (error) {
-         console.error('[APP] ❌ Error loading company:', error);
-         // Keep fallback company
-       }
+    const initCompany = async () => {
+      try {
+        // Special handling for superadmin (no company needed)
+        if (currentUser.role === 'superadmin') {
+          console.log('[APP] ✅ Superadmin detected');
+          setCurrentCompany({
+            id: 'superadmin',
+            name: 'System Administrator',
+            tier: 'Premium',
+            status: 'Active',
+            adminEmail: currentUser.email || '',
+            joinedDate: new Date().toISOString(),
+            credits: 999999,
+            subscription_ends_at: null
+          } as CompanyProfile);
+          return;
+        }
+
+        console.log('[APP] 📄 Loading company profile for ID:', currentUser.companyId);
+        if (currentUser.companyId) {
+          // OPTIMIZATION 3: Add timeout to company fetch
+          const companyPromise = getCompanyById(currentUser.companyId);
+          const timeoutPromise = new Promise<null>((resolve) =>
+            setTimeout(() => {
+              console.log('[APP] ⏰ Company fetch timeout, using fallback');
+              resolve(null);
+            }, 2000) // 2 second timeout
+          );
+
+          const company = await Promise.race([companyPromise, timeoutPromise]);
+
+          if (company) {
+            console.log('[APP] ✅ Company loaded:', company.name);
+            setCurrentCompany(company);
+          } else {
+            console.log('[APP] ⚠️ Using fallback company (timeout or not found)');
+            // Keep fallback company
+          }
+        } else {
+          console.log('[APP] ⚠️ No company ID, using fallback');
+        }
+      } catch (error) {
+        console.error('[APP] ❌ Error loading company:', error);
+        // Keep fallback company
+      }
     };
-    
+
     // OPTIMIZATION 4: Run company fetch in background (don't block)
     initCompany();
 
     // OPTIMIZATION 5: Subscribe to sessions (async, non-blocking)
     let unsubscribeSessions: (() => void) | undefined;
     let unsubscribeInvites: (() => void) | undefined;
-    
+
     // Don't block on subscriptions
     (async () => {
       try {
@@ -300,8 +300,8 @@ const App: React.FC = () => {
     })();
 
     const handleConnectionError = (e: any) => {
-       setApiError(e.detail || "Koneksi database bermasalah.");
-       setIsLoadingData(false); 
+      setApiError(e.detail || "Koneksi database bermasalah.");
+      setIsLoadingData(false);
     };
     window.addEventListener('firebase-connection-error', handleConnectionError as EventListener);
 
@@ -333,7 +333,7 @@ const App: React.FC = () => {
     } else {
       setShowVerificationBanner(false);
     }
-  }, [currentUser]); 
+  }, [currentUser]);
 
   // --- TIMELINE ENGINE ---
   // Merges sessions and invites into a single, sorted, real-time feed.
@@ -343,31 +343,31 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!currentUser) return;
-    
+
     const sessionEvents: TimelineEvent[] = sessions.map(s => ({
-        id: s.id,
-        type: 'SESSION',
-        date: s.date,
-        data: s
+      id: s.id,
+      type: 'SESSION',
+      date: s.date,
+      data: s
     }));
 
     const inviteEvents: TimelineEvent[] = invites.map(i => ({
-        id: i.id || i.access_code,
-        type: 'INVITE',
-        date: i.createdAt,
-        data: i
+      id: i.id || i.access_code,
+      type: 'INVITE',
+      date: i.createdAt,
+      data: i
     }));
 
     const combined = [...sessionEvents, ...inviteEvents];
-    
+
     // Filter by company for non-admin users
-    const filtered = currentUser.role === 'System Admin' 
-        ? combined 
-        : combined.filter(event => event.data.companyId === currentUser.companyId);
+    const filtered = currentUser.role === 'System Admin'
+      ? combined
+      : combined.filter(event => event.data.companyId === currentUser.companyId);
 
     // Sort by date descending
     filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
+
     setTimelineEvents(filtered.slice(0, 50)); // Limit for performance
   }, [sessions, invites, currentUser]);
 
@@ -384,7 +384,7 @@ const App: React.FC = () => {
     setApiError(null);
     setIsLoadingData(true);
     resetConnectionState();
-    window.location.reload(); 
+    window.location.reload();
   };
 
   const handleInterviewComplete = () => {
@@ -396,25 +396,25 @@ const App: React.FC = () => {
 
   const handleLogin = (user: UserProfile) => {
     console.log('[APP] 🔑 handleLogin called for:', user.email, 'Verified:', user.emailVerified);
-    
+
     // Save session for backward compatibility
     saveSession(user);
-    
+
     // IMPORTANT: Set state explicitly to handle immediate UI update
     // The Firebase Auth observer will confirm this shortly after
     console.log('[APP] 🔄 Updating currentUser state...');
     setCurrentUser(user);
-    
+
     // Mark auth as initialized if not already
     if (!isAuthInitialized) {
       console.log('[APP] ✅ Marking auth as initialized from login');
       setIsAuthInitialized(true);
     }
-    
+
     // Navigate to dashboard
     console.log('[APP] 🏠 Navigating to dashboard...');
     setActiveTab('dashboard');
-    
+
     console.log('[APP] ✅ Login handler completed - NO PAGE REFRESH');
   };
 
@@ -426,7 +426,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.warn('[APP] Firebase logout failed, clearing local session:', error);
     }
-    
+
     // Clear local session regardless
     clearSession();
     setCurrentUser(null);
@@ -450,34 +450,34 @@ const App: React.FC = () => {
   };
 
   const handleReviewSession = (session: InterviewSession) => {
-      setReviewingSession(session);
-      setViewingSessionId(null);
-      setActiveTab('new-interview'); 
+    setReviewingSession(session);
+    setViewingSessionId(null);
+    setActiveTab('new-interview');
   };
 
   const handleCompanyUpdate = async () => {
-     if (currentUser?.companyId) {
-         const updated = await getCompanyById(currentUser.companyId);
-         if (updated) setCurrentCompany(updated);
-     }
+    if (currentUser?.companyId) {
+      const updated = await getCompanyById(currentUser.companyId);
+      if (updated) setCurrentCompany(updated);
+    }
   };
 
   const getPageTitle = (tab: string) => {
-      switch(tab) {
-          case 'dashboard': return 'Ringkasan Eksekutif';
-          case 'jobs': return 'Kelola Lowongan';
-          case 'workflows': return 'Workflow Rekrutmen';
-          case 'candidates-auto': return 'Otomatis (Instant Assessment)';
-          case 'candidates-manual': return 'Manual Invite';
-          case 'candidates-review': return 'Review & Invite';
-          case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
-          case 'history': return 'Riwayat Audit';
-          case 'settings': return 'Pengaturan';
-          case 'admin-panel': return 'Admin Panel (Super Admin)';
-          case 'link-assessment': return 'Pengaturan Link Asesmen';
-          case 'documentation': return 'Dokumentasi';
-          default: return '';
-      }
+    switch (tab) {
+      case 'dashboard': return 'Ringkasan Eksekutif';
+      case 'jobs': return 'Kelola Lowongan';
+      case 'workflows': return 'Workflow Rekrutmen';
+      case 'candidates-auto': return 'Otomatis (Instant Assessment)';
+      case 'candidates-manual': return 'Manual Invite';
+      case 'candidates-review': return 'Review & Invite';
+      case 'new-interview': return reviewingSession ? 'Review Jawaban Kandidat' : 'Detail Kandidat';
+      case 'history': return 'Riwayat Audit';
+      case 'settings': return 'Pengaturan';
+      case 'admin-panel': return 'Admin Panel (Super Admin)';
+      case 'link-assessment': return 'Pengaturan Link Asesmen';
+      case 'documentation': return 'Dokumentasi';
+      default: return '';
+    }
   }
 
   // PRIORITY RENDER: Check Public Mode First
@@ -490,11 +490,20 @@ const App: React.FC = () => {
       );
     }
     if (publicJobRoute) {
+      if (publicJobRoute.jobSlug) {
+        return (
+          <ToastProvider>
+            <PublicJobPage
+              companySlug={publicJobRoute.companySlug}
+              jobSlug={publicJobRoute.jobSlug}
+            />
+          </ToastProvider>
+        );
+      }
       return (
         <ToastProvider>
-          <PublicJobPage
+          <PublicCareerPage
             companySlug={publicJobRoute.companySlug}
-            jobSlug={publicJobRoute.jobSlug}
           />
         </ToastProvider>
       );
@@ -535,12 +544,12 @@ const App: React.FC = () => {
     return (
       <ToastProvider>
         {showSignUp ? (
-          <SignUpPage 
+          <SignUpPage
             onSignUpSuccess={handleLogin}
             onSwitchToLogin={() => setShowSignUp(false)}
           />
         ) : (
-          <LoginPage 
+          <LoginPage
             onLogin={handleLogin}
             onSwitchToSignUp={() => setShowSignUp(true)}
           />
@@ -550,12 +559,12 @@ const App: React.FC = () => {
   }
 
   if (!currentCompany && !isPublicMode) {
-      return (
-        <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-brand-slate-900">
-           <Loader2 className="w-12 h-12 text-brand-orange animate-spin mb-4" />
-           <p className="text-gray-500 font-medium">Memuat Profil Perusahaan Real-time...</p>
-        </div>
-      );
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-brand-slate-900">
+        <Loader2 className="w-12 h-12 text-brand-orange animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Memuat Profil Perusahaan Real-time...</p>
+      </div>
+    );
   }
 
   const renderContent = () => {
@@ -564,12 +573,12 @@ const App: React.FC = () => {
       const session = sessions.find(s => s.id === viewingSessionId);
       if (session) {
         return (
-            <ReportView 
-                session={session} 
-                onBack={() => setViewingSessionId(null)} 
-                isDarkMode={isDarkMode}
-                onReReview={() => handleReviewSession(session)} 
-            />
+          <ReportView
+            session={session}
+            onBack={() => setViewingSessionId(null)}
+            isDarkMode={isDarkMode}
+            onReReview={() => handleReviewSession(session)}
+          />
         );
       }
     }
@@ -587,12 +596,12 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard
-                  timelineEvents={timelineEvents}
-                  currentCompany={currentCompany!}
-                  onViewSession={setViewingSessionId}
-                  onReviewSession={handleReviewSession}
-                  onViewAll={() => setActiveTab('history')}
-               />;
+          timelineEvents={timelineEvents}
+          currentCompany={currentCompany!}
+          onViewSession={setViewingSessionId}
+          onReviewSession={handleReviewSession}
+          onViewAll={() => setActiveTab('history')}
+        />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
       case 'workflows':
@@ -647,16 +656,16 @@ const App: React.FC = () => {
           }}
         />;
       case 'new-interview':
-        return <ActiveInterview 
-                  onComplete={handleInterviewComplete} 
-                  companyId={currentCompany!.id} 
-                  existingSession={reviewingSession || undefined}
-               />;
+        return <ActiveInterview
+          onComplete={handleInterviewComplete}
+          companyId={currentCompany!.id}
+          existingSession={reviewingSession || undefined}
+        />;
       case 'link-assessment':
-         return <AssessmentSettings 
-                    currentCompany={currentCompany!} 
-                    onUpdate={handleCompanyUpdate} 
-                />;
+        return <AssessmentSettings
+          currentCompany={currentCompany!}
+          onUpdate={handleCompanyUpdate}
+        />;
       case 'history':
         if (viewingCandidateId) {
           return <CandidateDetail
@@ -667,8 +676,8 @@ const App: React.FC = () => {
             }}
           />;
         }
-        return <HistoryView 
-          companyId={currentCompany!.id} 
+        return <HistoryView
+          companyId={currentCompany!.id}
           company={currentCompany!}
           onViewCandidate={setViewingCandidateId}
           onUpgradeClick={() => setActiveTab('settings')}
@@ -676,7 +685,7 @@ const App: React.FC = () => {
       case 'documentation':
         return <Documentation />;
       case 'credit-management':
-        return <CreditManagementPage 
+        return <CreditManagementPage
           company={currentCompany!}
           user={currentUser!}
           onCompanyUpdate={handleCompanyUpdate}
@@ -686,63 +695,61 @@ const App: React.FC = () => {
       case 'settings':
         return (
           <div className="animate-in fade-in space-y-6">
-             {/* Sub Navigation Tabs */}
-             <div className="flex space-x-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto self-start inline-flex">
-                <button 
-                  onClick={() => setSettingsTab('profile')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                     settingsTab === 'profile' 
-                     ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm' 
-                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            {/* Sub Navigation Tabs */}
+            <div className="flex space-x-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto self-start inline-flex">
+              <button
+                onClick={() => setSettingsTab('profile')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'profile'
+                    ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
-                >
-                   <User size={16} /> Profil Akun
-                </button>
-                <button 
-                  onClick={() => setSettingsTab('subscription')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                     settingsTab === 'subscription' 
-                     ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm' 
-                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              >
+                <User size={16} /> Profil Akun
+              </button>
+              <button
+                onClick={() => setSettingsTab('subscription')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'subscription'
+                    ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
-                >
-                   <CreditCard size={16} /> Paket Langganan
-                </button>
-             </div>
+              >
+                <CreditCard size={16} /> Paket Langganan
+              </button>
+            </div>
 
-             {/* Tab Content */}
-             {settingsTab === 'profile' ? (
-                <div className="space-y-6">
-                  <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
+            {/* Tab Content */}
+            {settingsTab === 'profile' ? (
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
 
-                    <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
-                          {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
-                          <div>
-                            <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
-                            <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
-                          </div>
+                  <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
+                    {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
+                    <div>
+                      <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
                     </div>
                   </div>
+                </div>
 
-                  {currentCompany && (
-                    <CompanyProfileSettings
-                      company={currentCompany}
-                      onUpdate={async () => {
-                        if (currentUser?.companyId) {
-                          const updated = await getCompanyById(currentUser.companyId);
-                          setCurrentCompany(updated);
-                        }
-                      }}
-                    />
-                  )}
-                </div>
-             ) : (
-                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-                    <PricingView currentTier={currentCompany?.tier || 'Basic'} />
-                </div>
-             )}
+                {currentCompany && (
+                  <CompanyProfileSettings
+                    company={currentCompany}
+                    onUpdate={async () => {
+                      if (currentUser?.companyId) {
+                        const updated = await getCompanyById(currentUser.companyId);
+                        setCurrentCompany(updated);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
+                <PricingView currentTier={currentCompany?.tier || 'Basic'} />
+              </div>
+            )}
           </div>
         );
       default:
@@ -752,36 +759,36 @@ const App: React.FC = () => {
 
   return (
     <ToastProvider>
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-brand-slate-900' : 'bg-gray-50'}`}>
-      {/* Mobile Header */}
-      <div className="md:hidden bg-white dark:bg-brand-slate-850 p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center sticky top-0 z-20">
-         <div className="flex items-center gap-2">
+      <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-brand-slate-900' : 'bg-gray-50'}`}>
+        {/* Mobile Header */}
+        <div className="md:hidden bg-white dark:bg-brand-slate-850 p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center sticky top-0 z-20">
+          <div className="flex items-center gap-2">
             <div className="bg-brand-orange p-1.5 rounded-lg text-white">
               <CheckCircle2 size={18} />
             </div>
             <span className="font-bold text-gray-800 dark:text-white">FraudGuard</span>
-         </div>
-         <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-500">
-           <Menu size={24} />
-         </button>
-      </div>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-500">
+            <Menu size={24} />
+          </button>
+        </div>
 
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={handleTabChange} 
-        companyName={currentCompany?.name || 'FraudGuard'}
-        userRole={currentUser.role}
-        isDarkMode={isDarkMode}
-        toggleTheme={toggleTheme}
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        onLogout={handleLogout}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          companyName={currentCompany?.name || 'FraudGuard'}
+          userRole={currentUser.role}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          onLogout={handleLogout}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
 
-      <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>
-         <div className="max-w-7xl mx-auto">
+        <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>
+          <div className="max-w-7xl mx-auto">
             {/* Email Verification Warning Banner */}
             {showVerificationBanner && (
               <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg shadow-sm animate-in fade-in slide-in-from-top-2">
@@ -793,7 +800,7 @@ const App: React.FC = () => {
                       <p className="text-sm text-orange-800 mb-2">
                         Silakan verifikasi email Anda ({currentUser.email}) untuk keamanan akun yang lebih baik.
                       </p>
-                      <button 
+                      <button
                         onClick={async () => {
                           try {
                             const { resendVerificationEmail } = await import('./services/firebase');
@@ -809,7 +816,7 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowVerificationBanner(false)}
                     className="text-orange-600 hover:text-orange-800 flex-shrink-0"
                   >
@@ -821,22 +828,22 @@ const App: React.FC = () => {
 
             {/* Header / Title */}
             <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-               <div>
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{getPageTitle(activeTab)}</h1>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Selamat datang kembali, {currentUser.name.split(' ')[0]}.</p>
-               </div>
-               {/* Connection Status Indicator */}
-               {apiError && (
-                 <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border border-red-100 cursor-pointer hover:bg-red-100" onClick={handleRetryConnection}>
-                    <WifiOff size={14} /> {apiError} - Klik untuk refresh
-                 </div>
-               )}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{getPageTitle(activeTab)}</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Selamat datang kembali, {currentUser.name.split(' ')[0]}.</p>
+              </div>
+              {/* Connection Status Indicator */}
+              {apiError && (
+                <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border border-red-100 cursor-pointer hover:bg-red-100" onClick={handleRetryConnection}>
+                  <WifiOff size={14} /> {apiError} - Klik untuk refresh
+                </div>
+              )}
             </div>
 
             {renderContent()}
-         </div>
-      </main>
-    </div>
+          </div>
+        </main>
+      </div>
     </ToastProvider>
   );
 };

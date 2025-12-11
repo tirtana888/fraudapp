@@ -15,20 +15,34 @@ import {
   Linkedin
 } from 'lucide-react';
 
-const PublicCareerPage: React.FC = () => {
+import { getCompanyBySlug } from '../services/firebase';
+
+interface PublicCareerPageProps {
+  companySlug?: string;
+}
+
+const PublicCareerPage: React.FC<PublicCareerPageProps> = ({ companySlug: propCompanySlug }) => {
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const companyId = React.useMemo(() => {
+  // Determine effective identifier (Slug from prop/URL, or ID from URL)
+  const identifier = React.useMemo(() => {
+    if (propCompanySlug) return { type: 'slug', value: propCompanySlug };
+
     const pathname = window.location.pathname;
-    const match = pathname.match(/^\/careers\/([^/]+)\/?$/);
-    return match ? match[1] : null;
-  }, []);
+    // Try matching slug route first if no prop (unexpected but safe)
+    const slugMatch = pathname.match(/^\/jobs\/([^/]+)\/?$/);
+    if (slugMatch) return { type: 'slug', value: slugMatch[1] };
+
+    // Legacy ID route
+    const idMatch = pathname.match(/^\/careers\/([^/]+)\/?$/);
+    return idMatch ? { type: 'id', value: idMatch[1] } : null;
+  }, [propCompanySlug]);
 
   useEffect(() => {
-    if (!companyId) {
+    if (!identifier) {
       setError('Invalid company link');
       setLoading(false);
       return;
@@ -36,20 +50,29 @@ const PublicCareerPage: React.FC = () => {
 
     const fetchData = async () => {
       try {
-        const companyDoc = await getDoc(doc(db, 'companies', companyId));
+        let companyData: CompanyProfile | null = null;
 
-        if (!companyDoc.exists()) {
+        if (identifier.type === 'slug') {
+          companyData = await getCompanyBySlug(identifier.value);
+        } else {
+          const companyDoc = await getDoc(doc(db, 'companies', identifier.value));
+          if (companyDoc.exists()) {
+            companyData = { id: companyDoc.id, ...companyDoc.data() } as CompanyProfile;
+          }
+        }
+
+        if (!companyData) {
           setError('Company not found');
           setLoading(false);
           return;
         }
 
-        const companyData = { id: companyDoc.id, ...companyDoc.data() } as CompanyProfile;
         setCompany(companyData);
 
+        // Fetch jobs using the retrieved company ID
         const jobsQuery = query(
           collection(db, 'jobs'),
-          where('companyId', '==', companyId),
+          where('companyId', '==', companyData.id),
           where('status', '==', 'Active')
         );
         const jobsSnapshot = await getDocs(jobsQuery);
@@ -74,7 +97,7 @@ const PublicCareerPage: React.FC = () => {
     };
 
     fetchData();
-  }, [companyId]);
+  }, [identifier]);
 
   const getJobTypeIcon = (jobType: string) => {
     switch (jobType) {
@@ -210,72 +233,72 @@ const PublicCareerPage: React.FC = () => {
                     key={job.id}
                     onClick={() => window.location.href = jobLink}
                     className="group relative bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm border-2 border-gray-200 dark:border-slate-700 hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
-                  style={{
-                    borderColor: `${brandColor}00`,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = brandColor;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = `${brandColor}00`;
-                  }}
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500" style={{ backgroundColor: brandColor }}></div>
+                    style={{
+                      borderColor: `${brandColor}00`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = brandColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = `${brandColor}00`;
+                    }}
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500" style={{ backgroundColor: brandColor }}></div>
 
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:translate-x-1 transition-transform">
-                          {job.title}
-                        </h3>
-                        <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4" />
-                            <span>{job.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {getJobTypeIcon(job.jobType)}
-                            <span>{job.jobType}</span>
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:translate-x-1 transition-transform">
+                            {job.title}
+                          </h3>
+                          <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-4 h-4" />
+                              <span>{job.location}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {getJobTypeIcon(job.jobType)}
+                              <span>{job.jobType}</span>
+                            </div>
                           </div>
                         </div>
+                        <div
+                          className="p-3 rounded-xl group-hover:scale-110 transition-transform duration-300"
+                          style={{ backgroundColor: lighterBrandColor }}
+                        >
+                          <ArrowRight className="w-6 h-6" style={{ color: brandColor }} />
+                        </div>
                       </div>
-                      <div
-                        className="p-3 rounded-xl group-hover:scale-110 transition-transform duration-300"
-                        style={{ backgroundColor: lighterBrandColor }}
-                      >
-                        <ArrowRight className="w-6 h-6" style={{ color: brandColor }} />
+
+                      <p className="text-gray-700 dark:text-gray-300 mb-6 line-clamp-3">
+                        {job.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                      </p>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-slate-700">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Posted {new Date(job.datePosted).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <button
+                          className="px-5 py-2.5 rounded-xl font-semibold text-white transition-all duration-300 group-hover:shadow-lg"
+                          style={{
+                            backgroundColor: brandColor,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = darkerBrandColor;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = brandColor;
+                          }}
+                        >
+                          Apply Now
+                        </button>
                       </div>
-                    </div>
-
-                    <p className="text-gray-700 dark:text-gray-300 mb-6 line-clamp-3">
-                      {job.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
-                    </p>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-slate-700">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Posted {new Date(job.datePosted).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
-                      <button
-                        className="px-5 py-2.5 rounded-xl font-semibold text-white transition-all duration-300 group-hover:shadow-lg"
-                        style={{
-                          backgroundColor: brandColor,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = darkerBrandColor;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = brandColor;
-                        }}
-                      >
-                        Apply Now
-                      </button>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
