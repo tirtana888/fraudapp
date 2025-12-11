@@ -193,7 +193,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   };
 
   const getCareerPageLink = () => {
-    return `${window.location.origin}/careers/${currentCompany.id}`;
+    const companySlug = currentCompany.companySlug || generateSlug(currentCompany.name);
+    return `${window.location.origin}/jobs/${companySlug}`;
   };
 
   const handleCopyCareerPageLink = () => {
@@ -334,8 +335,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${job.status === 'Active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
                           }`}
                       >
                         {job.status}
