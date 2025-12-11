@@ -2203,108 +2203,167 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           </div>
         )}
 
-        {activeTab === 'integrity' && candidate.status === 'completed' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-sm border border-orange-200 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">{candidate.candidate.name}</h2>
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Briefcase size={14} />
-                      {candidate.candidate.role}
-                    </span>
-                    <span>•</span>
-                    <span>{new Date(candidate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        {activeTab === 'integrity' && candidate.status === 'completed' && (() => {
+          // --- Helper Logic for Integrity Report ---
+          const riskScore = candidate.riskScore || 0;
+          let recStatus = { label: 'DIREKOMENDASIKAN', color: 'green', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', icon: <CheckCircle2 size={24} /> };
+
+          if (riskScore > 65) {
+            recStatus = { label: 'RISIKO TINGGI', color: 'red', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: <XCircle size={24} /> };
+          } else if (riskScore > 35) {
+            recStatus = { label: 'PERLU REVIEW', color: 'orange', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', icon: <AlertTriangle size={24} /> };
+          }
+
+          // Use 0 if valid data is 0. Only fallback to 0 if undefined. Do NOT use fake numbers like 35.
+          const pressure = candidate.fraudTriangle?.pressure ?? candidate.analysis?.scores?.pressure ?? 0;
+          const opportunity = candidate.fraudTriangle?.opportunity ?? candidate.analysis?.scores?.opportunity ?? 0;
+          const rationalization = candidate.fraudTriangle?.rationalization ?? candidate.analysis?.scores?.rationalization ?? 0;
+
+          // Smart Interview Questions Generation
+          const interviewQuestions = [];
+          if (pressure > 30) interviewQuestions.push('Ceritakan situasi di mana Anda menghadapi tekanan target yang sangat tinggi. Bagaimana cara Anda mencapainya?');
+          if (opportunity > 30) interviewQuestions.push('Bagaimana pendapat Anda tentang "zona abu-abu" dalam aturan perusahaan? Kapan aturan boleh dilanggar?');
+          if (rationalization > 30) interviewQuestions.push('Pernahkah Anda melihat rekan kerja melakukan pelanggaran kecil? Apa yang Anda lakukan/pikirkan saat itu?');
+          if (interviewQuestions.length === 0) interviewQuestions.push('Ceritakan tentang dilema etika terbesar yang pernah Anda hadapi dalam pekerjaan.');
+
+          return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+
+              {/* 1. Executive Hero Section */}
+              <div className={`rounded-xl shadow-sm border p-6 ${recStatus.bg} ${recStatus.border}`}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <div className={`inline-flex items-center gap-2 px-3 py-1 bg-white/60 rounded-full text-xs font-bold mb-3 ${recStatus.text}`}>
+                      {recStatus.icon}
+                      STATUS: {recStatus.label}
+                    </div>
+                    <h2 className={`text-2xl font-black mb-1 ${recStatus.text}`}>{candidate.candidate.name}</h2>
+                    <p className={`text-sm opacity-90 ${recStatus.text}`}>
+                      {recStatus.label === 'DIREKOMENDASIKAN' && 'Kandidat menunjukkan profil integritas yang sehat.'}
+                      {recStatus.label === 'PERLU REVIEW' && 'Ditemukan beberapa indikator risiko yang perlu diklarifikasi.'}
+                      {recStatus.label === 'RISIKO TINGGI' && 'Terdapat indikator risiko signifikan. Disarankan investigasi mendalam.'}
+                    </p>
                   </div>
-                  <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                    <CheckCircle2 size={14} />
-                    RESIKO {candidate.analysis?.riskLevel?.toUpperCase() || 'LOW'}
+
+                  <div className="flex items-center gap-6 bg-white/50 px-6 py-4 rounded-xl border border-white/50">
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-1">Fraud Risk Score</div>
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className={`text-4xl font-black ${recStatus.text}`}>{Math.round(riskScore)}</span>
+                        <span className="text-sm text-gray-500 font-medium">/100</span>
+                      </div>
+                    </div>
+                    {/* Visual Gauge */}
+                    <div className="w-32 md:w-48">
+                      <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 relative">
+                          {/* Marker */}
+                          <div className="absolute top-0 bottom-0 w-1 bg-black shadow-[0_0_4px_rgba(0,0,0,0.5)] transform -translate-x-1/2" style={{ left: `${Math.min(100, Math.max(0, riskScore))}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-1 font-medium">
+                        <span>Low Risk</span>
+                        <span>High Risk</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">Skor Fraud</div>
-                  <div className="text-5xl font-black text-[#D95D00]">{candidate.riskScore || 25}</div>
-                  <div className="text-sm text-gray-500">/100</div>
-                </div>
               </div>
-            </div>
 
-            <FraudTriangleVisualization
-              pressure={candidate.fraudTriangle?.pressure || candidate.analysis?.scores?.pressure || 35}
-              opportunity={candidate.fraudTriangle?.opportunity || candidate.analysis?.scores?.opportunity || 15}
-              rationalization={candidate.fraudTriangle?.rationalization || candidate.analysis?.scores?.rationalization || 25}
-              consistencyScore={85}
-              sentimentScore={75}
-              benchmarkAvg={45}
-              industryAvg={52}
-            />
+              {/* 2. Layout: Split View for Data Visualization */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: Fraud Triangle */}
+                <FraudTriangleVisualization
+                  pressure={pressure}
+                  opportunity={opportunity}
+                  rationalization={rationalization}
+                  benchmarkAvg={45}
+                  industryAvg={52}
+                />
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 size={20} className="text-blue-600" />
-                <h3 className="font-bold text-gray-800">Ringkasan Analisis AI</h3>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                {candidate.analysis?.summary || (
-                  <>
-                    Kandidat menunjukkan <span className="font-semibold text-blue-600">profil risiko rendah</span> yang ditandai dengan <span className="font-semibold">kepatuhan kuat terhadap pemisahan tugas</span> dan <span className="font-semibold">rasionalisasi rendah untuk fraud</span>. Meskipun ada <span className="font-semibold text-orange-600">indikator tingkat menengah</span> terkait tekanan finansial (tingkat stres: {candidate.fraudTriangle?.pressure || 35}), jawaban kandidat secara konsisten menolak peluang fraudulen dan rasionalisasi tidak etis. Konsistensi antara penilaian diri dan skenario SJT tinggi.
-                  </>
-                )}
-              </p>
-              <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
-                <p className="text-sm text-blue-800">
-                  {candidate.analysis?.recommendation || (
-                    <>
-                      <span className="font-semibold">Direkomendasikan untuk direkrut.</span> Kandidat menunjukkan kompas etika yang kuat dan pemahaman kontrol internal. Indikator tekanan finansial minor diimbangi oleh skor integritas tinggi.
-                    </>
+                {/* Right: AI Summary */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Bot size={20} className="text-blue-600" />
+                    <h3 className="font-bold text-gray-800">Ringkasan Analisis AI</h3>
+                  </div>
+
+                  <div className="flex-1">
+                    {candidate.analysis?.summary ? (
+                      <p className="text-sm text-gray-700 leading-relaxed mb-4">{candidate.analysis.summary}</p>
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
+                        <Sparkles className="text-gray-300 mb-2" size={32} />
+                        <p className="text-gray-500 text-sm font-medium">Analisis Naratif Belum Tersedia</p>
+                        <p className="text-xs text-gray-400">Menunggu pemrosesan data oleh AI...</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {candidate.analysis?.summary && (
+                    <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                      <p className="text-xs font-bold text-blue-900 mb-1 uppercase">Rekomendasi Tindakan</p>
+                      <p className="text-sm text-blue-800">
+                        {candidate.analysis?.recommendation || "Lakukan verifikasi referensi standar."}
+                      </p>
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle size={20} className="text-red-600" />
-                <h3 className="font-bold text-gray-800">Identifikasi Red Flags</h3>
-              </div>
-              <div className="space-y-3">
-                {candidate.analysis?.redFlags && candidate.analysis.redFlags.length > 0 ? (
-                  candidate.analysis.redFlags.map((flag, idx) => (
-                    <div key={idx} className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <AlertTriangle size={14} className="text-red-600" />
+              {/* 3. Red Flags & Interview Guide */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Red Flags */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle size={20} className="text-red-600" />
+                    <h3 className="font-bold text-gray-800">Identifikasi Red Flags</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {candidate.analysis?.redFlags && candidate.analysis.redFlags.length > 0 ? (
+                      candidate.analysis.redFlags.map((flag, idx) => (
+                        <div key={idx} className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
+                          <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <AlertTriangle size={12} className="text-red-600" />
+                          </div>
+                          <p className="text-sm text-red-800 leading-relaxed">{flag}</p>
+                        </div>
+                      ))
+                    ) : (
+                      // Clean State
+                      <div className="p-8 bg-green-50 border border-green-100 rounded-xl text-center">
+                        <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <h4 className="font-bold text-green-800 mb-1">Tidak Ada Red Flag</h4>
+                        <p className="text-xs text-green-600">Sistem tidak mendeteksi indikator risiko mayor pada kandidat ini.</p>
                       </div>
-                      <p className="text-sm text-red-800 leading-relaxed">{flag}</p>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <AlertTriangle size={14} className="text-red-600" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Generated Interview Guide */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare size={20} className="text-purple-600" />
+                    <h3 className="font-bold text-gray-800">Panduan Wawancara (Generated)</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500 mb-2">Pertanyaan yang disarankan berdasarkan profil risiko kandidat:</p>
+                    {interviewQuestions.map((q, i) => (
+                      <div key={i} className="p-3 bg-purple-50 border border-purple-100 rounded-lg flex items-start gap-3">
+                        <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-purple-600 text-xs font-bold">
+                          {i + 1}
+                        </div>
+                        <p className="text-sm text-purple-900 leading-relaxed font-medium">"{q}"</p>
                       </div>
-                      <p className="text-sm text-red-800">Kandidat melaporkan kecemasan sedang terkait keuangan pribadi.</p>
-                    </div>
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <AlertTriangle size={14} className="text-red-600" />
-                      </div>
-                      <p className="text-sm text-red-800">Mengalami darurat keuangan dalam 6 bulan terakhir.</p>
-                    </div>
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <AlertTriangle size={14} className="text-red-600" />
-                      </div>
-                      <p className="text-sm text-red-800">Kandidat menganggap beberapa aturan perusahaan berpotensi tidak adil.</p>
-                    </div>
-                  </>
-                )}
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'interview' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
