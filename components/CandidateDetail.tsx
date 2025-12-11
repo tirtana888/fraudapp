@@ -1169,8 +1169,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                       type="button"
                       onClick={() => setInterviewType('online')}
                       className={`p-4 rounded-xl border-2 transition-all ${interviewType === 'online'
-                          ? 'border-[#D95D00] bg-orange-50 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-[#D95D00] bg-orange-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -1188,8 +1188,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                       type="button"
                       onClick={() => setInterviewType('offline')}
                       className={`p-4 rounded-xl border-2 transition-all ${interviewType === 'offline'
-                          ? 'border-[#D95D00] bg-orange-50 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-[#D95D00] bg-orange-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -1678,8 +1678,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'overview'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Ringkasan
@@ -1687,8 +1687,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('documents')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'documents'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               CV & Dokumen
@@ -1696,8 +1696,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('integrity')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'integrity'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Laporan Integritas
@@ -1705,8 +1705,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('interview')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'interview'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Wawancara AI
@@ -1714,8 +1714,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('background')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'background'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Pemeriksaan Latar Belakang
@@ -1723,8 +1723,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             <button
               onClick={() => setActiveTab('activity')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'activity'
-                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Riwayat Aktivitas
@@ -2071,15 +2071,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         )}
 
         {activeTab === 'documents' && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 flex items-center justify-between">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[calc(100vh-240px)] min-h-[600px]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+              <div className="bg-gradient-to-r from-[#D95D00] to-[#FF6B35] px-4 py-3 flex items-center justify-between flex-shrink-0">
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <Sparkles size={18} />
                   Data Kandidat (AI Parsed)
                 </h3>
                 {!candidate.cvParsedData && candidate.cvUrl && (
-                  <span className="px-2.5 py-1 bg-white/20 text-white rounded text-xs font-medium flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 bg-white/20 text-white rounded text-xs font-medium flex items-center gap-1.5 animate-pulse">
                     <span className="animate-spin">⏳</span>
                     Auto-parsing...
                   </span>
@@ -2090,11 +2090,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   </span>
                 )}
               </div>
-              <div className="p-4">
+              <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
                 {candidate.cvParsedData ? (
                   <ParsedCVDisplay parsedData={candidate.cvParsedData} />
                 ) : candidate.cvUrl ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center h-full">
                     <div className="text-center max-w-md">
                       <div className="animate-spin text-4xl mb-3">⏳</div>
                       <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Sedang Memproses...</h4>
@@ -2104,7 +2104,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center h-full">
                     <div className="text-center max-w-md">
                       <Sparkles size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                       <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">CV Tidak Tersedia</h4>
@@ -2117,8 +2117,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between flex-shrink-0">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base flex items-center gap-2">
                   <FileText size={18} className="text-[#D95D00]" />
                   CV Original
@@ -2135,35 +2135,33 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   </a>
                 )}
               </div>
-              <div className="p-4">
+              <div className="flex-1 bg-gray-100 dark:bg-gray-900 relative">
                 {candidate.cvUrl ? (
-                  <div className="bg-gray-100 dark:bg-gray-900 rounded overflow-hidden" style={{ height: '600px' }}>
-                    {candidate.cvUrl.endsWith('.pdf') ? (
-                      <iframe
-                        src={candidate.cvUrl}
-                        className="w-full h-full"
-                        title={`CV ${candidate.candidate.name}`}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
-                          <a
-                            href={candidate.cvUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors text-sm font-medium"
-                          >
-                            <Eye size={16} />
-                            Buka di Tab Baru
-                          </a>
-                        </div>
+                  candidate.cvUrl.endsWith('.pdf') ? (
+                    <iframe
+                      src={candidate.cvUrl}
+                      className="w-full h-full absolute inset-0"
+                      title={`CV ${candidate.candidate.name}`}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
+                        <a
+                          href={candidate.cvUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors text-sm font-medium"
+                        >
+                          <Eye size={16} />
+                          Buka di Tab Baru
+                        </a>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )
                 ) : (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <FileText size={48} className="text-gray-300 dark:text-gray-600 mb-3" />
                       <p className="text-gray-500 dark:text-gray-400 text-sm">Tidak ada CV yang diunggah</p>
@@ -2305,8 +2303,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                         className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}
                       >
                         <div className={`max-w-2xl rounded-lg p-4 ${isAI
-                            ? 'bg-white text-gray-800 border border-gray-200'
-                            : 'bg-[#D95D00] text-white'
+                          ? 'bg-white text-gray-800 border border-gray-200'
+                          : 'bg-[#D95D00] text-white'
                           }`}>
                           <div className="text-xs font-semibold mb-1 opacity-70">
                             {isAI ? '🤖 Pewawancara AI' : `👤 ${candidate.candidate.name}`}
@@ -2346,12 +2344,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
                   {candidate.backgroundCheck?.status ? (
                     <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${candidate.backgroundCheck.status === 'approved'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : candidate.backgroundCheck.status === 'in_progress'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          : candidate.backgroundCheck.status === 'declined'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : candidate.backgroundCheck.status === 'in_progress'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : candidate.backgroundCheck.status === 'declined'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                       }`}>
                       {candidate.backgroundCheck.status === 'approved' && <CheckCircle2 size={14} />}
                       {candidate.backgroundCheck.status === 'in_progress' && <Clock size={14} />}
@@ -2372,8 +2370,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 <div className="text-right">
                   <div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Status Verifikasi</div>
                   <div className={`text-3xl font-black ${candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
-                      : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-400'
+                    : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-400'
                     }`}>
                     {candidate.backgroundCheck?.status === 'approved' ? '✓'
                       : candidate.backgroundCheck?.status === 'declined' ? '✗'
@@ -2395,9 +2393,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <span className="text-sm text-gray-700 dark:text-gray-300">Status</span>
                     <span className={`text-sm font-semibold ${candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
-                        : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
-                          : candidate.backgroundCheck?.status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-400'
+                      : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
+                        : candidate.backgroundCheck?.status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-gray-400'
                       }`}>
                       {candidate.backgroundCheck?.status === 'approved' ? 'Approved'
                         : candidate.backgroundCheck?.status === 'declined' ? 'Declined'
