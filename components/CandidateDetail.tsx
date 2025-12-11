@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock } from 'lucide-react';
-import { InterviewSession, ParsedCVData, CompanyProfile } from '../types';
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
+import { InterviewSession, ParsedCVData, CompanyProfile, KYCData } from '../types';
 import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -42,6 +42,8 @@ interface CandidateData extends InterviewSession {
     lastUpdated?: {
       seconds: number;
     };
+    // NEW: KYC data from Didit
+    kycData?: KYCData;
   };
 }
 
@@ -2670,6 +2672,230 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 </div>
               </div>
             )}
+
+            {/* ========== NEW: KYC Data Display Section ========== */}
+            {candidate.backgroundCheck?.kycData && (
+              <>
+                {/* ID Document Images */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                      <CreditCard size={20} className="text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 dark:text-white">Dokumen Identitas (KTP/ID Card)</h3>
+                    <span className="ml-auto bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">Terverifikasi</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Front Document */}
+                    <div className="relative">
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Depan KTP</p>
+                      {candidate.backgroundCheck.kycData.frontDocumentImage ? (
+                        <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
+                          <img
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.frontDocumentImage}`}
+                            alt="ID Card Front"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-[3/2] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <p className="text-xs text-gray-400">Tidak tersedia</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Back Document */}
+                    <div className="relative">
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Belakang KTP</p>
+                      {candidate.backgroundCheck.kycData.backDocumentImage ? (
+                        <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
+                          <img
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.backDocumentImage}`}
+                            alt="ID Card Back"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-[3/2] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <p className="text-xs text-gray-400">Tidak tersedia</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selfie / Portrait */}
+                    <div className="relative">
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Foto Selfie</p>
+                      {candidate.backgroundCheck.kycData.portraitImage ? (
+                        <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
+                          <img
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.portraitImage}`}
+                            alt="Selfie"
+                            className="w-full h-full object-cover"
+                          />
+                          {candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed' && (
+                            <div className="absolute bottom-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Face Match OK
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="aspect-[3/2] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <p className="text-xs text-gray-400">Tidak tersedia</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personal Information from OCR */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                      <User size={20} className="text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 dark:text-white">Data Personal (OCR dari KTP)</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Left Column */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Nama Lengkap</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.fullName || '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">NIK / No. Dokumen</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white font-mono">{candidate.backgroundCheck.kycData.documentNumber || '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tanggal Lahir</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.dateOfBirth || '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Jenis Kelamin</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.gender || '-'}</span>
+                      </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Kewarganegaraan</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.nationality || '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tipe Dokumen</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.documentType || 'KTP'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Masa Berlaku</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.expirationDate || 'Seumur Hidup'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block mb-1">Alamat</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white leading-tight">{candidate.backgroundCheck.kycData.address || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verification Status Badges */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                      <Shield size={20} className="text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 dark:text-white">Status Verifikasi</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* ID Verification */}
+                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                      }`}>
+                      <CheckCircle2 size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                        }`} />
+                      <p className="text-xs font-bold text-gray-800 dark:text-white">Dokumen Asli</p>
+                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                        }`}>
+                        {candidate.backgroundCheck.kycData.idVerification?.status || 'Checking'}
+                      </p>
+                    </div>
+
+                    {/* Face Match */}
+                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                      }`}>
+                      <User size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                        }`} />
+                      <p className="text-xs font-bold text-gray-800 dark:text-white">Face Match</p>
+                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                        }`}>
+                        {candidate.backgroundCheck.kycData.faceMatch?.confidence
+                          ? `${Math.round(candidate.backgroundCheck.kycData.faceMatch.confidence * 100)}% match`
+                          : candidate.backgroundCheck.kycData.faceMatch?.status || 'Checking'}
+                      </p>
+                    </div>
+
+                    {/* Warnings */}
+                    <div className={`p-4 rounded-xl text-center ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                      }`}>
+                      <AlertTriangle size={24} className={`mx-auto mb-2 ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                        }`} />
+                      <p className="text-xs font-bold text-gray-800 dark:text-white">Peringatan</p>
+                      <p className={`text-[10px] font-medium ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                        }`}>
+                        {(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                          ? 'Tidak Ada'
+                          : `${candidate.backgroundCheck.kycData.idVerification?.warnings?.length} ditemukan`}
+                      </p>
+                    </div>
+
+                    {/* Overall Status */}
+                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.status === 'approved'
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : candidate.backgroundCheck.status === 'declined'
+                        ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                        : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                      }`}>
+                      <Shield size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.status === 'approved'
+                        ? 'text-green-600'
+                        : candidate.backgroundCheck.status === 'declined'
+                          ? 'text-red-600'
+                          : 'text-yellow-600'
+                        }`} />
+                      <p className="text-xs font-bold text-gray-800 dark:text-white">Hasil Akhir</p>
+                      <p className={`text-[10px] font-medium uppercase ${candidate.backgroundCheck.status === 'approved'
+                        ? 'text-green-600'
+                        : candidate.backgroundCheck.status === 'declined'
+                          ? 'text-red-600'
+                          : 'text-yellow-600'
+                        }`}>
+                        {candidate.backgroundCheck.status}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {/* ========== END: KYC Data Display Section ========== */}
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-2 mb-4">

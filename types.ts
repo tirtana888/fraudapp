@@ -84,7 +84,68 @@ export interface InterviewSession {
     date?: string;
     note?: string;
   }>;
+  backgroundCheck?: BackgroundCheckData;
 }
+
+// ========== KYC / Background Check Types ==========
+
+export interface KYCData {
+  // OCR-extracted personal information
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  age?: number;
+  gender?: string;
+  nationality?: string;
+
+  // Document information
+  documentType?: string;
+  documentNumber?: string;
+  issuingState?: string;
+  dateOfIssue?: string;
+  expirationDate?: string;
+
+  // Address information
+  address?: string;
+  placeOfBirth?: string;
+
+  // Images (Base64 encoded)
+  portraitImage?: string;
+  frontDocumentImage?: string;
+  backDocumentImage?: string;
+
+  // Verification results
+  idVerification?: {
+    status?: string;
+    warnings?: string[];
+    confidence?: number;
+  };
+  faceMatch?: {
+    status?: string;
+    confidence?: number;
+  };
+
+  // Metadata
+  extractedAt?: any; // Firestore Timestamp
+}
+
+export interface BackgroundCheckData {
+  status?: 'pending' | 'in_progress' | 'approved' | 'declined' | 'in_review';
+  diditSessionId?: string;
+  decision?: string;
+  verificationLink?: string;
+  createdAt?: any;
+  lastUpdated?: any;
+  kycData?: KYCData;
+  rawWebhookData?: {
+    status?: string;
+    webhook_type?: string;
+    session_number?: string;
+  };
+}
+
+// ========== End KYC Types ==========
 
 export interface FraudAnalysis {
   scores: FraudTriangleScore;
@@ -92,7 +153,7 @@ export interface FraudAnalysis {
   summary: string;
   redFlags: string[];
   recommendation: string;
-  consistencyScore?: number; 
+  consistencyScore?: number;
   euphemismScore?: number;
   euphemismDetected?: string[];
   sentimentBreakdown?: {
@@ -111,10 +172,10 @@ export interface FraudAnalysis {
 export interface UserProfile {
   id?: string;
   name: string;
-  role: 'System Admin' | 'Company Admin' | 'User' | 'Lead Investigator' | 'superadmin'; 
+  role: 'System Admin' | 'Company Admin' | 'User' | 'Lead Investigator' | 'superadmin';
   avatar?: string;
   email: string;
-  companyId?: string; 
+  companyId?: string;
   password?: string; // Only for legacy users, Firebase Auth users don't store passwords
   emailVerified?: boolean; // Firebase Auth email verification status
   createdAt?: any; // Creation timestamp
@@ -191,10 +252,10 @@ export const SUBSCRIPTION_PLANS = {
 export const CREDIT_TO_IDR_RATE = 100; // 1000 credits = Rp 100,000 (100 IDR per credit)
 
 export interface SelfAssessmentAnswers {
-    candidateName: string;
-    candidateEmail: string;
-    candidateRole: string;
-    answers: AssessmentItem[];
+  candidateName: string;
+  candidateEmail: string;
+  candidateRole: string;
+  answers: AssessmentItem[];
 }
 
 export interface AssessmentInvite {

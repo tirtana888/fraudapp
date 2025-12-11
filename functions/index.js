@@ -467,6 +467,69 @@ exports.processDiditWebhook = functions
         }
       }
 
+      // ========== NEW: Extract full KYC data from decision ==========
+      let kycData = null;
+      if (decision) {
+        const features = decision.features || {};
+
+        kycData = {
+          // OCR-extracted personal information
+          fullName: features.full_name || features.first_name && features.last_name
+            ? `${features.first_name || ''} ${features.last_name || ''}`.trim()
+            : null,
+          firstName: features.first_name || null,
+          lastName: features.last_name || null,
+          dateOfBirth: features.date_of_birth || null,
+          age: features.age || null,
+          gender: features.gender || null,
+          nationality: features.nationality || null,
+
+          // Document information
+          documentType: features.document_type || null,
+          documentNumber: features.document_number || null,
+          issuingState: features.issuing_state_name || features.issuing_state || null,
+          dateOfIssue: features.date_of_issue || null,
+          expirationDate: features.expiration_date || null,
+
+          // Address information
+          address: features.formatted_address || features.address || null,
+          placeOfBirth: features.place_of_birth || null,
+
+          // Images (Base64 encoded) - only store if verification passed to save space
+          portraitImage: (mappedStatus === 'approved' || mappedStatus === 'declined')
+            ? (decision.portrait_image || null)
+            : null,
+          frontDocumentImage: (mappedStatus === 'approved' || mappedStatus === 'declined')
+            ? (decision.front_document_image || null)
+            : null,
+          backDocumentImage: (mappedStatus === 'approved' || mappedStatus === 'declined')
+            ? (decision.back_document_image || null)
+            : null,
+
+          // Verification results
+          idVerification: decision.id_verification ? {
+            status: decision.id_verification.status || null,
+            warnings: decision.id_verification.warnings || [],
+            confidence: decision.id_verification.confidence || null
+          } : null,
+          faceMatch: decision.face_match ? {
+            status: decision.face_match.status || null,
+            confidence: decision.face_match.confidence || null
+          } : null,
+
+          // Extraction timestamp
+          extractedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        console.log('[PROCESS-WEBHOOK] KYC data extracted:', {
+          fullName: kycData.fullName,
+          documentNumber: kycData.documentNumber ? '***' + kycData.documentNumber.slice(-4) : null,
+          hasPortrait: !!kycData.portraitImage,
+          hasFrontDoc: !!kycData.frontDocumentImage
+        });
+      }
+      // ========== END: KYC data extraction ==========
+
       // Prepare background check data
       const backgroundCheckData = {
         status: mappedStatus,
@@ -475,6 +538,8 @@ exports.processDiditWebhook = functions
         verificationLink: webhookData.session_url || null,
         createdAt: admin.firestore.Timestamp.fromMillis(created_at * 1000),
         lastUpdated: admin.firestore.Timestamp.fromMillis((webhookTimestamp || created_at) * 1000),
+        // NEW: Include full KYC data
+        kycData: kycData,
         rawWebhookData: {
           status: status,
           webhook_type: webhook_type,
