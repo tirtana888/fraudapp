@@ -618,7 +618,10 @@ const App: React.FC = () => {
         return <Dashboard
           timelineEvents={timelineEvents}
           currentCompany={currentCompany!}
-          onViewSession={setViewingSessionId}
+          onViewSession={(sessionId) => {
+            setViewingCandidateId(sessionId);
+            setActiveTab('history');
+          }}
           onReviewSession={handleReviewSession}
           onViewAll={() => setActiveTab('history')}
           creditBalance={creditBalance}
