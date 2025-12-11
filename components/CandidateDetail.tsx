@@ -2123,19 +2123,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   <FileText size={18} className="text-[#D95D00]" />
                   CV Original
                 </h3>
-                {candidate.cvUrl && (
-                  <a
-                    href={candidate.cvUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors flex items-center gap-2 text-xs font-medium"
-                  >
-                    <Download size={14} />
-                    Download
-                  </a>
-                )}
+                {/* Download button removed for security/view-only mode */}
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Eye size={12} />
+                  View Only
+                </div>
               </div>
-              <div className="flex-1 bg-gray-100 dark:bg-gray-900 relative">
+              <div className="flex-1 bg-gray-100 dark:bg-gray-900 relative group">
                 {candidate.cvUrl ? (
                   (() => {
                     // Helper to check file type ignoring query params
@@ -2145,24 +2139,32 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
                     if (isPdf) {
                       return (
-                        <iframe
-                          src={candidate.cvUrl}
-                          className="w-full h-full absolute inset-0"
-                          title={`CV ${candidate.candidate.name}`}
-                        />
+                        <>
+                          <iframe
+                            src={`${candidate.cvUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                            className="w-full h-full absolute inset-0"
+                            title={`CV ${candidate.candidate.name}`}
+                          />
+                          {/* Overlay to block right-click/save context menu (optional) */}
+                          <div className="absolute inset-0 bg-transparent" onContextMenu={(e) => e.preventDefault()} />
+                        </>
                       );
                     } else if (isDoc) {
-                      // Use Google Docs Viewer for Word documents
                       return (
-                        <iframe
-                          src={`https://docs.google.com/gview?url=${encodeURIComponent(candidate.cvUrl)}&embedded=true`}
-                          className="w-full h-full absolute inset-0"
-                          title={`CV ${candidate.candidate.name}`}
-                        />
+                        <div className="w-full h-full relative">
+                          <iframe
+                            src={`https://docs.google.com/gview?url=${encodeURIComponent(candidate.cvUrl)}&embedded=true`}
+                            className="w-full h-full absolute inset-0"
+                            title={`CV ${candidate.candidate.name}`}
+                          />
+                          {/* Blocker for Google Pop-out button (Top Right) */}
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-transparent z-10" title="Download disabled" />
+                        </div>
                       );
                     } else {
                       return (
                         <div className="flex items-center justify-center h-full">
+
                           <div className="text-center">
                             <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                             <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
