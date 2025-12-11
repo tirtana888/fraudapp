@@ -700,8 +700,8 @@ const App: React.FC = () => {
               <button
                 onClick={() => setSettingsTab('profile')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'profile'
-                    ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
               >
                 <User size={16} /> Profil Akun
@@ -709,8 +709,8 @@ const App: React.FC = () => {
               <button
                 onClick={() => setSettingsTab('subscription')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'subscription'
-                    ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
               >
                 <CreditCard size={16} /> Paket Langganan
@@ -826,19 +826,14 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Header / Title */}
-            <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{getPageTitle(activeTab)}</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Selamat datang kembali, {currentUser.name.split(' ')[0]}.</p>
+
+
+            {/* Connection Status Indicator */}
+            {apiError && (
+              <div className="mb-6 bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border border-red-100 cursor-pointer hover:bg-red-100" onClick={handleRetryConnection}>
+                <WifiOff size={14} /> {apiError} - Klik untuk refresh
               </div>
-              {/* Connection Status Indicator */}
-              {apiError && (
-                <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border border-red-100 cursor-pointer hover:bg-red-100" onClick={handleRetryConnection}>
-                  <WifiOff size={14} /> {apiError} - Klik untuk refresh
-                </div>
-              )}
-            </div>
+            )}
 
             {renderContent()}
           </div>
