@@ -29,6 +29,7 @@ import CreditManagementPage from './components/CreditManagementPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
+import { getCreditBalance } from './services/creditManagement';
 import { ToastProvider } from './components/Toast';
 
 const App: React.FC = () => {
@@ -109,6 +110,25 @@ const App: React.FC = () => {
   useEffect(() => {
     seedRealDatabase();
   }, []);
+
+  // Credit Balance State
+  const [creditBalance, setCreditBalance] = useState<number | undefined>(undefined);
+
+  // Poll/Fetch Credit Balance
+  useEffect(() => {
+    if (currentCompany?.id) {
+      const fetchCredits = async () => {
+        try {
+          const balance = await getCreditBalance(currentCompany.id);
+          setCreditBalance(balance);
+        } catch (error) {
+          console.error('Error fetching credits:', error);
+        }
+      };
+
+      fetchCredits();
+    }
+  }, [currentCompany?.id, activeTab]);
 
   useEffect(() => {
     // Prevent multiple observer setups (even in StrictMode)
@@ -601,6 +621,7 @@ const App: React.FC = () => {
           onViewSession={setViewingSessionId}
           onReviewSession={handleReviewSession}
           onViewAll={() => setActiveTab('history')}
+          creditBalance={creditBalance}
         />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
@@ -785,6 +806,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          creditBalance={creditBalance}
         />
 
         <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>

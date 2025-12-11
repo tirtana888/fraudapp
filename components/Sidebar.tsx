@@ -14,9 +14,10 @@ interface SidebarProps {
   onLogout: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  creditBalance?: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName, userRole, isDarkMode, toggleTheme, isOpen, onClose, onLogout, isCollapsed = false, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName, userRole, isDarkMode, toggleTheme, isOpen, onClose, onLogout, isCollapsed = false, onToggleCollapse, creditBalance }) => {
   const [candidatesExpanded, setCandidatesExpanded] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -74,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             className="h-8 w-8 object-contain mx-auto"
           />
         )}
-        
+
         {/* Mobile close button */}
         <button onClick={onClose} className="md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
           <X size={20} />
@@ -94,26 +95,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
 
       <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
         {(userRole === 'System Admin' || userRole === 'superadmin') && (
-           <div className="mb-3">
-              {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Admin</p>}
-              <button
-                onClick={() => setActiveTab(adminItem.id)}
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-                  activeTab === adminItem.id
-                    ? 'bg-brand-dark text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+          <div className="mb-3">
+            {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Admin</p>}
+            <button
+              onClick={() => setActiveTab(adminItem.id)}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${activeTab === adminItem.id
+                ? 'bg-brand-dark text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
-                title={isCollapsed ? adminItem.label : ''}
-              >
-                <Shield size={18} className={activeTab === adminItem.id ? 'text-brand-orange' : 'text-gray-400'} />
-                {!isCollapsed && <span className="text-sm">{adminItem.label}</span>}
-                {isCollapsed && (
-                  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                    {adminItem.label}
-                  </span>
-                )}
-              </button>
-           </div>
+              title={isCollapsed ? adminItem.label : ''}
+            >
+              <Shield size={18} className={activeTab === adminItem.id ? 'text-brand-orange' : 'text-gray-400'} />
+              {!isCollapsed && <span className="text-sm">{adminItem.label}</span>}
+              {isCollapsed && (
+                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                  {adminItem.label}
+                </span>
+              )}
+            </button>
+          </div>
         )}
 
         {/* BAGIAN 1: INTI (Sering Diakses) */}
@@ -125,11 +125,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-                isActive
-                  ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${isActive
+                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
               title={isCollapsed ? item.label : ''}
             >
               <Icon size={18} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
@@ -147,11 +146,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         <div className="mt-2">
           <button
             onClick={() => isCollapsed ? null : setCandidatesExpanded(!candidatesExpanded)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-              shouldShowCandidateActive
-                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${shouldShowCandidateActive
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
             title={isCollapsed ? 'Kandidat' : ''}
           >
             <div className={`flex items-center ${isCollapsed ? '' : 'space-x-2'}`}>
@@ -179,11 +177,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
                   <button
                     key={subItem.id}
                     onClick={() => setActiveTab(subItem.id)}
-                    className={`w-full flex items-center space-x-2 pl-4 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${
-                      isActive
-                        ? 'bg-brand-orange/10 text-brand-orange dark:bg-brand-orange/20'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
+                    className={`w-full flex items-center space-x-2 pl-4 pr-3 py-2 rounded-lg transition-all duration-200 text-xs group ${isActive
+                      ? 'bg-brand-orange/10 text-brand-orange dark:bg-brand-orange/20'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
                   >
                     <SubIcon size={14} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600'} />
                     <span className="flex-1 text-left font-medium leading-snug">{subItem.label}</span>
@@ -198,11 +195,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         <div className="mt-2">
           <button
             onClick={() => setActiveTab(linkMenuItem.id)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-              activeTab === linkMenuItem.id
-                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${activeTab === linkMenuItem.id
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
             title={isCollapsed ? linkMenuItem.label : ''}
           >
             <LinkIcon size={18} className={activeTab === linkMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
@@ -225,11 +221,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-                  isActive
-                    ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${isActive
+                  ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
                 title={isCollapsed ? item.label : ''}
               >
                 <Icon size={18} className={isActive ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
@@ -247,22 +242,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
         {/* BAGIAN 3: SISTEM */}
         <div className="mt-3">
           {!isCollapsed && <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 mt-2">Sistem</p>}
-          
+
           {/* Credit Management */}
           <button
             onClick={() => setActiveTab(creditMenuItem.id)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-              activeTab === creditMenuItem.id
-                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${activeTab === creditMenuItem.id
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
             title={isCollapsed ? creditMenuItem.label : ''}
           >
             <CreditCard size={18} className={activeTab === creditMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
-            {!isCollapsed && <span className="text-sm">{creditMenuItem.label}</span>}
+            {!isCollapsed && (
+              <div className="flex-1 flex items-center justify-between">
+                <span className="text-sm">{creditMenuItem.label}</span>
+                {creditBalance !== undefined && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === creditMenuItem.id ? 'bg-brand-orange text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400'}`}>
+                    {creditBalance}
+                  </span>
+                )}
+              </div>
+            )}
             {isCollapsed && (
               <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                {creditMenuItem.label}
+                {creditMenuItem.label} {creditBalance !== undefined ? `(${creditBalance})` : ''}
               </span>
             )}
           </button>
@@ -270,11 +273,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
           {/* Settings */}
           <button
             onClick={() => setActiveTab(systemMenuItem.id)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${
-              activeTab === systemMenuItem.id
-                ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${activeTab === systemMenuItem.id
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
             title={isCollapsed ? systemMenuItem.label : ''}
           >
             <Settings size={18} className={activeTab === systemMenuItem.id ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
@@ -289,7 +291,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
       </nav>
 
       <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-t border-gray-100 dark:border-slate-700 space-y-1.5`}>
-        <button 
+        <button
           onClick={toggleTheme}
           className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm group relative`}
           title={isCollapsed ? (isDarkMode ? 'Mode Gelap' : 'Mode Terang') : ''}
