@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from './Toast';
 import { Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search, FileCheck, Share2, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES } from '../types';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
@@ -26,6 +27,8 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
   const [isCreating, setIsCreating] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
 
   // Form state
   const [workflowName, setWorkflowName] = useState('');
@@ -75,7 +78,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     setIsCreating(true);
     setWorkflowName(workflow.name);
     setWorkflowDescription(workflow.description);
-    
+
     const steps: { [key: string]: boolean } = {};
     workflow.steps.forEach(step => {
       steps[step.id] = step.isEnabled;
@@ -85,11 +88,11 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
 
   const handleToggleStep = (stepId: string, isMandatory: boolean) => {
     if (isMandatory) return; // Cannot toggle mandatory steps
-    
+
     // Check if step is coming soon
     const template = WORKFLOW_TEMPLATES.find(t => t.id === stepId);
     if (template && template.isAvailable === false) return; // Cannot toggle coming soon steps
-    
+
     setSelectedSteps(prev => ({
       ...prev,
       [stepId]: !prev[stepId]
@@ -106,11 +109,14 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
   };
 
   const handleSaveWorkflow = async () => {
+    if (isSaving) return; // Prevent duplicate clicks
+
     if (!workflowName.trim()) {
       alert('Nama workflow wajib diisi!');
       return;
     }
 
+    setIsSaving(true);
     try {
       const steps: WorkflowStep[] = WORKFLOW_TEMPLATES
         .filter(template => selectedSteps[template.id])
@@ -140,6 +146,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
         const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, editingWorkflow.id!);
         await updateDoc(workflowRef, workflowData);
         console.log('[WORKFLOW] Updated workflow:', editingWorkflow.id);
+        toast.success('Workflow berhasil diupdate!');
       } else {
         // Create new workflow
         await addDoc(collection(db, COLLECTIONS.WORKFLOWS), {
@@ -147,6 +154,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           createdAt: new Date().toISOString()
         });
         console.log('[WORKFLOW] Created new workflow');
+        toast.success('Workflow berhasil disimpan!');
       }
 
       setIsCreating(false);
@@ -155,6 +163,8 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     } catch (error) {
       console.error('[WORKFLOW] Error saving workflow:', error);
       alert('Gagal menyimpan workflow. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -274,10 +284,10 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                     onClick={() => !isComingSoon && handleToggleStep(template.id, template.isMandatory)}
                     className={`
                       relative p-4 border-2 rounded-xl transition-all
-                      ${isComingSoon 
-                        ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-700' 
-                        : isSelected 
-                          ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10 cursor-pointer' 
+                      ${isComingSoon
+                        ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-700'
+                        : isSelected
+                          ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10 cursor-pointer'
                           : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 cursor-pointer'
                       }
                       ${isDisabled && !isComingSoon ? 'opacity-75 cursor-not-allowed' : ''}
@@ -330,7 +340,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                           type="checkbox"
                           checked={isSelected}
                           disabled={isDisabled}
-                          onChange={() => {}}
+                          onChange={() => { }}
                           className="w-5 h-5 text-brand-orange rounded focus:ring-brand-orange"
                         />
                       )}
@@ -377,10 +387,11 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           <div className="flex gap-3">
             <button
               onClick={handleSaveWorkflow}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium"
+              disabled={isSaving}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Save size={20} />
-              <span>{editingWorkflow ? 'Update Workflow' : 'Simpan Workflow'}</span>
+              <span>{isSaving ? 'Menyimpan...' : (editingWorkflow ? 'Update Workflow' : 'Simpan Workflow')}</span>
             </button>
             <button
               onClick={() => {
@@ -457,7 +468,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
                     {workflow.steps.map((step, index) => {
                       const template = WORKFLOW_TEMPLATES.find(t => t.id === step.id);
                       const Icon = template ? iconMap[template.icon] : CheckCircle;
-                      
+
                       return (
                         <div
                           key={step.id}

@@ -19,6 +19,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [copiedCareerPage, setCopiedCareerPage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -117,6 +118,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   };
 
   const handleSave = async () => {
+    if (isSaving) return; // Prevent duplicate clicks
+
     try {
       console.log('[JOBS] Starting save process...');
       console.log('[JOBS] Form data:', formData);
@@ -132,6 +135,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         toast.error('⚠️ Workflow wajib dipilih! Silakan buat workflow terlebih dahulu di menu Workflow sebelum membuat lowongan.');
         return;
       }
+
+      setIsSaving(true);
 
       const slug = generateSlug(formData.title);
       console.log('[JOBS] Generated slug:', slug);
@@ -169,6 +174,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
         stack: error.stack
       });
       toast.error(`Gagal menyimpan lowongan: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -326,11 +333,10 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span
-                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                          job.status === 'Active'
+                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${job.status === 'Active'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
-                        }`}
+                          }`}
                       >
                         {job.status}
                       </span>
@@ -463,7 +469,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                       toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
                         ['bold', 'italic', 'underline'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                         ['clean']
                       ]
                     }}
@@ -489,14 +495,12 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, enableInstantAssessment: !formData.enableInstantAssessment })}
-                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                        formData.enableInstantAssessment ? 'bg-[#D95D00]' : 'bg-gray-300'
-                      }`}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${formData.enableInstantAssessment ? 'bg-[#D95D00]' : 'bg-gray-300'
+                        }`}
                     >
                       <span
-                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                          formData.enableInstantAssessment ? 'translate-x-7' : 'translate-x-1'
-                        }`}
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${formData.enableInstantAssessment ? 'translate-x-7' : 'translate-x-1'
+                          }`}
                       />
                     </button>
                   </div>
@@ -509,14 +513,14 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                   <WorkflowIcon size={18} className="text-orange-600" />
                   Workflow Rekrutmen <span className="text-red-600">* (WAJIB)</span>
                 </label>
-                
+
                 {workflows.length === 0 && !isLoadingWorkflows ? (
                   <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
                     <p className="text-sm font-bold text-red-800 mb-2">
                       ⚠️ PERINGATAN: Belum ada workflow yang dibuat!
                     </p>
                     <p className="text-sm text-red-700 mb-3">
-                      Anda harus membuat workflow terlebih dahulu sebelum bisa membuat lowongan. 
+                      Anda harus membuat workflow terlebih dahulu sebelum bisa membuat lowongan.
                       Workflow diperlukan untuk mengelola tahapan rekrutmen kandidat.
                     </p>
                     <p className="text-xs text-red-600">
@@ -528,9 +532,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                     <select
                       value={formData.workflowId}
                       onChange={(e) => setFormData({ ...formData, workflowId: e.target.value })}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent transition-all ${
-                        !formData.workflowId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-[#D95D00] focus:border-transparent transition-all ${!formData.workflowId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                       disabled={isLoadingWorkflows}
                       required
                     >
@@ -541,7 +544,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                         </option>
                       ))}
                     </select>
-                    
+
                     {!formData.workflowId && (
                       <div className="mt-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
                         <p className="text-sm font-medium text-yellow-800">
@@ -549,7 +552,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                         </p>
                       </div>
                     )}
-                    
+
                     {formData.workflowId && (
                       <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-800">
@@ -585,10 +588,11 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-3 rounded-lg text-white font-medium shadow-lg hover:shadow-xl transition-all"
+                disabled={isSaving}
+                className={`px-6 py-3 rounded-lg text-white font-medium shadow-lg hover:shadow-xl transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                 style={{ backgroundColor: '#D95D00' }}
               >
-                {editingJob ? 'Update Lowongan' : 'Buat Lowongan'}
+                {isSaving ? 'Menyimpan...' : (editingJob ? 'Update Lowongan' : 'Buat Lowongan')}
               </button>
             </div>
           </div>
