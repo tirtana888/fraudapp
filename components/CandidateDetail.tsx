@@ -2137,29 +2137,49 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               </div>
               <div className="flex-1 bg-gray-100 dark:bg-gray-900 relative">
                 {candidate.cvUrl ? (
-                  candidate.cvUrl.endsWith('.pdf') ? (
-                    <iframe
-                      src={candidate.cvUrl}
-                      className="w-full h-full absolute inset-0"
-                      title={`CV ${candidate.candidate.name}`}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
-                        <a
-                          href={candidate.cvUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors text-sm font-medium"
-                        >
-                          <Eye size={16} />
-                          Buka di Tab Baru
-                        </a>
-                      </div>
-                    </div>
-                  )
+                  (() => {
+                    // Helper to check file type ignoring query params
+                    const cleanUrl = candidate.cvUrl.split('?')[0].toLowerCase();
+                    const isPdf = cleanUrl.endsWith('.pdf');
+                    const isDoc = cleanUrl.endsWith('.doc') || cleanUrl.endsWith('.docx');
+
+                    if (isPdf) {
+                      return (
+                        <iframe
+                          src={candidate.cvUrl}
+                          className="w-full h-full absolute inset-0"
+                          title={`CV ${candidate.candidate.name}`}
+                        />
+                      );
+                    } else if (isDoc) {
+                      // Use Google Docs Viewer for Word documents
+                      return (
+                        <iframe
+                          src={`https://docs.google.com/gview?url=${encodeURIComponent(candidate.cvUrl)}&embedded=true`}
+                          className="w-full h-full absolute inset-0"
+                          title={`CV ${candidate.candidate.name}`}
+                        />
+                      );
+                    } else {
+                      return (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <FileText size={48} className="text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Pratinjau tidak tersedia untuk format file ini</p>
+                            <a
+                              href={candidate.cvUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded hover:bg-[#B84D00] transition-colors text-sm font-medium"
+                            >
+                              <Eye size={16} />
+                              Buka di Tab Baru
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })()
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
