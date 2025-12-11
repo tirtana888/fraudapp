@@ -17,32 +17,50 @@ const DynamicFraudTriangle: React.FC<{
   opportunity: number;
   rationalization: number;
   isDarkMode?: boolean;
-}> = ({ pressure, opportunity, rationalization, isDarkMode }) => {
+  benchmarkAvg?: number; // Added benchmark prop
+}> = ({ pressure, opportunity, rationalization, isDarkMode, benchmarkAvg = 50 }) => {
   const width = 320;
   const height = 300;
   const centerX = width / 2;
   const centerY = height / 2 + 10;
   const maxRadius = 110;
 
-  const pressureX = centerX;
-  const pressureY = centerY - (pressure / 100) * maxRadius;
+  // Helper to calculate coordinates for a score at a specific angle
+  const getCoords = (score: number, angleDeg: number) => {
+    // Adjust angle: Pressure (Top, -90deg), Opportunity (Bottom Right, 30deg), Rationalization (Bottom Left, 150deg)
+    // The previous code had specific logic. Let's standardize.
+    // Pressure axis is typically UP or DOWN? Previous code: pressureY = centerY - ... (UP)
+    // Let's stick to previous layout logic for consistency.
 
-  const opportunityAngle = (Math.PI / 180) * 30;
-  const opportunityX = centerX + (opportunity / 100) * maxRadius * Math.cos(opportunityAngle);
-  const opportunityY = centerY + (opportunity / 100) * maxRadius * Math.sin(opportunityAngle);
+    // Pressure: Up (270 deg or -90 deg)
+    // Opportunity: 30 deg
+    // Rationalization: 150 deg
 
-  const rationalizationAngle = (Math.PI / 180) * 150;
-  const rationalizationX = centerX + (rationalization / 100) * maxRadius * Math.cos(rationalizationAngle);
-  const rationalizationY = centerY + (rationalization / 100) * maxRadius * Math.sin(rationalizationAngle);
+    // BUT calculate based on provided logic (Pressure vertical up)
+    if (angleDeg === -90) {
+      return { x: centerX, y: centerY - (score / 100) * maxRadius };
+    }
+    const angleRad = (Math.PI / 180) * angleDeg;
+    return {
+      x: centerX + (score / 100) * maxRadius * Math.cos(angleRad),
+      y: centerY + (score / 100) * maxRadius * Math.sin(angleRad)
+    };
+  };
 
-  const trianglePath = `M ${pressureX} ${pressureY} L ${opportunityX} ${opportunityY} L ${rationalizationX} ${rationalizationY} Z`;
+  const pC = getCoords(pressure, -90);
+  const oC = getCoords(opportunity, 30);
+  const rC = getCoords(rationalization, 150);
 
-  const refPressureY = centerY - maxRadius;
-  const refOpportunityX = centerX + maxRadius * Math.cos(opportunityAngle);
-  const refOpportunityY = centerY + maxRadius * Math.sin(opportunityAngle);
-  const refRationalizationX = centerX + maxRadius * Math.cos(rationalizationAngle);
-  const refRationalizationY = centerY + maxRadius * Math.sin(rationalizationAngle);
-  const refPath = `M ${centerX} ${refPressureY} L ${refOpportunityX} ${refOpportunityY} L ${refRationalizationX} ${refRationalizationY} Z`;
+  const trianglePath = `M ${pC.x} ${pC.y} L ${oC.x} ${oC.y} L ${rC.x} ${rC.y} Z`;
+
+  // Benchmark Triangle (Equilateral based on average)
+  const bP = getCoords(benchmarkAvg, -90);
+  const bO = getCoords(benchmarkAvg, 30);
+  const bR = getCoords(benchmarkAvg, 150);
+  const benchmarkPath = `M ${bP.x} ${bP.y} L ${bO.x} ${bO.y} L ${bR.x} ${bR.y} Z`;
+
+  // Grid Levels (20, 40, 60, 80, 100)
+  const levels = [20, 40, 60, 80, 100];
 
   const getColorByScore = (score: number) => {
     if (score >= 70) return '#ef4444';
@@ -55,30 +73,55 @@ const DynamicFraudTriangle: React.FC<{
   const mainColor = getColorByScore(avgScore);
 
   return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="mx-auto">
+    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="mx-auto overflow-visible">
       <defs>
-        <linearGradient id="fraudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={mainColor} stopOpacity="0.7" />
-          <stop offset="100%" stopColor={mainColor} stopOpacity="0.3" />
+        <linearGradient id="fraudGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={mainColor} stopOpacity="0.8" />
+          <stop offset="100%" stopColor={mainColor} stopOpacity="0.4" />
         </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
-      <path
-        d={refPath}
-        fill={isDarkMode ? '#1e293b' : '#f8fafc'}
-        stroke={isDarkMode ? '#334155' : '#e2e8f0'}
-        strokeWidth="2"
-        strokeDasharray="5,5"
-        opacity="0.5"
-      />
+      {/* 1. Radar Grid (Concentric Triangles) */}
+      {levels.map((level) => {
+        const lP = getCoords(level, -90);
+        const lO = getCoords(level, 30);
+        const lR = getCoords(level, 150);
+        const path = `M ${lP.x} ${lP.y} L ${lO.x} ${lO.y} L ${lR.x} ${lR.y} Z`;
+        return (
+          <path
+            key={level}
+            d={path}
+            fill="none"
+            stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+            strokeWidth="1"
+            strokeDasharray={level === 100 ? "0" : "4,4"}
+          />
+        );
+      })}
 
+      {/* Axis Lines */}
+      {[-90, 30, 150].map(angle => {
+        const start = { x: centerX, y: centerY };
+        const end = getCoords(100, angle);
+        return <line key={angle} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={isDarkMode ? '#334155' : '#e2e8f0'} strokeWidth="1" />;
+      })}
+
+      {/* 2. Benchmark/Industry Overlay (Ghost Triangle) */}
+      <path
+        d={benchmarkPath}
+        fill="none"
+        stroke={isDarkMode ? '#64748b' : '#94a3b8'}
+        strokeWidth="2"
+        strokeDasharray="6,4"
+        className="opacity-60"
+      />
+      <text x={bO.x + 10} y={bO.y} className="text-[10px] fill-gray-400 font-medium hidden md:block">Avg</text>
+
+      {/* 3. Candidate Data Triangle (Animated) */}
       <path
         d={trianglePath}
         fill="url(#fraudGradient)"
@@ -86,33 +129,25 @@ const DynamicFraudTriangle: React.FC<{
         strokeWidth="3"
         strokeLinejoin="round"
         filter="url(#glow)"
-      />
+        className="drop-shadow-lg transition-all duration-1000 ease-out"
+      >
+        <animate attributeName="d" from={benchmarkPath} to={trianglePath} dur="1.5s" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1" />
+      </path>
 
-      <circle cx={pressureX} cy={pressureY} r="8" fill={getColorByScore(pressure)} stroke="#fff" strokeWidth="3" />
-      <text x={pressureX} y={pressureY - 20} textAnchor="middle" className="text-xs font-bold" fill={isDarkMode ? '#f97316' : '#ea580c'}>
-        Tekanan
-      </text>
-      <text x={pressureX} y={pressureY - 6} textAnchor="middle" className="text-lg font-black" fill={isDarkMode ? '#fb923c' : '#ea580c'}>
-        {pressure}
-      </text>
+      {/* Vertex Markers */}
+      <g className="transition-all duration-1000 delay-500">
+        <circle cx={pC.x} cy={pC.y} r="6" fill={getColorByScore(pressure)} stroke="#fff" strokeWidth="2" />
+        <text x={pC.x} y={pC.y - 15} textAnchor="middle" className="text-xs font-bold uppercase tracking-wider" fill={isDarkMode ? '#f97316' : '#ea580c'}>Tekanan</text>
 
-      <circle cx={opportunityX} cy={opportunityY} r="8" fill={getColorByScore(opportunity)} stroke="#fff" strokeWidth="3" />
-      <text x={opportunityX + 20} y={opportunityY - 8} textAnchor="start" className="text-xs font-bold" fill={isDarkMode ? '#60a5fa' : '#2563eb'}>
-        Peluang
-      </text>
-      <text x={opportunityX + 20} y={opportunityY + 8} textAnchor="start" className="text-lg font-black" fill={isDarkMode ? '#60a5fa' : '#2563eb'}>
-        {opportunity}
-      </text>
+        <circle cx={oC.x} cy={oC.y} r="6" fill={getColorByScore(opportunity)} stroke="#fff" strokeWidth="2" />
+        <text x={oC.x + 15} y={oC.y + 5} textAnchor="start" className="text-xs font-bold uppercase tracking-wider" fill={isDarkMode ? '#60a5fa' : '#2563eb'}>Peluang</text>
 
-      <circle cx={rationalizationX} cy={rationalizationY} r="8" fill={getColorByScore(rationalization)} stroke="#fff" strokeWidth="3" />
-      <text x={rationalizationX - 20} y={rationalizationY - 8} textAnchor="end" className="text-xs font-bold" fill={isDarkMode ? '#f97316' : '#ea580c'}>
-        Rasionalisasi
-      </text>
-      <text x={rationalizationX - 20} y={rationalizationY + 8} textAnchor="end" className="text-lg font-black" fill={isDarkMode ? '#fb923c' : '#ea580c'}>
-        {rationalization}
-      </text>
+        <circle cx={rC.x} cy={rC.y} r="6" fill={getColorByScore(rationalization)} stroke="#fff" strokeWidth="2" />
+        <text x={rC.x - 15} y={rC.y + 5} textAnchor="end" className="text-xs font-bold uppercase tracking-wider" fill={isDarkMode ? '#f97316' : '#ea580c'}>Rasionalisasi</text>
+      </g>
 
-      <circle cx={centerX} cy={centerY} r="4" fill={isDarkMode ? '#64748b' : '#94a3b8'} opacity="0.6" />
+      {/* Center Point */}
+      <circle cx={centerX} cy={centerY} r="3" fill={isDarkMode ? '#64748b' : '#94a3b8'} />
     </svg>
   );
 };
