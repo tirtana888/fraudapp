@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
-import { InterviewSession, ParsedCVData, CompanyProfile, KYCData } from '../types';
+import { InterviewSession, ParsedCVData, CompanyProfile } from '../types';
 import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -42,8 +42,39 @@ interface CandidateData extends InterviewSession {
     lastUpdated?: {
       seconds: number;
     };
-    // NEW: KYC data from Didit
-    kycData?: KYCData;
+    // KYC data from Didit (user's backend structure)
+    idVerification?: {
+      fullName?: string;
+      documentNumber?: string;
+      documentType?: string;
+      dateOfBirth?: string;
+      placeOfBirth?: string;
+      gender?: string;
+      address?: string;
+      status?: string;
+      portraitImage?: string;
+      frontImage?: string;
+      backImage?: string;
+    };
+    faceMatch?: {
+      score?: number;
+      status?: string;
+      sourceImage?: string;
+      targetImage?: string;
+    };
+    liveness?: {
+      score?: number;
+      status?: string;
+      ageEstimation?: number;
+      referenceImage?: string;
+    };
+    warnings?: string[];
+    ipAnalysis?: {
+      ipAddress?: string;
+      country?: string;
+      isVpnOrTor?: boolean;
+      status?: string;
+    };
   };
 }
 
@@ -2674,7 +2705,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             )}
 
             {/* ========== NEW: KYC Data Display Section ========== */}
-            {candidate.backgroundCheck?.kycData && (
+            {candidate.backgroundCheck?.idVerification && (
               <>
                 {/* ID Document Images */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -2690,10 +2721,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     {/* Front Document */}
                     <div className="relative">
                       <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Depan KTP</p>
-                      {candidate.backgroundCheck.kycData.frontDocumentImage ? (
+                      {candidate.backgroundCheck.idVerification.frontImage ? (
                         <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
                           <img
-                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.frontDocumentImage}`}
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.idVerification.frontImage}`}
                             alt="ID Card Front"
                             className="w-full h-full object-cover"
                           />
@@ -2708,10 +2739,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     {/* Back Document */}
                     <div className="relative">
                       <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Belakang KTP</p>
-                      {candidate.backgroundCheck.kycData.backDocumentImage ? (
+                      {candidate.backgroundCheck.idVerification.backImage ? (
                         <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
                           <img
-                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.backDocumentImage}`}
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.idVerification.backImage}`}
                             alt="ID Card Back"
                             className="w-full h-full object-cover"
                           />
@@ -2726,14 +2757,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     {/* Selfie / Portrait */}
                     <div className="relative">
                       <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Foto Selfie</p>
-                      {candidate.backgroundCheck.kycData.portraitImage ? (
+                      {candidate.backgroundCheck.idVerification.portraitImage ? (
                         <div className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-inner">
                           <img
-                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.kycData.portraitImage}`}
+                            src={`data:image/jpeg;base64,${candidate.backgroundCheck.idVerification.portraitImage}`}
                             alt="Selfie"
                             className="w-full h-full object-cover"
                           />
-                          {candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed' && (
+                          {candidate.backgroundCheck.faceMatch?.status === 'approved' && (
                             <div className="absolute bottom-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
                               <CheckCircle2 size={12} /> Face Match OK
                             </div>
@@ -2762,39 +2793,39 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Nama Lengkap</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.fullName || '-'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.fullName || '-'}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">NIK / No. Dokumen</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white font-mono">{candidate.backgroundCheck.kycData.documentNumber || '-'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white font-mono">{candidate.backgroundCheck.idVerification.documentNumber || '-'}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tanggal Lahir</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.dateOfBirth || '-'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.dateOfBirth || '-'}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Jenis Kelamin</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.gender || '-'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.gender || '-'}</span>
                       </div>
                     </div>
 
                     {/* Right Column */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Kewarganegaraan</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.nationality || '-'}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tempat Lahir</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.placeOfBirth || '-'}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tipe Dokumen</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.documentType || 'KTP'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.documentType || 'KTP'}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Masa Berlaku</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.kycData.expirationDate || 'Seumur Hidup'}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Status Verifikasi</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white">{candidate.backgroundCheck.idVerification.status || '-'}</span>
                       </div>
                       <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block mb-1">Alamat</span>
-                        <span className="text-sm font-bold text-gray-800 dark:text-white leading-tight">{candidate.backgroundCheck.kycData.address || '-'}</span>
+                        <span className="text-sm font-bold text-gray-800 dark:text-white leading-tight">{candidate.backgroundCheck.idVerification.address || '-'}</span>
                       </div>
                     </div>
                   </div>
@@ -2811,60 +2842,60 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {/* ID Verification */}
-                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.idVerification?.status === 'approved'
                       ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                       : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
                       }`}>
-                      <CheckCircle2 size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                      <CheckCircle2 size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.idVerification?.status === 'approved'
                         ? 'text-green-600'
                         : 'text-yellow-600'
                         }`} />
                       <p className="text-xs font-bold text-gray-800 dark:text-white">Dokumen Asli</p>
-                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.kycData.idVerification?.status === 'Passed'
+                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.idVerification?.status === 'approved'
                         ? 'text-green-600'
                         : 'text-yellow-600'
                         }`}>
-                        {candidate.backgroundCheck.kycData.idVerification?.status || 'Checking'}
+                        {candidate.backgroundCheck.idVerification?.status || 'Checking'}
                       </p>
                     </div>
 
                     {/* Face Match */}
-                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                    <div className={`p-4 rounded-xl text-center ${candidate.backgroundCheck.faceMatch?.status === 'approved'
                       ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                       : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
                       }`}>
-                      <User size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                      <User size={24} className={`mx-auto mb-2 ${candidate.backgroundCheck.faceMatch?.status === 'approved'
                         ? 'text-green-600'
                         : 'text-yellow-600'
                         }`} />
                       <p className="text-xs font-bold text-gray-800 dark:text-white">Face Match</p>
-                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.kycData.faceMatch?.status === 'Passed'
+                      <p className={`text-[10px] font-medium ${candidate.backgroundCheck.faceMatch?.status === 'approved'
                         ? 'text-green-600'
                         : 'text-yellow-600'
                         }`}>
-                        {candidate.backgroundCheck.kycData.faceMatch?.confidence
-                          ? `${Math.round(candidate.backgroundCheck.kycData.faceMatch.confidence * 100)}% match`
-                          : candidate.backgroundCheck.kycData.faceMatch?.status || 'Checking'}
+                        {candidate.backgroundCheck.faceMatch?.score
+                          ? `${Math.round(candidate.backgroundCheck.faceMatch.score * 100)}% match`
+                          : candidate.backgroundCheck.faceMatch?.status || 'Checking'}
                       </p>
                     </div>
 
                     {/* Warnings */}
-                    <div className={`p-4 rounded-xl text-center ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                    <div className={`p-4 rounded-xl text-center ${(candidate.backgroundCheck.warnings?.length || 0) === 0
                       ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                       : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
                       }`}>
-                      <AlertTriangle size={24} className={`mx-auto mb-2 ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                      <AlertTriangle size={24} className={`mx-auto mb-2 ${(candidate.backgroundCheck.warnings?.length || 0) === 0
                         ? 'text-green-600'
                         : 'text-red-600'
                         }`} />
                       <p className="text-xs font-bold text-gray-800 dark:text-white">Peringatan</p>
-                      <p className={`text-[10px] font-medium ${(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                      <p className={`text-[10px] font-medium ${(candidate.backgroundCheck.warnings?.length || 0) === 0
                         ? 'text-green-600'
                         : 'text-red-600'
                         }`}>
-                        {(candidate.backgroundCheck.kycData.idVerification?.warnings?.length || 0) === 0
+                        {(candidate.backgroundCheck.warnings?.length || 0) === 0
                           ? 'Tidak Ada'
-                          : `${candidate.backgroundCheck.kycData.idVerification?.warnings?.length} ditemukan`}
+                          : `${candidate.backgroundCheck.warnings?.length} ditemukan`}
                       </p>
                     </div>
 
