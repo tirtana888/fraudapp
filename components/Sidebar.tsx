@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
   return (
     <div className={`
       ${isCollapsed ? 'w-16' : 'w-56'} bg-white dark:bg-brand-slate-850 border-r border-gray-200 dark:border-slate-700 
-      flex flex-col h-screen fixed left-0 top-0 z-30 shadow-lg transition-all duration-300 ease-in-out
+      flex flex-col h-screen fixed left-0 top-0 z-40 shadow-lg transition-all duration-300 ease-in-out
       ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
     `}>
       {/* Header */}

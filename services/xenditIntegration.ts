@@ -44,55 +44,38 @@ export interface XenditInvoiceResponse {
 export const createTopUpInvoice = async (
   companyId: string,
   credits: number,
-  email: string
+  email: string,
+  companyName: string = 'Company'
 ): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string }> => {
   try {
-    const amount = creditsToIDR(credits);
-    const externalId = `topup_${companyId}_${Date.now()}`;
+    console.log('[XENDIT] Creating top-up invoice via Firebase Functions:', { companyId, credits, email });
 
-    const invoiceData: XenditInvoiceRequest = {
-      external_id: externalId,
-      amount: amount,
-      payer_email: email,
-      description: `Credit Top-Up: ${credits} credits`,
-      invoice_duration: 86400, // 24 hours
-      success_redirect_url: `${window.location.origin}?payment=success`,
-      failure_redirect_url: `${window.location.origin}?payment=failed`,
-      currency: 'IDR',
-      items: [
-        {
-          name: `${credits} Credits`,
-          quantity: 1,
-          price: amount
-        }
-      ]
-    };
+    // Import Firebase Functions
+    const { functions } = await import('../services/firebase');
+    const { httpsCallable } = await import('firebase/functions');
 
-    console.log('[XENDIT] Creating top-up invoice:', invoiceData);
-
-    const response = await fetch(XENDIT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(XENDIT_API_KEY + ':')}`
-      },
-      body: JSON.stringify(invoiceData)
+    // Call Firebase Function
+    const createInvoice = httpsCallable(functions, 'createXenditInvoice');
+    const result = await createInvoice({
+      type: 'credit_purchase',
+      amount: credits,
+      companyId,
+      companyName,
+      companyEmail: email
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[XENDIT] Invoice creation failed:', errorData);
-      throw new Error(errorData.message || 'Failed to create invoice');
+    const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
+
+    if (data.success && data.invoiceUrl) {
+      console.log('[XENDIT] Invoice created successfully:', data.invoiceId);
+      return {
+        success: true,
+        invoiceUrl: data.invoiceUrl,
+        invoiceId: data.invoiceId
+      };
+    } else {
+      throw new Error('Failed to create invoice');
     }
-
-    const invoice: XenditInvoiceResponse = await response.json();
-    console.log('[XENDIT] Invoice created successfully:', invoice.id);
-
-    return {
-      success: true,
-      invoiceUrl: invoice.invoice_url,
-      invoiceId: invoice.id
-    };
 
   } catch (error: any) {
     console.error('[XENDIT] Error creating top-up invoice:', error);
@@ -108,58 +91,42 @@ export const createTopUpInvoice = async (
  */
 export const createPremiumSubscriptionInvoice = async (
   companyId: string,
-  email: string
+  email: string,
+  companyName: string = 'Company',
+  tier: 'Premium' | 'Enterprise' = 'Premium'
 ): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string }> => {
   try {
-    const amount = 150000; // Rp 150,000
-    const externalId = `premium_${companyId}_${Date.now()}`;
+    console.log('[XENDIT] Creating subscription invoice via Firebase Functions:', { companyId, tier, email });
 
-    const invoiceData: XenditInvoiceRequest = {
-      external_id: externalId,
-      amount: amount,
-      payer_email: email,
-      description: 'Premium Subscription - 1 Month (1500 Credits)',
-      invoice_duration: 86400,
-      success_redirect_url: `${window.location.origin}?payment=success&type=premium`,
-      failure_redirect_url: `${window.location.origin}?payment=failed`,
-      currency: 'IDR',
-      items: [
-        {
-          name: 'Premium Plan - 1 Month',
-          quantity: 1,
-          price: amount
-        }
-      ]
-    };
+    // Import Firebase Functions
+    const { functions } = await import('../services/firebase');
+    const { httpsCallable } = await import('firebase/functions');
 
-    console.log('[XENDIT] Creating premium subscription invoice:', invoiceData);
-
-    const response = await fetch(XENDIT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(XENDIT_API_KEY + ':')}`
-      },
-      body: JSON.stringify(invoiceData)
+    // Call Firebase Function
+    const createInvoice = httpsCallable(functions, 'createXenditInvoice');
+    const result = await createInvoice({
+      type: 'subscription_upgrade',
+      tier,
+      companyId,
+      companyName,
+      companyEmail: email
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[XENDIT] Invoice creation failed:', errorData);
-      throw new Error(errorData.message || 'Failed to create invoice');
+    const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
+
+    if (data.success && data.invoiceUrl) {
+      console.log('[XENDIT] Subscription invoice created:', data.invoiceId);
+      return {
+        success: true,
+        invoiceUrl: data.invoiceUrl,
+        invoiceId: data.invoiceId
+      };
+    } else {
+      throw new Error('Failed to create invoice');
     }
 
-    const invoice: XenditInvoiceResponse = await response.json();
-    console.log('[XENDIT] Premium invoice created:', invoice.id);
-
-    return {
-      success: true,
-      invoiceUrl: invoice.invoice_url,
-      invoiceId: invoice.id
-    };
-
   } catch (error: any) {
-    console.error('[XENDIT] Error creating premium invoice:', error);
+    console.error('[XENDIT] Error creating subscription invoice:', error);
     return {
       success: false,
       error: error.message || 'Failed to create payment invoice'
@@ -242,11 +209,10 @@ export const processXenditWebhook = async (webhookData: any): Promise<{ success:
  * Get available top-up packages
  */
 export const getTopUpPackages = () => [
-  { credits: 500, price: 50000, popular: false },
+  { credits: 200, price: 2000, popular: false },
   { credits: 1000, price: 100000, popular: true },
-  { credits: 2500, price: 250000, popular: false },
-  { credits: 5000, price: 500000, popular: false },
-  { credits: 10000, price: 1000000, popular: false }
+  { credits: 5000, price: 450000, popular: false },
+  { credits: 10000, price: 800000, popular: false }
 ];
 
 /**

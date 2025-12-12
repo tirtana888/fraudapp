@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Coins, 
-  TrendingUp, 
-  CreditCard, 
-  Crown, 
-  ArrowRight, 
-  Check, 
+import {
+  Coins,
+  TrendingUp,
+  CreditCard,
+  Crown,
+  ArrowRight,
+  Check,
   Loader2,
   History,
   AlertCircle,
@@ -38,12 +38,12 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
   useEffect(() => {
     // OPTIMIZATION: Show UI immediately with initial data
     console.log('[CREDIT] 🚀 Initializing Credit Management page...');
-    
+
     // Set initial data immediately (no blocking)
     setCreditBalance(initialCompany.credits || 0);
     setCompany(initialCompany);
     setIsLoading(false); // ✅ Unblock UI immediately!
-    
+
     // Load fresh data in background (non-blocking)
     loadCreditData();
   }, [initialCompany.id]);
@@ -52,7 +52,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
     if (!initialCompany.id) return;
 
     console.log('[CREDIT] 📊 Loading credit data in background...');
-    
+
     try {
       // Add timeout protection
       const dataPromise = Promise.all([
@@ -60,8 +60,8 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         getCreditTransactions(initialCompany.id, 50),
         getCompanyById(initialCompany.id)
       ]);
-      
-      const timeoutPromise = new Promise<null>((resolve) => 
+
+      const timeoutPromise = new Promise<null>((resolve) =>
         setTimeout(() => {
           console.log('[CREDIT] ⏰ Data fetch timeout, using initial data');
           resolve(null);
@@ -72,11 +72,11 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
 
       if (result) {
         const [balance, txHistory, updatedCompany] = result;
-        
+
         console.log('[CREDIT] ✅ Data loaded:', { balance, transactions: txHistory.length });
         setCreditBalance(balance);
         setTransactions(txHistory);
-        
+
         if (updatedCompany) {
           setCompany(updatedCompany);
         }
@@ -92,7 +92,12 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
 
     setIsProcessing(true);
     try {
-      const result = await createTopUpInvoice(initialCompany.id, credits, user.email);
+      const result = await createTopUpInvoice(
+        initialCompany.id,
+        credits,
+        user.email,
+        initialCompany.name || 'Company'
+      );
 
       if (result.success && result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
@@ -112,7 +117,12 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
 
     setIsProcessing(true);
     try {
-      const result = await createPremiumSubscriptionInvoice(initialCompany.id, user.email);
+      const result = await createPremiumSubscriptionInvoice(
+        initialCompany.id,
+        user.email,
+        initialCompany.name || 'Company',
+        'Premium'
+      );
 
       if (result.success && result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
@@ -162,20 +172,20 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
   const isPremium = company?.tier === 'Premium';
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Header */}
-      <div className="bg-white dark:bg-brand-slate-850 border-b border-gray-200 dark:border-slate-700">
-        <div className="px-6 py-6">
+      <div className="bg-white dark:bg-brand-slate-850 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Coins size={24} className="text-orange-600" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Credit Management</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Credit Management</h1>
               </div>
             </div>
-            
+
             {isPremium && (
-              <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg">
+              <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg">
                 <Crown size={18} />
                 <span className="text-sm font-semibold">Premium Member</span>
               </div>
@@ -184,7 +194,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Credit Balance Card */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-8 text-white mb-8 shadow-lg">
           <div className="flex items-center justify-between mb-6">
@@ -244,7 +254,7 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
                 {isPremium ? 'Premium Plan' : 'Freemium Plan'}
               </h4>
               <p className="text-sm text-gray-600 mb-3">
-                {isPremium 
+                {isPremium
                   ? `${formatIDR(SUBSCRIPTION_PLANS.PREMIUM.price)}/bulan • ${SUBSCRIPTION_PLANS.PREMIUM.monthlyCredits} kredit/bulan`
                   : 'Gratis • 1000 kredit awal'}
               </p>
@@ -316,11 +326,10 @@ const CreditManagementPage: React.FC<CreditManagementPageProps> = ({ company: in
                   <button
                     key={idx}
                     onClick={() => setSelectedPackage(pkg.credits)}
-                    className={`p-6 rounded-xl border-2 transition-all text-left ${
-                      selectedPackage === pkg.credits
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } ${pkg.popular ? 'ring-2 ring-orange-200' : ''}`}
+                    className={`p-6 rounded-xl border-2 transition-all text-left ${selectedPackage === pkg.credits
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      } ${pkg.popular ? 'ring-2 ring-orange-200' : ''}`}
                   >
                     {pkg.popular && (
                       <span className="inline-block bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded mb-2">

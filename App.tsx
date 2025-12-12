@@ -457,6 +457,50 @@ const App: React.FC = () => {
     setActiveTab('credit-management');
   };
 
+  // Handle payment success redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    const redirectTo = params.get('redirect');
+
+    if (paymentStatus === 'success' && redirectTo === 'credits' && currentUser) {
+      console.log('[APP] 💳 Payment success detected, redirecting to credit management');
+
+      // Navigate to credit management
+      setActiveTab('credit-management');
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+
+      // Show success message after a short delay
+      setTimeout(() => {
+        const event = new CustomEvent('show-toast', {
+          detail: {
+            type: 'success',
+            message: 'Pembayaran berhasil! Credit Anda akan segera ditambahkan.'
+          }
+        });
+        window.dispatchEvent(event);
+      }, 500);
+    } else if (paymentStatus === 'failed' && currentUser) {
+      console.log('[APP] ❌ Payment failed detected');
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+
+      // Show error message
+      setTimeout(() => {
+        const event = new CustomEvent('show-toast', {
+          detail: {
+            type: 'error',
+            message: 'Pembayaran gagal. Silakan coba lagi.'
+          }
+        });
+        window.dispatchEvent(event);
+      }, 500);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser) return;
 
@@ -899,7 +943,7 @@ const App: React.FC = () => {
         />
 
         <main
-          className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}
+          className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} pt-16 md:pt-0 p-4 md:p-8 min-h-screen transition-all duration-300 ease-in-out bg-gray-50 dark:bg-slate-900`}
           onMouseEnter={() => {
             // Auto-collapse mobile menu when mouse enters main content area
             if (isMobileMenuOpen) {

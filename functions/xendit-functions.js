@@ -20,6 +20,7 @@ const xenditWebhookToken = defineSecret("XENDIT_WEBHOOK_TOKEN");
 // Pricing Configuration
 const PRICING = {
     credits: {
+        200: 2000,      // Rp 2,000 (testing package)
         1000: 100000,   // Rp 100,000
         5000: 450000,   // Rp 450,000 (10% discount)
         10000: 800000   // Rp 800,000 (20% discount)
@@ -84,8 +85,9 @@ exports.createXenditInvoice = onCall({
                 description: description,
                 currency: 'IDR',
                 invoice_duration: 86400, // 24 hours
-                success_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/payment/success`,
-                failure_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/payment/failed`,
+                success_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/?payment=success&redirect=credits`,
+                failure_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/?payment=failed`,
+                payment_methods: ['QRIS'], // Only accept QRIS payments
                 metadata: {
                     type,
                     companyId,
@@ -126,7 +128,6 @@ exports.createXenditInvoice = onCall({
  */
 exports.handleXenditWebhook = onRequest({
     region: "europe-west1",
-    cors: true,
     secrets: [xenditWebhookToken]
 }, async (req, res) => {
     try {
@@ -152,11 +153,48 @@ exports.handleXenditWebhook = onRequest({
             return;
         }
 
-        const metadata = payload.metadata || {};
-        const { type, companyId, credits, tier } = metadata;
+        // Get metadata from payload or parse from external_id
+        let metadata = payload.metadata || {};
+        let { type, companyId, credits, tier } = metadata;
+
+        // Fallback: Parse from external_id if metadata is missing
+        if (!type || !companyId) {
+            logger.warn('[XENDIT] Metadata missing, parsing from external_id');
+            const externalId = payload.external_id || '';
+            const parts = externalId.split('_');
+
+            if (parts.length >= 3) {
+                type = parts[0]; // 'credit' or 'subscription'
+                if (parts[0] === 'credit') {
+                    type = 'credit_purchase';
+                } else if (parts[0] === 'subscription') {
+                    type = 'subscription_upgrade';
+                }
+                companyId = parts[parts.length - 2]; // Second to last part
+
+                // For credit purchase, calculate credits from amount
+                if (type === 'credit_purchase') {
+                    // Get credits from pricing lookup
+                    const amount = payload.amount || payload.paid_amount || 0;
+                    const PRICING_REVERSE = {
+                        2000: 200,
+                        100000: 1000,
+                        450000: 5000,
+                        800000: 10000
+                    };
+                    credits = PRICING_REVERSE[amount] || Math.floor(amount / 10); // Fallback: 1 credit = Rp 10
+                }
+
+                logger.info('[XENDIT] Parsed from external_id:', { type, companyId, credits });
+            }
+        }
 
         if (!type || !companyId) {
-            logger.error('[XENDIT] Missing metadata in webhook');
+            logger.error('[XENDIT] Missing metadata in webhook', {
+                external_id: payload.external_id,
+                metadata: payload.metadata,
+                payload: JSON.stringify(payload)
+            });
             res.status(400).send('Missing metadata');
             return;
         }
