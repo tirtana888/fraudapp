@@ -30,6 +30,7 @@ import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, Assessmen
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
 import { getCreditBalance, deductCredit } from './services/creditManagement';
+import PaymentModal from './components/PaymentModal';
 import { ToastProvider, useToast } from './components/Toast';
 import { db, COLLECTIONS } from './services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -195,6 +196,9 @@ const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Ref to track observer setup
   const authObserverSetup = React.useRef(false);
@@ -1021,6 +1025,38 @@ const App: React.FC = () => {
               setSelectedCandidateForUnlock(null);
             }}
           />
+        )}
+
+        {/* Payment Modal */}
+        {showPaymentModal && currentCompany && currentUser && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            companyId={currentCompany.id}
+            companyName={currentCompany.name}
+            companyEmail={currentUser.email || ''}
+            currentTier={currentCompany.tier}
+            currentCredits={creditBalance || 0}
+            onPaymentSuccess={() => {
+              // Reload credit balance
+              if (currentCompany?.id) {
+                getCreditBalance(currentCompany.id).then(balance => {
+                  setCreditBalance(balance);
+                });
+              }
+            }}
+          />
+        )}
+
+        {/* Floating Buy Credits Button */}
+        {currentUser && currentCompany && (
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="fixed bottom-6 right-6 bg-gradient-to-r from-brand-orange to-red-600 text-white px-6 py-3 rounded-full shadow-2xl hover:shadow-3xl transition-all flex items-center gap-2 font-bold z-40 hover:scale-105"
+          >
+            <CreditCard size={20} />
+            Buy Credits
+          </button>
         )}
       </div>
     </ToastProvider>

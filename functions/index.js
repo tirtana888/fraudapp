@@ -35,6 +35,8 @@ const resendApiKey = defineSecret("RESEND_API_KEY");
 const diditApiKey = defineSecret("DIDIT_API_KEY");
 const diditWebhookSecret = defineSecret("DIDIT_WEBHOOK_SECRET");
 const mistralApiKey = defineSecret("MISTRAL_API_KEY");
+const xenditApiKey = defineSecret("XENDIT_API_KEY");
+const xenditWebhookToken = defineSecret("XENDIT_WEBHOOK_TOKEN");
 
 // Import Didit functions
 const {
@@ -44,11 +46,23 @@ const {
   initiateBackgroundCheck
 } = require('./didit-functions');
 
+// Import Xendit functions
+const {
+  createXenditInvoice,
+  handleXenditWebhook,
+  getPaymentStatus
+} = require('./xendit-functions');
+
 // Re-export Didit functions
 exports.diditWebhook = diditWebhook;
 exports.processDiditWebhook = processDiditWebhook;
 exports.createDiditSession = createDiditSession;
 exports.initiateBackgroundCheck = initiateBackgroundCheck;
+
+// Re-export Xendit functions
+exports.createXenditInvoice = createXenditInvoice;
+exports.handleXenditWebhook = handleXenditWebhook;
+exports.getPaymentStatus = getPaymentStatus;
 
 // Email templates will be loaded from separate file
 const EMAIL_TEMPLATES = require('./email-templates');
