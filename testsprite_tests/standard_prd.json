@@ -1,0 +1,528 @@
+{
+  "meta": {
+    "project": "FraudGuard SaaS",
+    "date": "2025-12-10",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "FraudGuard SaaS is a multi-tenant fraud risk detection platform designed for companies to assess job candidates with AI-powered interviews, fraud analysis based on the Fraud Triangle framework, and recruitment workflow management. It incorporates advanced AI technologies such as Google Gemini and Mistral AI to conduct integrity assessments, CV parsing, and fraud risk evaluations, complemented by KYC background checks via Didit integration, all within a secure, scalable Firebase ecosystem.",
+  "core_goals": [
+    "Enable companies to efficiently manage job postings and candidate pipelines with instant AI-driven assessments.",
+    "Provide robust fraud risk analysis using AI on candidate interviews and structured assessments based on the Fraud Triangle framework.",
+    "Deliver a secure multi-tenant SaaS platform with role-based access, data isolation, and company branding.",
+    "Support a comprehensive recruitment workflow including background checks, credit-based usage, and customizable assessment steps.",
+    "Integrate cutting-edge AI models for natural language interviews and CV parsing to streamline candidate evaluation.",
+    "Ensure transparent credit system management and real-time dashboard insights for company administrators."
+  ],
+  "key_features": [
+    "Multi-tenant structure with company-specific branding, user roles, and data isolation.",
+    "Job management and public career page with instant assessment toggling.",
+    "Public job application portal with CV upload and AI-powered CV parsing via Mistral AI.",
+    "AI Interview System using Google Gemini AI chatbot employing STAR method interviews in Bahasa Indonesia.",
+    "Fraud risk analysis engine leveraging the Fraud Triangle framework producing risk scores, red flags, and hiring recommendations.",
+    "Recruitment workflow configuration with customizable steps and credit costs.",
+    "KYC / Background check integration with Didit including ID scan, selfie, liveness detection, and real-time status updates.",
+    "Credit system with subscription tiers, credit usage tracking, and transaction logging.",
+    "Email invitation system powered by Resend API with templates for candidate and interview invites.",
+    "Admin panel for super admins to manage system-wide settings and all companies.",
+    "History and audit views with filtering and search capabilities."
+  ],
+  "user_flow_summary": [
+    "Candidate visits public career page and views job postings.",
+    "Candidate submits application via a public job page, uploads CV, and completes instant assessment if enabled.",
+    "System parses uploaded CV using AI and creates interview session if applicable.",
+    "AI interview session conducts a chatbot integrity assessment in Bahasa Indonesia.",
+    "Interview transcript and structured assessments are analyzed for fraud risk scores.",
+    "HR users review candidate profiles, assessment results, fraud analysis, and timeline events on the dashboard.",
+    "HR can send assessment invitations via email and manage candidate workflow stages.",
+    "HR initiates background checks using Didit integration, consuming credits per verification.",
+    "Candidates complete KYC process via a secure external link with results updated through webhook callbacks.",
+    "Superadmins manage companies, users, and system settings from a dedicated admin dashboard."
+  ],
+  "validation_criteria": [
+    "User authentication and role-based access control work securely and prevent unauthorized data access.",
+    "Multi-tenant data isolation enforces company boundaries in all database queries and UI views.",
+    "Job postings, applications, and assessments flow correctly from creation to final decision.",
+    "AI responses from Google Gemini are generated in expected language and style, fallback on errors.",
+    "CV parsing results are accurate and structured data is saved properly.",
+    "Fraud risk analysis produces scores aligned with inputs and maps risk levels correctly.",
+    "Background check initiation deducts appropriate credits and webhook updates handle KYC status securely.",
+    "Credit transactions log all changes with correct metadata and balances.",
+    "Email invitation templates are populated with correct variables and emails are sent successfully.",
+    "Public routes require no authentication and enforce access code validation for assessments.",
+    "Dashboard and audit logs display real-time, filtered data as per user role.",
+    "System handles edge cases such as insufficient credits, concurrency, API timeouts, and invalid inputs gracefully."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "React 18.2",
+      "Vite 5.1",
+      "Firebase (Firestore, Auth, Storage, Functions)",
+      "Node.js 18+",
+      "Tailwind CSS",
+      "Google Gemini AI",
+      "Mistral AI"
+    ],
+    "features": [
+      {
+        "name": "User Authentication",
+        "description": "Firebase Authentication with email/password, email verification, session management, and role-based access control",
+        "files": [
+          "components/LoginPage.tsx",
+          "components/SignUpPage.tsx",
+          "services/auth.ts",
+          "services/firebase.ts"
+        ]
+      },
+      {
+        "name": "Dashboard",
+        "description": "Executive summary dashboard showing timeline events, company stats, and recent activities",
+        "files": [
+          "components/Dashboard.tsx",
+          "App.tsx"
+        ]
+      },
+      {
+        "name": "Job Management",
+        "description": "Create, edit, and manage job postings with instant assessment toggle and workflow assignment",
+        "files": [
+          "components/JobManager.tsx",
+          "components/PublicJobPage.tsx",
+          "components/PublicCareerPage.tsx"
+        ]
+      },
+      {
+        "name": "Job Application",
+        "description": "Public job application form with CV upload and automatic assessment session creation",
+        "files": [
+          "components/PublicJobPage.tsx",
+          "components/JobApplicationsView.tsx"
+        ]
+      },
+      {
+        "name": "AI Interview System",
+        "description": "AI-powered chatbot interview using Google Gemini with STAR method questioning in Bahasa Indonesia",
+        "files": [
+          "components/ActiveInterview.tsx",
+          "components/PublicAssessment.tsx",
+          "services/genai.ts",
+          "functions/index.js"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "paths": {
+            "/generateAIResponse": {
+              "post": {
+                "summary": "Generate AI chatbot response",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "role": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "history": {
+                            "type": "array"
+                          },
+                          "candidateData": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "AI response generated",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "success": {
+                              "type": "boolean"
+                            },
+                            "response": {
+                              "type": "string"
+                            },
+                            "model": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Fraud Risk Analysis",
+        "description": "AI-powered fraud detection using Fraud Triangle framework (Pressure, Opportunity, Rationalization)",
+        "files": [
+          "components/CandidateDetail.tsx",
+          "components/FraudTriangleVisualization.tsx",
+          "functions/index.js"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "paths": {
+            "/analyzeFraudRisk": {
+              "post": {
+                "summary": "Analyze candidate fraud risk",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "role": {
+                            "type": "string"
+                          },
+                          "transcript": {
+                            "type": "array"
+                          },
+                          "ftAnswers": {
+                            "type": "array"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Fraud analysis result",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "scores": {
+                              "type": "object",
+                              "properties": {
+                                "pressure": {
+                                  "type": "number"
+                                },
+                                "opportunity": {
+                                  "type": "number"
+                                },
+                                "rationalization": {
+                                  "type": "number"
+                                }
+                              }
+                            },
+                            "riskLevel": {
+                              "type": "string",
+                              "enum": [
+                                "LOW",
+                                "MEDIUM",
+                                "HIGH",
+                                "CRITICAL"
+                              ]
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "redFlags": {
+                              "type": "array"
+                            },
+                            "recommendation": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "CV Parsing",
+        "description": "Automatic CV parsing using Mistral AI to extract structured candidate information",
+        "files": [
+          "components/ParsedCVDisplay.tsx",
+          "components/CandidateDetail.tsx",
+          "functions/index.js"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "paths": {
+            "/parseCVWithMistral": {
+              "post": {
+                "summary": "Parse CV document with AI",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "cvUrl": {
+                            "type": "string"
+                          },
+                          "sessionId": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Parsed CV data",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "success": {
+                              "type": "boolean"
+                            },
+                            "parsedData": {
+                              "type": "object",
+                              "properties": {
+                                "fullName": {
+                                  "type": "string"
+                                },
+                                "email": {
+                                  "type": "string"
+                                },
+                                "phone": {
+                                  "type": "string"
+                                },
+                                "experience": {
+                                  "type": "array"
+                                },
+                                "education": {
+                                  "type": "array"
+                                },
+                                "skills": {
+                                  "type": "array"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Candidate Management",
+        "description": "View and manage candidates with auto/manual invite workflows, detailed profiles, and timeline tracking",
+        "files": [
+          "components/CandidatesAutoView.tsx",
+          "components/CandidatesManualInvite.tsx",
+          "components/CandidateDetail.tsx",
+          "components/CandidateList.tsx",
+          "components/CandidateActivityTimeline.tsx"
+        ]
+      },
+      {
+        "name": "Assessment Invitations",
+        "description": "Send assessment invitations via email with unique access codes",
+        "files": [
+          "components/CandidatesManualInvite.tsx",
+          "components/BulkUploadCandidates.tsx",
+          "components/CandidateBlast.tsx",
+          "functions/index.js"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "paths": {
+            "/sendEmail": {
+              "post": {
+                "summary": "Send email invitation",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "templateId": {
+                            "type": "string",
+                            "enum": [
+                              "candidate_invitation",
+                              "interview_invitation"
+                            ]
+                          },
+                          "to": {
+                            "type": "string"
+                          },
+                          "variables": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Email sent successfully",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "success": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Background Check (KYC)",
+        "description": "Identity verification using Didit integration with ID scan, selfie, and liveness detection",
+        "files": [
+          "components/CandidateDetail.tsx",
+          "components/BackgroundCheckCallback.tsx",
+          "services/didit.ts",
+          "functions/didit-functions.js"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "paths": {
+            "/initiateBackgroundCheck": {
+              "post": {
+                "summary": "Start KYC verification process",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "sessionId": {
+                            "type": "string"
+                          },
+                          "candidateName": {
+                            "type": "string"
+                          },
+                          "candidateEmail": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Background check initiated",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "success": {
+                              "type": "boolean"
+                            },
+                            "verificationLink": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "/diditWebhook": {
+              "post": {
+                "summary": "Receive KYC results from Didit",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "session_number": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "webhook_type": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Workflow Management",
+        "description": "Configure recruitment workflows with customizable steps and credit costs",
+        "files": [
+          "components/WorkflowManager.tsx"
+        ]
+      },
+      {
+        "name": "Credit System",
+        "description": "Manage company credits with subscription tiers (Freemium/Premium), transactions, and usage tracking",
+        "files": [
+          "components/CreditManagementPage.tsx",
+          "components/PricingView.tsx",
+          "services/creditManagement.ts"
+        ]
+      },
+      {
+        "name": "Company Settings",
+        "description": "Manage company profile, branding (logo, colors), and assessment link configuration",
+        "files": [
+          "components/CompanyProfileSettings.tsx",
+          "components/AssessmentSettings.tsx"
+        ]
+      },
+      {
+        "name": "Admin Panel",
+        "description": "Super admin dashboard for managing all companies and system-wide settings",
+        "files": [
+          "components/AdminDashboard.tsx",
+          "components/SuperAdminDashboard.tsx"
+        ]
+      },
+      {
+        "name": "History & Audit",
+        "description": "View historical interview sessions and audit trail with filtering and search",
+        "files": [
+          "components/HistoryView.tsx",
+          "components/ReportView.tsx"
+        ]
+      }
+    ]
+  }
+}

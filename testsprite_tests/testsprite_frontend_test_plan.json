@@ -1,0 +1,402 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Authentication - Successful Login",
+    "description": "Verify that users can login successfully with correct email and password, and role-based access is enforced.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid registered email and correct password"
+      },
+      {
+        "type": "action",
+        "description": "Click the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "User is authenticated, session is created, and dashboard relevant to user role is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Authentication - Failed Login with Incorrect Credentials",
+    "description": "Verify login fails when user provides incorrect email or password, with proper error message.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Input invalid email or incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Click the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Display appropriate error message and prevent access"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Multi-Tenant Data Isolation",
+    "description": "Ensure that users from one company cannot see or access data belonging to another company under all UI views and API responses.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as user from Company A"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access candidate profiles, job postings, and assessments of Company B via UI and API"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied with appropriate errors and no data leakage occurs"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Job Posting Creation and Visibility",
+    "description": "Verify that authorized HR users can create, edit, and publish job postings with company branding and instant assessment toggling, and jobs appear correctly on public career page.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as HR user"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to job management page and create a new job posting with all required fields"
+      },
+      {
+        "type": "action",
+        "description": "Enable instant assessment toggle and save"
+      },
+      {
+        "type": "assertion",
+        "description": "Job appears in the company’s public career page with correct company branding and instant assessment enabled"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Candidate Application Flow with CV Upload and Parsing",
+    "description": "Verify that candidates can apply via public job application portal, upload CV, and that CV is parsed accurately by Mistral AI with structured data stored.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open public job application page for an active job"
+      },
+      {
+        "type": "action",
+        "description": "Fill candidate details and upload a valid CV file"
+      },
+      {
+        "type": "action",
+        "description": "Submit application"
+      },
+      {
+        "type": "assertion",
+        "description": "Application is accepted, CV parsing API is called, and parsed structured data is saved and viewable in candidate profile"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "AI Interview System - Chatbot Interview Flow Successful",
+    "description": "Validate that AI chatbot using Google Gemini conducts STAR method interview in Bahasa Indonesia and returns conversational responses correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start AI interview session for candidate"
+      },
+      {
+        "type": "action",
+        "description": "Respond to chatbot questions sequentially"
+      },
+      {
+        "type": "assertion",
+        "description": "AI responses are returned in Bahasa Indonesia aligned with STAR interview method and chat history is maintained"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "AI Interview System - Fallback On API Error",
+    "description": "Verify that the system handles Google Gemini API failures gracefully, showing meaningful error messages or retry options.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate Google Gemini API timeout or failure when generating response"
+      },
+      {
+        "type": "assertion",
+        "description": "UI shows error notification and allows retry without data loss"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Fraud Risk Analysis Accuracy and Mapping",
+    "description": "Ensure that the fraud risk analysis API correctly processes interview transcripts and structured answers to produce valid scores, risk levels, red flags, and hiring recommendations.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit a valid candidate interview transcript and structured fraud triangle answers to fraud risk analysis API"
+      },
+      {
+        "type": "assertion",
+        "description": "Response returns numeric scores within expected ranges, correct mapping to risk levels, relevant red flags, and readable recommendations"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Background Check Initiation and Credit Deduction",
+    "description": "Verify that initiating a KYC background check via Didit integration deducts the appropriate number of credits from the company’s balance and generates a secure verification link.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger background check for a candidate through UI"
+      },
+      {
+        "type": "assertion",
+        "description": "Check Didit API is called correctly, a verification link is generated, company credits decrease accordingly, and logs are updated"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "KYC Status Update via Webhook",
+    "description": "Verify that real-time KYC status updates from Didit webhook are processed securely and update candidate profile statuses appropriately.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send mock webhook payloads mimicking Didit status updates (e.g. success, pending, failed)"
+      },
+      {
+        "type": "assertion",
+        "description": "System processes updates securely verifying payload authenticity, updates candidate KYC status in database and UI, and logs event"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Credit System Transactions and Logging",
+    "description": "Validate that all credit usage and subscription transactions are logged with proper metadata, and company credit balances update accurately.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform operations that consume credits (background checks, assessment invites)"
+      },
+      {
+        "type": "action",
+        "description": "Purchase or upgrade subscription tiers"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify credit balances, transaction logs contain correct timestamps, user info, action details, and no discrepancies exist"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Email Invitation System with Template Variables",
+    "description": "Verify candidate and interview email invitations are sent successfully using Resend API with all template variables populated correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send email invitation for candidate and interview through the system"
+      },
+      {
+        "type": "assertion",
+        "description": "Emails are delivered, templates render variables such as candidate name, job title, interview link correctly, and success response is received"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Public Routes and Access Code Validation",
+    "description": "Ensure all public routes are accessible without authentication but enforce assessment access code validation before allowing assessment start.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Visit public job application and assessment pages without login"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to start assessment with and without valid access code"
+      },
+      {
+        "type": "assertion",
+        "description": "Assessments start only with valid access code; invalid or missing codes block access with appropriate message"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Dashboard Real-Time Data and Role-Based Views",
+    "description": "Verify that the executive dashboard provides up-to-date timeline events, company stats, and recent activities filtered and displayed as per user role.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as user with different roles (HR, Admin, Superadmin)"
+      },
+      {
+        "type": "assertion",
+        "description": "Dashboard data updates in near-real-time and displayed information is appropriate to user role permissions"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Workflow Management - Custom Steps and Credit Costs",
+    "description": "Verify that recruitment workflows can be configured with customized steps and assigned credit costs, and changes persist correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access workflow manager, add/edit workflow steps and assign credit cost values"
+      },
+      {
+        "type": "action",
+        "description": "Save and retrieve workflows"
+      },
+      {
+        "type": "assertion",
+        "description": "Workflow steps and credit costs are saved properly and reflected in candidate assessment and credit deductions"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Edge Case - Insufficient Credits Handling",
+    "description": "Verify system behavior when a company has insufficient credits to start background checks or send assessment invitations, ensuring proper error messages and no operation completion.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Setup company with zero or insufficient credits"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to initiate background check or send assessment invitation"
+      },
+      {
+        "type": "assertion",
+        "description": "Operations are blocked, user receives clear error message about insufficient credits, and no credits are deducted"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Edge Case - Concurrency in Candidate Application",
+    "description": "Simulate multiple simultaneous candidate applications to verify system handles data concurrency properly without data loss or race conditions.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simultaneously submit multiple candidate applications for the same job"
+      },
+      {
+        "type": "assertion",
+        "description": "All applications are processed correctly, stored distinctly, and no data overwrites or corruption occurs"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Edge Case - API Timeout Handling",
+    "description": "Verify that timeouts or delays in AI services (Google Gemini, Mistral AI) or Didit background check do not crash the system and provide user feedback.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate delayed or timed out responses from AI or Didit APIs"
+      },
+      {
+        "type": "assertion",
+        "description": "System handles timeouts gracefully by retrying or showing informative messages without freezing or crashing"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Company Branding Application",
+    "description": "Verify that each company’s branding settings (logo, colors) are correctly applied across their public pages and admin UI components.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Update company logo and color settings in company profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Changes are reflected immediately and consistently on public career page, job postings, assessments, and admin interfaces"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "History and Audit View Filtering and Search",
+    "description": "Verify that users can filter and search historical interview sessions and audit trails by multiple criteria and that results update correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to history and audit views"
+      },
+      {
+        "type": "action",
+        "description": "Apply filters such as date range, user, and event type; perform keyword search"
+      },
+      {
+        "type": "assertion",
+        "description": "Filtered and searched results reflect criteria accurately with no missing or extra records"
+      }
+    ]
+  }
+]

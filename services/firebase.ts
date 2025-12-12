@@ -8,7 +8,9 @@ import {
   sendEmailVerification,
   User as FirebaseUser,
   onAuthStateChanged as firebaseOnAuthStateChanged,
-  Auth
+  Auth,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -425,6 +427,115 @@ export const resendVerificationEmail = async (): Promise<void> => {
       throw new Error('Terlalu banyak permintaan. Tunggu beberapa menit sebelum mencoba lagi.');
     } else {
       throw new Error(error.message || 'Gagal mengirim ulang email verifikasi.');
+    }
+  }
+};
+
+/**
+ * Sign in with Google OAuth
+ * Creates user profile in Firestore if first time, otherwise logs in existing user
+ */
+export const signInWithGoogle = async (): Promise<UserProfile> => {
+  try {
+    console.log('[AUTH] 🔐 Starting Google Sign-In...');
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      // Show brand name instead of Firebase project URL
+      login_hint: 'HireGood.one'
+    });
+
+    // Show Google Sign-In popup
+    const result = await signInWithPopup(auth, provider);
+    const firebaseUser = result.user;
+
+    console.log('[AUTH] ✅ Google Sign-In successful:', firebaseUser.uid);
+    console.log('[AUTH] Email:', firebaseUser.email);
+    console.log('[AUTH] Display Name:', firebaseUser.displayName);
+
+    // Check if user already exists in Firestore
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where('email', '==', firebaseUser.email), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      // Existing user - just login
+      const userData = snapshot.docs[0].data() as UserProfile;
+      console.log('[AUTH] ✅ Existing user found, logging in');
+      return {
+        ...userData,
+        id: firebaseUser.uid,
+        emailVerified: firebaseUser.emailVerified
+      };
+    }
+
+    // New user - create profile
+    console.log('[AUTH] 📝 New user, creating profile...');
+
+    const userProfile: UserProfile = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+      email: firebaseUser.email!,
+      role: 'Company Admin',
+      avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(firebaseUser.displayName || 'User')}&background=random`,
+      companyId: 'temp-' + firebaseUser.uid,
+      emailVerified: firebaseUser.emailVerified,
+      createdAt: Timestamp.now()
+    };
+
+    // Create company and user profile in background
+    (async () => {
+      try {
+        // Extract company name from email domain or use display name
+        const emailDomain = firebaseUser.email?.split('@')[1]?.split('.')[0] || 'Company';
+        const companyName = firebaseUser.displayName?.split(' ')[0] + ' Company' || emailDomain;
+
+        const companyData: Omit<CompanyProfile, 'id'> = {
+          name: companyName,
+          tier: 'Freemium',
+          status: 'Active',
+          adminEmail: firebaseUser.email!,
+          joinedDate: new Date().toISOString(),
+          usersCount: 1,
+          credits: 1000,
+          verification_credits: 100,
+          createdAt: Timestamp.now()
+        };
+
+        const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
+        console.log('[AUTH] ✅ Company profile created:', companyRef.id);
+
+        // Update user profile with real company ID
+        userProfile.companyId = companyRef.id;
+
+        // Create user profile in Firestore
+        await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
+        console.log('[AUTH] ✅ User profile created in Firestore');
+
+      } catch (firestoreError: any) {
+        console.error('[AUTH] ⚠️ Background Firestore error (non-critical):', firestoreError.code);
+      }
+    })();
+
+    console.log('[AUTH] ✅ Google Sign-In complete!');
+    return userProfile;
+
+  } catch (error: any) {
+    console.error('[AUTH] ❌ Google Sign-In error:', error);
+    console.error('[AUTH] Error code:', error.code);
+    console.error('[AUTH] Error message:', error.message);
+
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Login dibatalkan. Silakan coba lagi.');
+    } else if (error.code === 'auth/popup-blocked') {
+      throw new Error('Popup diblokir oleh browser. Izinkan popup dan coba lagi.');
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      throw new Error('Login dibatalkan.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Koneksi internet bermasalah. Periksa koneksi Anda.');
+    } else {
+      throw new Error(error.message || 'Gagal login dengan Google. Silakan coba lagi.');
     }
   }
 };

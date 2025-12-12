@@ -1,0 +1,32 @@
+[
+  {
+    "id": "TC001",
+    "title": "generate ai chatbot response",
+    "description": "Test the /generateAIResponse POST endpoint to verify that it generates AI chatbot responses correctly based on input role, message, history, and candidate data. Validate the response structure, success flag, and model used."
+  },
+  {
+    "id": "TC002",
+    "title": "analyze candidate fraud risk",
+    "description": "Test the /analyzeFraudRisk POST endpoint to ensure it accurately analyzes candidate fraud risk using the Fraud Triangle framework. Verify the returned scores for pressure, opportunity, rationalization, risk level classification, summary, red flags, and recommendations."
+  },
+  {
+    "id": "TC003",
+    "title": "parse cv document with ai",
+    "description": "Test the /parseCVWithMistral POST endpoint to confirm it correctly parses CV documents and returns structured candidate information including full name, email, phone, experience, education, and skills."
+  },
+  {
+    "id": "TC004",
+    "title": "send email invitation",
+    "description": "Test the /sendEmail POST endpoint to verify that email invitations are sent successfully using specified templates (candidate_invitation or interview_invitation) with correct recipient and variable substitution."
+  },
+  {
+    "id": "TC005",
+    "title": "initiate background check",
+    "description": "Test the /initiateBackgroundCheck POST endpoint to ensure it initiates the KYC verification process correctly, returning a success flag and a valid verification link."
+  },
+  {
+    "id": "TC006",
+    "title": "receive kyc results from didit",
+    "description": "Test the /diditWebhook POST endpoint to verify that KYC results from Didit are received and processed correctly, handling session number, status, and webhook type securely."
+  }
+]

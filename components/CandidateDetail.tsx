@@ -2448,7 +2448,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           <>
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6 mb-6">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-1">Laporan Pemeriksaan Latar Belakang</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Verifikasi Identitas & KYC oleh Didit</p>
                   {candidate.backgroundCheck?.status ? (
@@ -2476,7 +2476,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     </div>
                   )}
                 </div>
-                <div className="text-right">
+
+                {/* Resend KYC Button */}
+                <div className="flex flex-col items-end gap-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Status Verifikasi</div>
                   <div className={`text-3xl font-black ${candidate.backgroundCheck?.status === 'approved' ? 'text-green-600 dark:text-green-400'
                     : candidate.backgroundCheck?.status === 'declined' ? 'text-red-600 dark:text-red-400'
@@ -2486,6 +2488,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                       : candidate.backgroundCheck?.status === 'declined' ? '✗'
                         : '--'}
                   </div>
+
+                  {/* Show Resend Button if KYC has been initiated */}
+                  {candidate.backgroundCheck?.diditSessionId && (
+                    <button
+                      onClick={() => setShowBgCheckModal(true)}
+                      disabled={isUpdating}
+                      className="mt-2 px-4 py-2 bg-gradient-to-r from-[#D95D00] to-[#FF6B35] text-white rounded-lg hover:shadow-lg transition-all font-semibold text-sm disabled:opacity-50 flex items-center gap-2"
+                      title="Kirim ulang link KYC ke kandidat (100 kredit)"
+                    >
+                      <Mail size={16} />
+                      Kirim Ulang KYC
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2919,6 +2934,158 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     </div>
                   </div>
                 </div>
+
+                {/* Liveness & IP Analysis */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Liveness Detection */}
+                  {candidate.backgroundCheck.liveness && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
+                          <Activity size={20} className="text-pink-600 dark:text-pink-400" />
+                        </div>
+                        <h3 className="font-bold text-gray-800 dark:text-white">Liveness Detection</h3>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Status</span>
+                          <span className={`text-sm font-bold ${candidate.backgroundCheck.liveness.status === 'approved'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-yellow-600 dark:text-yellow-400'
+                            }`}>
+                            {candidate.backgroundCheck.liveness.status || 'Checking'}
+                          </span>
+                        </div>
+
+                        {candidate.backgroundCheck.liveness.score !== undefined && (
+                          <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Confidence Score</span>
+                            <span className="text-sm font-bold text-gray-800 dark:text-white">
+                              {Math.round(candidate.backgroundCheck.liveness.score * 100)}%
+                            </span>
+                          </div>
+                        )}
+
+                        {candidate.backgroundCheck.liveness.ageEstimation && (
+                          <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Estimasi Usia</span>
+                            <span className="text-sm font-bold text-gray-800 dark:text-white">
+                              ~{candidate.backgroundCheck.liveness.ageEstimation} tahun
+                            </span>
+                          </div>
+                        )}
+
+                        {candidate.backgroundCheck.liveness.referenceImage && (
+                          <div className="mt-3">
+                            <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Reference Image</p>
+                            <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600">
+                              <img
+                                src={`data:image/jpeg;base64,${candidate.backgroundCheck.liveness.referenceImage}`}
+                                alt="Liveness Reference"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* IP Analysis */}
+                  {candidate.backgroundCheck.ipAnalysis && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                          <Globe size={20} className="text-cyan-600 dark:text-cyan-400" />
+                        </div>
+                        <h3 className="font-bold text-gray-800 dark:text-white">IP Analysis</h3>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">IP Address</span>
+                          <span className="text-sm font-bold text-gray-800 dark:text-white font-mono">
+                            {candidate.backgroundCheck.ipAnalysis.ipAddress || '-'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Country</span>
+                          <span className="text-sm font-bold text-gray-800 dark:text-white">
+                            {candidate.backgroundCheck.ipAnalysis.country || '-'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">VPN/Tor Detection</span>
+                          <span className={`text-sm font-bold ${candidate.backgroundCheck.ipAnalysis.isVpnOrTor
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
+                            }`}>
+                            {candidate.backgroundCheck.ipAnalysis.isVpnOrTor ? '⚠️ Detected' : '✓ Clean'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Status</span>
+                          <span className={`text-sm font-bold ${candidate.backgroundCheck.ipAnalysis.status === 'approved'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-yellow-600 dark:text-yellow-400'
+                            }`}>
+                            {candidate.backgroundCheck.ipAnalysis.status || 'Checking'}
+                          </span>
+                        </div>
+
+                        {candidate.backgroundCheck.ipAnalysis.isVpnOrTor && (
+                          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-xs font-bold text-red-700 dark:text-red-400">VPN/Tor Terdeteksi</p>
+                                <p className="text-xs text-red-600 dark:text-red-500 mt-1">
+                                  Kandidat menggunakan VPN atau Tor saat verifikasi. Ini bisa mengindikasikan upaya menyembunyikan lokasi asli.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Warnings Detail */}
+                {candidate.backgroundCheck.warnings && candidate.backgroundCheck.warnings.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-200 dark:border-red-800 p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                        <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
+                      </div>
+                      <h3 className="font-bold text-gray-800 dark:text-white">Peringatan Verifikasi</h3>
+                      <span className="ml-auto bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">
+                        {candidate.backgroundCheck.warnings.length} Warning{candidate.backgroundCheck.warnings.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {candidate.backgroundCheck.warnings.map((warning, index) => (
+                        <div key={index} className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                          <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm text-red-700 dark:text-red-400 font-medium">{warning}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                        <strong>Catatan:</strong> Peringatan ini tidak otomatis menolak kandidat, namun perlu ditinjau lebih lanjut oleh HR.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             {/* ========== END: KYC Data Display Section ========== */}
