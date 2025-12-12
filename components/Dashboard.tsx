@@ -1,9 +1,10 @@
 
 
-import React, { useState } from 'react';
-import { Users, AlertTriangle, FileCheck, Copy, Check, ExternalLink, RefreshCw, Lock, Zap, Send, FileText, CreditCard, Crown, BarChart3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, AlertTriangle, FileCheck, Copy, Check, ExternalLink, RefreshCw, Lock, Zap, Send, FileText, CreditCard, Crown, BarChart3, Unlock } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile, TimelineEvent, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
+import { calculateApplicationRanks, shouldBlurByApplicationRank } from '../services/creditManagement';
 
 interface DashboardProps {
   timelineEvents: TimelineEvent[];
@@ -12,10 +13,13 @@ interface DashboardProps {
   onReviewSession?: (session: InterviewSession) => void;
   onViewAll?: () => void;
   creditBalance?: number;
+  onUnlockCandidate?: (candidate: InterviewSession) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll, creditBalance }) => {
+const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll, creditBalance, onUnlockCandidate }) => {
   const [copied, setCopied] = useState(false);
+  const [applicationRanks, setApplicationRanks] = useState<Map<string, number>>(new Map());
+  const [unlockedCandidates, setUnlockedCandidates] = useState<Set<string>>(new Set());
 
   // FEATURE GATING
   const features = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier]
@@ -24,6 +28,23 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
 
   // 1. DATA PROCESSING
   const sessions = timelineEvents.filter(e => e.type === 'SESSION').map(e => e.data as InterviewSession);
+
+  // Calculate application ranks and load unlocked candidates
+  useEffect(() => {
+    if (sessions.length > 0) {
+      const ranks = calculateApplicationRanks(sessions);
+      setApplicationRanks(ranks);
+
+      // Load previously unlocked candidates
+      const unlockedIds = new Set<string>();
+      sessions.forEach(s => {
+        if ((s as any).unlockedAt) {
+          unlockedIds.add(s.id);
+        }
+      });
+      setUnlockedCandidates(unlockedIds);
+    }
+  }, [timelineEvents]);
 
   // Calculate Stats
   const totalInterviews = sessions.length;
@@ -143,6 +164,10 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
               const consistency = candidate.analysis?.consistencyScore || 0;
               const riskLevel = candidate.analysis?.riskLevel || 'Low';
 
+              // Check if candidate should be blurred
+              const rank = applicationRanks.get(candidate.id) || 999;
+              const isBlurred = shouldBlurByApplicationRank(rank, currentCompany?.tier || 'Freemium') && !unlockedCandidates.has(candidate.id);
+
               // Refined Rank visuals
               const rankConfig = idx === 0
                 ? { label: 'Top #1', text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', ring: 'ring-amber-100' }
@@ -161,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                     {rankConfig.label}
                   </div>
 
-                  <div className="relative flex flex-col items-center text-center mb-4 mt-2">
+                  <div className={`relative flex flex-col items-center text-center mb-4 mt-2 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
                     <div className={`h-16 w-16 rounded-full p-1 bg-white mb-3 shadow-md border ${rankConfig.border}`}>
                       <div className={`h-full w-full rounded-full bg-gradient-to-br from-brand-blue to-purple-600 flex items-center justify-center text-white font-bold text-2xl`}>
                         {candidate.candidate.name.charAt(0)}
@@ -172,7 +197,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                     <p className="text-xs text-brand-blue font-medium bg-brand-blue/5 px-2 py-0.5 rounded-md mt-1">{candidate.candidate.role}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-5 border-t border-gray-100 dark:border-slate-700 pt-4">
+                  <div className={`grid grid-cols-2 gap-3 mb-5 border-t border-gray-100 dark:border-slate-700 pt-4 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
                     <div className="text-center">
                       <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Integritas</p>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${riskLevel === 'Low' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
@@ -185,12 +210,22 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => onViewSession && onViewSession(candidate.id)}
-                    className="w-full py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-brand-dark hover:text-white dark:hover:bg-brand-blue transition-all flex items-center justify-center gap-2 group-hover:shadow-md border border-gray-100 dark:border-slate-700"
-                  >
-                    Lihat Profil
-                  </button>
+                  {isBlurred ? (
+                    <button
+                      onClick={() => onUnlockCandidate && onUnlockCandidate(candidate)}
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-sm hover:from-orange-600 hover:to-orange-700 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                    >
+                      <Unlock size={16} />
+                      Unlock (2 Credit)
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onViewSession && onViewSession(candidate.id)}
+                      className="w-full py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-brand-dark hover:text-white dark:hover:bg-brand-blue transition-all flex items-center justify-center gap-2 group-hover:shadow-md border border-gray-100 dark:border-slate-700"
+                    >
+                      Lihat Profil
+                    </button>
+                  )}
                 </div>
               )
             })}

@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard, AlertTriangle, X } from 'lucide-react';
+import { Menu, Loader2, Database, WifiOff, RefreshCw, CheckCircle2, User, CreditCard, AlertTriangle, X, Unlock } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ActiveInterview from './components/ActiveInterview';
@@ -29,8 +29,95 @@ import CreditManagementPage from './components/CreditManagementPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
-import { getCreditBalance } from './services/creditManagement';
-import { ToastProvider } from './components/Toast';
+import { getCreditBalance, deductCredit, CREDIT_COSTS } from './services/creditManagement';
+import { ToastProvider, useToast } from './components/Toast';
+import { db, COLLECTIONS } from './services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+
+// Unlock Modal Component
+interface UnlockModalProps {
+  candidate: InterviewSession;
+  creditBalance: number;
+  isUnlocking: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const UnlockModal: React.FC<UnlockModalProps> = ({ candidate, creditBalance, isUnlocking, onConfirm, onCancel }) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-800 dark:text-white">Konfirmasi Unlock Kandidat</h3>
+          <button
+            onClick={onCancel}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+          >
+            <X size={20} className="text-gray-500" />
+          </button>
+        </div>
+
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-12 w-12 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
+              <User className="text-brand-orange" size={24} />
+            </div>
+            <div>
+              <p className="font-bold text-gray-800 dark:text-white">{candidate.candidate.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{candidate.candidate.role || 'Unknown Position'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="text-blue-600" size={20} />
+              <span className="font-semibold text-gray-800 dark:text-white">Biaya Unlock:</span>
+            </div>
+            <span className="text-xl font-bold text-blue-600">{CREDIT_COSTS.UNLOCK_PROFILE} Credit</span>
+          </div>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Anda:</span>
+            <span className={`font-bold ${creditBalance >= CREDIT_COSTS.UNLOCK_PROFILE ? 'text-green-600' : 'text-red-600'}`}>
+              {creditBalance} Credit
+            </span>
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Dengan menggunakan {CREDIT_COSTS.UNLOCK_PROFILE} credit, Anda akan mendapatkan akses penuh untuk melihat profil dan detail assessment kandidat ini.
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-3 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+          >
+            Batal
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isUnlocking || creditBalance < CREDIT_COSTS.UNLOCK_PROFILE}
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isUnlocking ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Unlock size={18} />
+                Unlock Kandidat
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   // Auth State
@@ -89,6 +176,11 @@ const App: React.FC = () => {
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [reviewingSession, setReviewingSession] = useState<InterviewSession | null>(null);
   const [viewingCandidateId, setViewingCandidateId] = useState<string | null>(null);
+
+  // Unlock Modal State
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [selectedCandidateForUnlock, setSelectedCandidateForUnlock] = useState<InterviewSession | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   // Settings View State
   const [settingsTab, setSettingsTab] = useState<'profile' | 'subscription'>('profile');
@@ -482,6 +574,12 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle unlock candidate from Dashboard
+  const handleUnlockCandidate = (candidate: InterviewSession) => {
+    setSelectedCandidateForUnlock(candidate);
+    setShowUnlockModal(true);
+  };
+
   const getPageTitle = (tab: string) => {
     switch (tab) {
       case 'dashboard': return 'Ringkasan Eksekutif';
@@ -625,6 +723,7 @@ const App: React.FC = () => {
           onReviewSession={handleReviewSession}
           onViewAll={() => setActiveTab('history')}
           creditBalance={creditBalance}
+          onUnlockCandidate={handleUnlockCandidate}
         />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
@@ -846,6 +945,75 @@ const App: React.FC = () => {
             {renderContent()}
           </div>
         </main>
+
+        {/* Unlock Confirmation Modal */}
+        {showUnlockModal && selectedCandidateForUnlock && (
+          <UnlockModal
+            candidate={selectedCandidateForUnlock}
+            creditBalance={creditBalance || 0}
+            isUnlocking={isUnlocking}
+            onConfirm={async () => {
+              if (!currentCompany?.id) return;
+
+              const unlockCost = CREDIT_COSTS.UNLOCK_PROFILE;
+
+              if ((creditBalance || 0) < unlockCost) {
+                alert(`Kredit tidak cukup. Dibutuhkan: ${unlockCost}, Tersedia: ${creditBalance || 0}`);
+                setShowUnlockModal(false);
+                return;
+              }
+
+              setIsUnlocking(true);
+              try {
+                const result = await deductCredit(
+                  currentCompany.id,
+                  unlockCost,
+                  'UNLOCK_PROFILE',
+                  `Unlock kandidat: ${selectedCandidateForUnlock.candidate.name}`,
+                  {
+                    candidateId: selectedCandidateForUnlock.id,
+                    candidateName: selectedCandidateForUnlock.candidate.name,
+                    sessionId: selectedCandidateForUnlock.id
+                  }
+                );
+
+                if (result.success) {
+                  // Save unlock status to Firestore
+                  const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
+                  await updateDoc(sessionRef, {
+                    unlockedAt: new Date().toISOString(),
+                    unlockedByCompanyId: currentCompany.id
+                  });
+
+                  // Update credit balance
+                  setCreditBalance(result.remainingCredits);
+
+                  alert(`Kandidat ${selectedCandidateForUnlock.candidate.name} berhasil di-unlock! Sisa kredit: ${result.remainingCredits}`);
+                  setShowUnlockModal(false);
+
+                  // Navigate to candidate detail
+                  setViewingCandidateId(selectedCandidateForUnlock.id);
+                  setActiveTab('history');
+
+                  // Reload data to refresh unlock status
+                  window.location.reload();
+                } else {
+                  alert(result.error || 'Gagal unlock kandidat');
+                }
+              } catch (error: any) {
+                console.error('[UNLOCK] Error:', error);
+                alert('Terjadi kesalahan saat unlock kandidat');
+              } finally {
+                setIsUnlocking(false);
+                setSelectedCandidateForUnlock(null);
+              }
+            }}
+            onCancel={() => {
+              setShowUnlockModal(false);
+              setSelectedCandidateForUnlock(null);
+            }}
+          />
+        )}
       </div>
     </ToastProvider>
   );
