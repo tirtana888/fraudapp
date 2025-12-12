@@ -554,7 +554,9 @@ export const observeAuthState = (callback: (user: UserProfile | null) => void) =
 
         if (!snapshot.empty) {
           const userData = snapshot.docs[0].data() as UserProfile;
-          console.log('[AUTH] 📋 Firestore user data:', JSON.stringify(userData, null, 2));
+          // 🔒 SECURITY: Remove sensitive fields before logging
+          const { password, ...safeUserData } = userData as any;
+          console.log('[AUTH] 📋 Firestore user data:', JSON.stringify(safeUserData, null, 2));
           console.log('[AUTH] 👤 User role from Firestore:', userData.role);
 
           // Update email verification status if changed

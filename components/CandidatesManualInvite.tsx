@@ -46,11 +46,11 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
 
   useEffect(() => {
     if (currentCompany?.id) {
-        const unsubscribe = subscribeToInvites(currentCompany.id, (data) => {
-            setInvites(data);
-            loadCompletedCandidates(data);
-        });
-        return () => unsubscribe();
+      const unsubscribe = subscribeToInvites(currentCompany.id, (data) => {
+        setInvites(data);
+        loadCompletedCandidates(data);
+      });
+      return () => unsubscribe();
     }
   }, [currentCompany?.id]);
 
@@ -73,6 +73,14 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
             const sessionDoc = await getDoc(doc(db, COLLECTIONS.SESSIONS, invite.sessionId!));
             if (sessionDoc.exists()) {
               const sessionData = { id: sessionDoc.id, ...sessionDoc.data() } as InterviewSession;
+
+              // 🔧 FIX: Exclude job applications (auto sourcing)
+              // Only show manual invites and public link assessments
+              if (sessionData.source === 'job_application') {
+                console.log('[MANUAL-INVITE] ⏭️ Skipping job application session:', sessionDoc.id);
+                return null;
+              }
+
               return {
                 ...sessionData,
                 accessCode: invite.access_code
@@ -93,7 +101,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
       });
 
       setCompletedCandidates(validCandidates);
-      console.log('[MANUAL-INVITE] Loaded completed candidates:', validCandidates.length);
+      console.log('[MANUAL-INVITE] ✅ Loaded completed candidates (excluding job applications):', validCandidates.length);
     } catch (error) {
       console.error('[MANUAL-INVITE] Error loading completed candidates:', error);
     } finally {
@@ -125,7 +133,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
     try {
       // Find the invite to get candidate name
       const invite = invites.find(inv => inv.id === inviteId);
-      
+
       // Deduct 2 credits for resending invite
       const deductionResult = await deductCredit(
         currentCompany.id,
@@ -194,48 +202,48 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
     setStatusMessage('Memvalidasi data...');
 
     try {
-        console.log("Attempting to send blast...");
+      console.log("Attempting to send blast...");
 
-        if (!currentCompany || !currentCompany.id) {
-            throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
-        }
+      if (!currentCompany || !currentCompany.id) {
+        throw new Error("Profil perusahaan tidak termuat. Silakan refresh halaman.");
+      }
 
-        const planFeatures = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier] 
-            ? PLAN_LIMITS[currentCompany.tier] 
-            : PLAN_LIMITS['Freemium'];
-        if (planFeatures?.allow_permanent_link !== true) {
-            throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
-        }
+      const planFeatures = currentCompany?.tier && PLAN_LIMITS[currentCompany.tier]
+        ? PLAN_LIMITS[currentCompany.tier]
+        : PLAN_LIMITS['Freemium'];
+      if (planFeatures?.allow_permanent_link !== true) {
+        throw new Error("Fitur undangan massal hanya tersedia untuk paket Premium/Enterprise.");
+      }
 
-        const validCandidates = candidates.filter(c => c.name.trim() && c.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
+      const validCandidates = candidates.filter(c => c.name.trim() && c.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
 
-        if (validCandidates.length === 0) {
-            throw new Error("Mohon isi minimal Nama dan Email yang valid untuk satu kandidat.");
-        }
+      if (validCandidates.length === 0) {
+        throw new Error("Mohon isi minimal Nama dan Email yang valid untuk satu kandidat.");
+      }
 
-        setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
+      setStatusMessage(`Mengirim ${validCandidates.length} undangan...`);
 
-        const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
+      const result = await blastAssessmentInvites(validCandidates, currentCompany.id, currentCompany.name);
 
-        if (result.success > 0) {
-            setBlastStatus('success');
-            setStatusMessage(`✅ ${result.success} email undangan berhasil dikirim! ${result.failed > 0 ? `❌ ${result.failed} gagal dikirim.` : ''}`);
-            setCandidates([{ name: '', email: '', role: '' }]);
-        } else {
-            throw new Error(`Gagal mengirim undangan. ${result.failed} kandidat gagal. Periksa konfigurasi Firebase Functions.`);
-        }
+      if (result.success > 0) {
+        setBlastStatus('success');
+        setStatusMessage(`✅ ${result.success} email undangan berhasil dikirim! ${result.failed > 0 ? `❌ ${result.failed} gagal dikirim.` : ''}`);
+        setCandidates([{ name: '', email: '', role: '' }]);
+      } else {
+        throw new Error(`Gagal mengirim undangan. ${result.failed} kandidat gagal. Periksa konfigurasi Firebase Functions.`);
+      }
     } catch (error: any) {
-        console.error("Blast sending failed:", error);
-        setBlastStatus('error');
-        setStatusMessage(error.message || "Terjadi kesalahan tak terduga.");
+      console.error("Blast sending failed:", error);
+      setBlastStatus('error');
+      setStatusMessage(error.message || "Terjadi kesalahan tak terduga.");
     } finally {
-        setIsSending(false);
-        console.log("Process finished. Button unlocked.");
+      setIsSending(false);
+      console.log("Process finished. Button unlocked.");
 
-        setTimeout(() => {
-            setBlastStatus('idle');
-            setStatusMessage('');
-        }, 8000);
+      setTimeout(() => {
+        setBlastStatus('idle');
+        setStatusMessage('');
+      }, 8000);
     }
   };
 
@@ -379,102 +387,100 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <UserPlus className="text-brand-orange" size={28} /> Manual Invite
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
-                Kirim undangan test dengan Access Code unik ke kandidat dari berbagai sumber
-            </p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <UserPlus className="text-brand-orange" size={28} /> Manual Invite
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Kirim undangan test dengan Access Code unik ke kandidat dari berbagai sumber
+          </p>
         </div>
         <button
-            onClick={() => setIsBulkUploadOpen(true)}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2 hover:scale-105"
+          onClick={() => setIsBulkUploadOpen(true)}
+          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2 hover:scale-105"
         >
-            <Upload size={20} />
-            Upload Bulk Excel/CSV
+          <Upload size={20} />
+          Upload Bulk Excel/CSV
         </button>
       </div>
 
       {/* INPUT FORM */}
       <div className="bg-white dark:bg-brand-slate-850 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-         <div className="flex justify-between items-center mb-4">
-             <h3 className="font-bold text-gray-700 dark:text-gray-200">Input Data Kandidat</h3>
-             <button onClick={handleAddRow} className="text-sm text-brand-blue font-bold hover:underline flex items-center gap-1">
-                 <Plus size={16} /> Tambah Baris
-             </button>
-         </div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-gray-700 dark:text-gray-200">Input Data Kandidat</h3>
+          <button onClick={handleAddRow} className="text-sm text-brand-blue font-bold hover:underline flex items-center gap-1">
+            <Plus size={16} /> Tambah Baris
+          </button>
+        </div>
 
-         <div className="space-y-3">
-             {candidates.map((c, idx) => (
-                 <div key={idx} className="flex flex-col md:flex-row gap-3 items-center">
-                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
-                         {idx + 1}
-                     </div>
-                     <input
-                        type="text"
-                        placeholder="Nama Lengkap"
-                        value={c.name}
-                        onChange={(e) => handleChange(idx, 'name', e.target.value)}
-                        className="flex-1 w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                     />
-                     <input
-                        type="email"
-                        placeholder="Email"
-                        value={c.email}
-                        onChange={(e) => handleChange(idx, 'email', e.target.value)}
-                        className="flex-1 w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                     />
-                     <div className="relative w-full md:w-1/3">
-                        <select
-                            value={c.role}
-                            onChange={(e) => handleChange(idx, 'role', e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue appearance-none"
-                        >
-                            <option value="">Pilih Posisi (Opsional)</option>
-                            {AVAILABLE_ROLES.map((role, rIdx) => (
-                                <option key={rIdx} value={role}>{role}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-2.5 text-gray-400 pointer-events-none" size={16} />
-                     </div>
+        <div className="space-y-3">
+          {candidates.map((c, idx) => (
+            <div key={idx} className="flex flex-col md:flex-row gap-3 items-center">
+              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+                {idx + 1}
+              </div>
+              <input
+                type="text"
+                placeholder="Nama Lengkap"
+                value={c.name}
+                onChange={(e) => handleChange(idx, 'name', e.target.value)}
+                className="flex-1 w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={c.email}
+                onChange={(e) => handleChange(idx, 'email', e.target.value)}
+                className="flex-1 w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              />
+              <div className="relative w-full md:w-1/3">
+                <select
+                  value={c.role}
+                  onChange={(e) => handleChange(idx, 'role', e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue appearance-none"
+                >
+                  <option value="">Pilih Posisi (Opsional)</option>
+                  {AVAILABLE_ROLES.map((role, rIdx) => (
+                    <option key={rIdx} value={role}>{role}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-2.5 text-gray-400 pointer-events-none" size={16} />
+              </div>
 
-                     {candidates.length > 1 && (
-                         <button onClick={() => handleRemoveRow(idx)} className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
-                             <X size={16} />
-                         </button>
-                     )}
-                 </div>
-             ))}
-         </div>
+              {candidates.length > 1 && (
+                <button onClick={() => handleRemoveRow(idx)} className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
 
-         <div className="mt-6 flex flex-col md:flex-row justify-between gap-3 items-center">
-             {/* STATUS MESSAGE */}
-             <div className="w-full md:w-auto">
-                 {statusMessage && (
-                     <div className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 w-full animate-in fade-in ${
-                         blastStatus === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-                         blastStatus === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
-                         'bg-blue-50 text-blue-700 border border-blue-200'
-                     }`}>
-                         {blastStatus === 'success' ? <CheckCircle2 size={16} /> :
-                          blastStatus === 'error' ? <AlertCircle size={16} /> :
-                          <Loader2 size={16} className="animate-spin" />}
-                         {statusMessage}
-                     </div>
-                 )}
-             </div>
+        <div className="mt-6 flex flex-col md:flex-row justify-between gap-3 items-center">
+          {/* STATUS MESSAGE */}
+          <div className="w-full md:w-auto">
+            {statusMessage && (
+              <div className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 w-full animate-in fade-in ${blastStatus === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+                  blastStatus === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
+                    'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}>
+                {blastStatus === 'success' ? <CheckCircle2 size={16} /> :
+                  blastStatus === 'error' ? <AlertCircle size={16} /> :
+                    <Loader2 size={16} className="animate-spin" />}
+                {statusMessage}
+              </div>
+            )}
+          </div>
 
-             <button
-                onClick={handleSendBlast}
-                disabled={isSending}
-                className={`w-full md:w-auto text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isSending ? 'bg-gray-400' : 'bg-brand-orange hover:bg-orange-700 hover:shadow-xl'
-                }`}
-             >
-                 {isSending ? <Loader2 className="animate-spin" /> : <Send size={18} />}
-                 {isSending ? 'Memproses...' : 'Kirim Undangan Massal'}
-             </button>
-         </div>
+          <button
+            onClick={handleSendBlast}
+            disabled={isSending}
+            className={`w-full md:w-auto text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isSending ? 'bg-gray-400' : 'bg-brand-orange hover:bg-orange-700 hover:shadow-xl'
+              }`}
+          >
+            {isSending ? <Loader2 className="animate-spin" /> : <Send size={18} />}
+            {isSending ? 'Memproses...' : 'Kirim Undangan Massal'}
+          </button>
+        </div>
       </div>
 
       {/* COMPLETED CANDIDATES DASHBOARD */}

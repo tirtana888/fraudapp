@@ -194,7 +194,6 @@ exports.diditWebhook = onRequest({
 // ==========================================
 exports.processDiditWebhook = onDocumentCreated({
     region: "europe-west1",
-    cpu: "gcf_gen1",
     secrets: [diditWebhookSecret],
     document: `${WEBHOOK_QUEUE_COLLECTION}/{docId}`
 }, async (event) => {
@@ -505,5 +504,5 @@ exports.initiateBackgroundCheck = onCall({
         throw new HttpsError('internal', `Failed: ${error.message}`);
     }
 
-    
+
 });

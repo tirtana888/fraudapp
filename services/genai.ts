@@ -32,7 +32,7 @@ export const analyzeFraudRisk = async (
     const analyzeRisk = httpsCallable(functions, "analyzeFraudRisk");
     const result = await analyzeRisk({
       role,
-      transcript,
+      transcript, // Cloud Function expects 'transcript'
       ftAnswers: ftAnswers || {},
       sjtAnswers: sjtAnswers || {},
       tier

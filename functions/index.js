@@ -1,330 +1,42 @@
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-const { Resend } = require('resend');
-const axios = require('axios');
+/**
+ * BACKEND FRAUDGUARD SAAS WITH RESEND & CV PARSER
+ * Integrated System: Email, AI (Gemini/Mistral), Fraud Analysis, Didit KYC, CV Parser
+ */
+
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { getFirestore } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
+const admin = require("firebase-admin");
+const logger = require("firebase-functions/logger");
+const https = require("https");
+const crypto = require("crypto");
+const { defineSecret } = require("firebase-functions/params");
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+const { Resend } = require("resend");
+const axios = require("axios");
 const pdf = require('pdf-parse');
+const mammoth = require('mammoth');
 
 admin.initializeApp();
-const db = admin.firestore();
-const storage = admin.storage();
+const db = getFirestore();
+const storage = getStorage();
 
-const resendApiKey = functions.config().resend?.api_key;
-let resend = null;
-if (resendApiKey) {
-  resend = new Resend(resendApiKey);
-}
+// --- EMAIL SENDERS ---
+const EMAIL_SENDERS = {
+  business: "no-reply@hiregood.one",
+  interview: "interview@hiregood.one"
+};
 
-exports.parseCVWithMistral = functions
-  .region('europe-west1')
-  .runWith({ timeoutSeconds: 540, memory: '1GB' })
-  .https.onCall(async (data, context) => {
-    console.log('[PARSE-CV] Starting CV parsing process...');
+// --- SECRETS ---
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const openaiApiKey = defineSecret("OPENAI_API_KEY");
+const resendApiKey = defineSecret("RESEND_API_KEY");
+const diditApiKey = defineSecret("DIDIT_API_KEY");
+const diditWebhookSecret = defineSecret("DIDIT_WEBHOOK_SECRET");
+const mistralApiKey = defineSecret("MISTRAL_API_KEY");
 
-    const { cvUrl, sessionId } = data;
-
-    if (!cvUrl || !sessionId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'CV URL and Session ID are required'
-      );
-    }
-
-    try {
-      console.log('[PARSE-CV] Downloading CV from:', cvUrl);
-
-      const bucket = storage.bucket();
-
-      const urlObj = new URL(cvUrl);
-      const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
-
-      if (!pathMatch) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'Invalid CV URL format'
-        );
-      }
-
-      const encodedPath = pathMatch[1];
-      const decodedPath = decodeURIComponent(encodedPath);
-
-      console.log('[PARSE-CV] Extracted storage path:', decodedPath);
-
-      const file = bucket.file(decodedPath);
-
-      const [fileBuffer] = await file.download();
-
-      console.log('[PARSE-CV] CV downloaded, size:', fileBuffer.length, 'bytes');
-      console.log('[PARSE-CV] Extracting text from PDF...');
-
-      const pdfData = await pdf(fileBuffer);
-      const cvText = pdfData.text;
-
-      console.log('[PARSE-CV] Text extracted, length:', cvText.length, 'characters');
-      console.log('[PARSE-CV] Calling Mistral AI for parsing...');
-
-      const mistralApiKey = functions.config().mistral?.api_key;
-
-      if (!mistralApiKey) {
-        throw new functions.https.HttpsError(
-          'failed-precondition',
-          'Mistral AI API key not configured'
-        );
-      }
-
-      const response = await axios.post(
-        'https://api.mistral.ai/v1/chat/completions',
-        {
-          model: 'mistral-large-latest',
-          messages: [
-            {
-              role: 'system',
-              content: `You are an expert CV parser. Extract structured information from the CV and return ONLY a valid JSON object with these fields:
-{
-  "fullName": "string",
-  "email": "string or null",
-  "phone": "string or null",
-  "address": "string or null",
-  "summary": "professional summary or objective",
-  "experience": [
-    {
-      "title": "job title",
-      "company": "company name",
-      "duration": "period (e.g., Jan 2020 - Dec 2022)",
-      "description": "brief description of responsibilities"
-    }
-  ],
-  "education": [
-    {
-      "degree": "degree name",
-      "institution": "institution name",
-      "year": "graduation year or period"
-    }
-  ],
-  "skills": ["skill1", "skill2"],
-  "certifications": ["cert1", "cert2"],
-  "languages": ["language1", "language2"]
-}
-
-Return ONLY the JSON object, no additional text.`
-            },
-            {
-              role: 'user',
-              content: `Parse this CV text and extract all relevant information. Return as structured JSON.\n\nCV TEXT:\n${cvText}`
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${mistralApiKey}`
-          },
-          timeout: 30000
-        }
-      );
-
-      console.log('[PARSE-CV] Mistral AI response received');
-
-      const aiContent = response.data.choices[0].message.content;
-      console.log('[PARSE-CV] Raw AI response:', aiContent.substring(0, 200));
-
-      let parsedData;
-      try {
-        const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedData = JSON.parse(jsonMatch[0]);
-        } else {
-          parsedData = JSON.parse(aiContent);
-        }
-      } catch (parseError) {
-        console.error('[PARSE-CV] Failed to parse AI response as JSON:', parseError);
-        throw new functions.https.HttpsError(
-          'internal',
-          'Failed to parse CV: Invalid AI response format'
-        );
-      }
-
-      parsedData.rawText = aiContent;
-
-      console.log('[PARSE-CV] Successfully parsed CV data');
-      console.log('[PARSE-CV] Updating session document...');
-
-      await db.collection('interview_sessions').doc(sessionId).update({
-        cvParsedData: parsedData,
-        cvParsedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log('[PARSE-CV] ✅ Session updated with parsed CV data');
-
-      return {
-        success: true,
-        parsedData: parsedData
-      };
-
-    } catch (error) {
-      console.error('[PARSE-CV] Error:', error);
-
-      if (error.response) {
-        console.error('[PARSE-CV] Mistral API error:', error.response.data);
-      }
-
-      throw new functions.https.HttpsError(
-        'internal',
-        `Failed to parse CV: ${error.message}`
-      );
-    }
-  });
-
-exports.sendEmail = functions
-  .region('europe-west1')
-  .runWith({ timeoutSeconds: 60 })
-  .https.onCall(async (data, context) => {
-    // Support both old format (templateId/to/variables) and new format (type/to/data)
-    const templateId = data.templateId || data.type;
-    const to = data.to;
-    const variables = data.variables || data.data || {};
-
-    console.log(`[SEND-EMAIL] Sending ${templateId} to ${to}`);
-    console.log(`[SEND-EMAIL] Variables:`, JSON.stringify(variables));
-
-    try {
-      if (!resend) {
-        throw new Error('Resend not configured');
-      }
-
-      // Validate required fields
-      if (!templateId) {
-        throw new Error('templateId or type is required');
-      }
-      if (!to) {
-        throw new Error('to (recipient email) is required');
-      }
-
-      let subject, htmlContent;
-
-      switch (templateId) {
-        case 'candidate_invitation':
-          subject = `Undangan Asesmen dari ${variables.companyName || 'Perusahaan'}`;
-          htmlContent = `
-            <h2>Halo ${variables.candidateName || 'Kandidat'},</h2>
-            <p>Anda telah diundang untuk mengikuti asesmen untuk posisi <strong>${variables.role || 'posisi yang dilamar'}</strong>.</p>
-            <p>Kode akses Anda: <strong>${variables.accessCode || '-'}</strong></p>
-            <p><a href="${variables.assessmentLink || '#'}">Klik di sini untuk memulai asesmen</a></p>
-            <p>Terima kasih,<br/>${variables.companyName || 'Tim HR'}</p>
-          `;
-          break;
-
-        case 'interview_invitation':
-          const interviewType = variables.interviewType === 'online' ? 'Online (Video Call)' : 'Tatap Muka';
-          subject = `Undangan Wawancara dari ${variables.companyName || 'Perusahaan'}`;
-          htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #FF6B35, #F7931E); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
-                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                .interview-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B35; }
-                .detail-row { display: flex; margin: 10px 0; }
-                .detail-label { font-weight: bold; width: 120px; color: #666; }
-                .detail-value { color: #333; }
-                .cta-button { display: inline-block; background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; color: #888; font-size: 12px; margin-top: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>🎉 Selamat!</h1>
-                  <p>Anda diundang untuk wawancara</p>
-                </div>
-                <div class="content">
-                  <p>Halo <strong>${variables.candidateName || 'Kandidat'}</strong>,</p>
-                  <p>Kami dengan senang hati mengundang Anda untuk wawancara posisi <strong>${variables.role || 'posisi yang dilamar'}</strong> di ${variables.companyName || 'perusahaan kami'}.</p>
-                  
-                  <div class="interview-details">
-                    <h3>📋 Detail Wawancara</h3>
-                    <div class="detail-row">
-                      <span class="detail-label">📅 Tanggal:</span>
-                      <span class="detail-value">${variables.interviewDate || '-'}</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="detail-label">⏰ Waktu:</span>
-                      <span class="detail-value">${variables.interviewTime || '-'} WIB</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="detail-label">📍 Tipe:</span>
-                      <span class="detail-value">${interviewType}</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="detail-label">🏢 Lokasi:</span>
-                      <span class="detail-value">${variables.interviewLocation || '-'}</span>
-                    </div>
-                  </div>
-                  
-                  <p>Mohon hadir tepat waktu. Jika ada kendala, silakan hubungi kami segera.</p>
-                  
-                  <p>Salam hangat,<br/><strong>Tim HR ${variables.companyName || ''}</strong></p>
-                </div>
-                <div class="footer">
-                  <p>Email ini dikirim otomatis oleh sistem FraudGuard HR</p>
-                </div>
-              </div>
-            </body>
-            </html>
-          `;
-          break;
-
-        default:
-          console.error(`[SEND-EMAIL] Unknown template: ${templateId}`);
-          throw new Error(`Unknown template: ${templateId}`);
-      }
-
-      await resend.emails.send({
-        from: 'noreply@hiregood.one',
-        to: to,
-        subject: subject,
-        html: htmlContent
-      });
-
-      console.log(`[SEND-EMAIL] ✅ Email sent successfully`);
-      return { success: true };
-
-    } catch (error) {
-      console.error('[SEND-EMAIL] Error:', error);
-      throw new functions.https.HttpsError('internal', error.message || 'Failed to send email');
-    }
-  });
-
-exports.sendInterviewSchedule = functions
-  .region('europe-west1')
-  .https.onCall(async (data, context) => {
-    console.log('[SEND-INTERVIEW] Sending interview schedule email');
-    return { success: true };
-  });
-
-exports.sendHireEmail = functions
-  .region('europe-west1')
-  .https.onCall(async (data, context) => {
-    console.log('[SEND-HIRE] Sending hire confirmation email');
-    return { success: true };
-  });
-
-exports.sendRejectionEmail = functions
-  .region('europe-west1')
-  .https.onCall(async (data, context) => {
-    console.log('[SEND-REJECTION] Sending rejection email');
-    return { success: true };
-  });
-
-
-// ==========================================
-// DIDIT KYC INTEGRATION
-// ==========================================
-// Import Didit functions from didit-functions.js
+// Import Didit functions
 const {
   diditWebhook,
   processDiditWebhook,
@@ -332,178 +44,375 @@ const {
   initiateBackgroundCheck
 } = require('./didit-functions');
 
-// Re-export for Firebase Functions
+// Re-export Didit functions
 exports.diditWebhook = diditWebhook;
 exports.processDiditWebhook = processDiditWebhook;
 exports.createDiditSession = createDiditSession;
 exports.initiateBackgroundCheck = initiateBackgroundCheck;
 
-
+// Email templates will be loaded from separate file
+const EMAIL_TEMPLATES = require('./email-templates');
 
 // ==========================================
-// AI CHATBOT IMPLEMENTATION (Gemini + GPT-4o)
+// CORE FUNCTIONS
 // ==========================================
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+// --- SEND EMAIL ---
+exports.sendEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
+  const { type, to, data } = request.data;
+  if (!type || !to) {
+    throw new HttpsError('invalid-argument', 'Parameter type dan to wajib diisi');
+  }
 
-/**
- * Generate AI response for candidate interview
- * Uses Gemini 2.0 Flash Thinking as primary, GPT-4o as fallback
- */
-exports.generateAIResponse = functions
-  .region('europe-west1')
-  .runWith({ timeoutSeconds: 60, memory: '1GB' })
-  .https.onCall(async (data, context) => {
-    // 1. Validate Auth & Input
-    const { role, message, history, candidateData } = data;
+  try {
+    const resend = new Resend(resendApiKey.value());
+    let emailTemplate;
 
-    // Note: In production you might want to require context.auth
-    // but for this demo we'll allow unauthenticated for easier testing
-
-    if (!role || !message) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Role and message are required'
-      );
+    switch (type) {
+      case 'business_invitation':
+        emailTemplate = EMAIL_TEMPLATES.businessInvitation(data.companyName, data.adminEmail, data.tier, data.password);
+        break;
+      case 'candidate_invitation':
+        emailTemplate = EMAIL_TEMPLATES.candidateInvitation(data.candidateName, data.candidateEmail, data.companyName, data.accessCode, data.assessmentLink, data.role);
+        break;
+      case 'interview_invitation':
+        emailTemplate = EMAIL_TEMPLATES.interviewInvitation(data.candidateName, data.candidateEmail, data.companyName, data.role, data.interviewDate, data.interviewTime, data.interviewLocation, data.interviewType);
+        break;
+      case 'background_check_invitation':
+        emailTemplate = EMAIL_TEMPLATES.backgroundCheckInvitation(data.candidateName, data.candidateEmail, data.companyName, data.verificationLink, data.role);
+        break;
+      case 'rejection_email':
+        emailTemplate = EMAIL_TEMPLATES.rejectionEmail(data.candidateName, data.companyName, data.role, data.customMessage);
+        break;
+      case 'hire_email':
+        emailTemplate = EMAIL_TEMPLATES.hireEmail(data.candidateName, data.companyName, data.role, data.startDate, data.startTime, data.contactPerson, data.contactPhone, data.additionalInfo);
+        break;
+      default:
+        throw new HttpsError('invalid-argument', `Email type '${type}' tidak dikenal`);
     }
 
-    console.log(`[AI-CHAT] Generating response for ${role}. Message: "${message.substring(0, 50)}..."`);
-    console.log(`[AI-CHAT] Candidate: ${candidateData?.fullName}`);
+    logger.info(`[EMAIL] Sending ${type} to ${to}`);
+    const result = await resend.emails.send({
+      from: emailTemplate.from,
+      to: to,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
 
-    // 2. Get API Keys
-    const GEMINI_API_KEY = functions.config().gemini?.key;
+    logger.info(`[EMAIL] Success! ID: ${result.id}`);
+    return { success: true, messageId: result.id, message: 'Email berhasil dikirim' };
+  } catch (error) {
+    logger.error('[EMAIL] Error:', error);
+    throw new HttpsError('internal', `Gagal mengirim email: ${error.message}`);
+  }
+});
 
-    if (!GEMINI_API_KEY) {
-      console.error('[AI-CONFIG] NO GEMINI API KEY CONFIGURED!');
-      // Fallback to static response if no key
-      return {
-        success: true,
-        response: "Maaf, sistem sedang mengalami gangguan konfigurasi. Bisakah Anda mengulangi jawaban Anda?"
-      };
-    }
+// --- AI HELPER ---
+async function generateWithFallback(prompt, secrets, options = {}) {
+  let responseText = "";
+  let usedModel = "gemini-2.0-flash-exp";
 
+  try {
+    const genAI = new GoogleGenerativeAI(secrets.gemini.value());
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      ]
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    responseText = response.text();
+    responseText = responseText.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+  } catch (geminiError) {
+    logger.warn(`Gemini Gagal (${geminiError.message}). Beralih ke GPT-4o...`);
     try {
-      // 3. TRY GEMINI (Primary Model)
-      console.log('[AI-CHAT] Trying Gemini (2.0 Flash Thinking)...');
-
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      // Using gemini-1.5-flash as a stable model. 
-      // If user wants specific experimental model, they can change it here.
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      const systemPrompt = `
-        Anda adalah pewawancara profesional untuk posisi ${role}.
-        Nama kandidat: ${candidateData?.fullName || 'Kandidat'}.
-        
-        TUGAS ANDA:
-        1. Ajukan pertanyaan wawancara behavioral berbasis STAR (Situation, Task, Action, Result).
-        2. Gali lebih dalam jawaban kandidat (probing).
-        3. Deteksi potensi ketidakjujuran atau inkonsistensi.
-        4. Jaga nada bicara profesional namun ramah.
-        5. Lakukan wawancara dalam Bahasa Indonesia.
-        
-        ATURAN:
-        - Jangan berikan jawaban panjang lebar.
-        - Fokus pada satu pertanyaan di satu waktu.
-        - Jika jawaban kandidat terlalu singkat, minta elaborasi.
-        - Jika kandidat tidak relevan, arahkan kembali ke topik.
-        `;
-
-      const chat = model.startChat({
-        history: history.map(h => ({
-          role: h.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }]
-        })),
-        generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.7,
-        },
-        systemInstruction: systemPrompt
+      usedModel = "GPT-4o";
+      const { OpenAI } = require("openai");
+      const openai = new OpenAI({ apiKey: secrets.openai.value() });
+      const completion = await openai.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "gpt-4o",
+        max_tokens: options.maxTokens || 1500,
+        temperature: options.temperature || 0.7
       });
-
-      const result = await chat.sendMessage(message);
-      const aiResponse = result.response.text();
-
-      console.log('[AI-CHAT] ✅ Gemini response generated successfully');
-
-      return {
-        success: true,
-        response: aiResponse,
-        model: "gemini-1.5-flash"
-      };
-
-    } catch (error) {
-      console.error('[AI-CHAT] ❌ Gemini Failed:', error.message);
-
-      // Return static fallback if AI fails
-      return {
-        success: true,
-        response: "Terima kasih atas jawaban Anda. Mari kita lanjutkan ke pertanyaan berikutnya. Bisa ceritakan pengalaman Anda dalam menghadapi situasi sulit di tempat kerja?",
-        error: error.message,
-        isFallback: true
-      };
+      responseText = completion.choices[0].message.content;
+    } catch (openaiError) {
+      logger.error("Semua AI gagal:", openaiError.message);
+      throw new Error("Sistem AI sedang sibuk. Silakan coba sesaat lagi.");
     }
+  }
+  return { text: responseText, model: usedModel };
+}
+
+// --- GENERATE AI RESPONSE ---
+exports.generateAIResponse = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [geminiApiKey, openaiApiKey]
+}, async (request) => {
+  const { prompt, assessmentData, history, role } = request.data;
+  if (!prompt) throw new HttpsError('invalid-argument', 'Prompt kosong');
+
+  let assessmentContext = "";
+  if (assessmentData) {
+    const { structuredAssessment, sjtResults } = assessmentData;
+    if (structuredAssessment?.length > 0) {
+      assessmentContext += 'FRAUD RISK INDICATORS:\n';
+      structuredAssessment.forEach(item => {
+        const score = typeof item.response === 'number' ? item.response : 0;
+        if (score >= 4 || score <= 2) {
+          assessmentContext += `- Topik: "${item.category}" | Skor: ${score}/5\n`;
+        }
+      });
+    }
+    if (sjtResults?.length > 0) {
+      assessmentContext += '\nBEHAVIORAL CHOICES:\n';
+      sjtResults.forEach((item, idx) => {
+        const selected = item.options[item.selectedOptionIndex || 0];
+        if (selected) {
+          assessmentContext += `- Skenario ${idx + 1}: "${selected.label}" (Risk: ${selected.riskWeight})\n`;
+        }
+      });
+    }
+  }
+  if (!assessmentContext) assessmentContext = "Data assessment tidak tersedia.";
+
+  const contextHistory = (history || []).slice(-6).map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+  const systemPrompt = `PERAN: HR Interviewer untuk ${role || 'Karyawan'}. ATURAN: Jangan sebutkan "Assessment" atau "Skor". Langsung tanya. Max 2 kalimat. Bahasa Indonesia natural.\n\nDATA RAHASIA:\n${assessmentContext}\n\nRIWAYAT:\n${contextHistory}\n\nJAWABAN KANDIDAT: "${prompt}"\n\nRESPON:`;
+
+  try {
+    const result = await generateWithFallback(systemPrompt, { gemini: geminiApiKey, openai: openaiApiKey });
+    return { success: true, response: result.text, provider: result.model };
+  } catch (error) {
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+// --- ANALYZE FRAUD RISK ---
+exports.analyzeFraudRisk = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [geminiApiKey, openaiApiKey]
+}, async (request) => {
+  const { role, history, structuredAssessment, sjtResults, financialStrainResults } = request.data;
+  if (!role || !history || !structuredAssessment) {
+    throw new HttpsError('invalid-argument', 'Parameter role, history, dan structuredAssessment wajib diisi.');
+  }
+
+  const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+  const assessmentSummary = structuredAssessment.map(item => `[${item.category.toUpperCase()}] "${item.question}" -> ${item.response}/5`).join('\n');
+  const sjtSummary = (sjtResults || []).map((item, idx) => {
+    const selected = item.options[item.selectedOptionIndex || 0] || {};
+    return `[SJT #${idx + 1}] "${item.scenario.substring(0, 60)}..." -> "${selected.label}" (Risk: ${selected.riskWeight})`;
+  }).join('\n');
+  const financialSummary = (financialStrainResults || []).map(item => `[FINANCIAL] "${item.question}" -> ${item.response}/5`).join('\n');
+
+  const analysisPrompt = `SISTEM: Senior Fraud Analyst.\n\nDATA KANDIDAT: ${role}\n\n1. ASSESSMENT:\n${assessmentSummary}\n\n2. SJT:\n${sjtSummary}\n\n3. FINANCIAL:\n${financialSummary || 'N/A'}\n\n4. TRANSKRIP:\n${context}\n\nOUTPUT JSON:\n{\n  "scores": {"pressure": 0-100, "opportunity": 0-100, "rationalization": 0-100},\n  "riskLevel": "Low|Medium|High|Critical",\n  "summary": "Analisis spesifik kandidat (Bahasa Indonesia)",\n  "redFlags": ["flag1"],\n  "recommendation": "Rekomendasi",\n  "consistencyScore": 0-100,\n  "euphemismScore": 0-100,\n  "sentimentBreakdown": {"positive": 0, "neutral": 0, "negative": 0},\n  "benchmarkComparison": {"candidateAvg": 0, "companyAvg": 48, "industryAvg": 45}\n}`;
+
+  try {
+    const result = await generateWithFallback(analysisPrompt, { gemini: geminiApiKey, openai: openaiApiKey }, { maxTokens: 2000, temperature: 0.5 });
+    let cleanJson = result.text.replace(/```json\s*|\s*```/g, '').trim();
+    const analysis = JSON.parse(cleanJson);
+    logger.info(`[ANALYSIS] Completed using ${result.model}`);
+    return { success: true, analysis: analysis, provider: result.model };
+  } catch (error) {
+    logger.error("[ANALYSIS] Error:", error);
+    return {
+      success: true,
+      analysis: {
+        scores: { pressure: 50, opportunity: 50, rationalization: 50 },
+        riskLevel: "Medium",
+        summary: "Analisis gagal, nilai default.",
+        redFlags: ["AI Analysis Failed"],
+        recommendation: "Review manual diperlukan.",
+        consistencyScore: 0,
+        euphemismScore: 0,
+        sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
+        benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
+      },
+      provider: 'manual-fallback'
+    };
+  }
+});
+
+// --- SEND REJECTION EMAIL ---
+exports.sendRejectionEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
+  const { sessionId, customMessage } = request.data;
+  if (!sessionId) throw new HttpsError('invalid-argument', 'Session ID required');
+
+  const sessionDoc = await db.collection('interview_sessions').doc(sessionId).get();
+  if (!sessionDoc.exists) throw new HttpsError('not-found', 'Session not found');
+
+  const sessionData = sessionDoc.data();
+  const companyDoc = await db.collection('companies').doc(sessionData.companyId).get();
+  if (!companyDoc.exists) throw new HttpsError('not-found', 'Company not found');
+
+  const resend = new Resend(resendApiKey.value());
+  const emailTemplate = EMAIL_TEMPLATES.rejectionEmail(sessionData.candidate?.name, companyDoc.data().name, sessionData.candidate?.role || '', customMessage || '');
+
+  await resend.emails.send({
+    from: emailTemplate.from,
+    to: sessionData.candidate?.email,
+    subject: emailTemplate.subject,
+    html: emailTemplate.html
   });
 
+  return { success: true, message: 'Rejection email sent' };
+});
 
-/**
- * Analyse Fraud Risk using AI
- */
-exports.analyzeFraudRisk = functions
-  .region('europe-west1')
-  .runWith({ timeoutSeconds: 60, memory: '1GB' })
-  .https.onCall(async (data, context) => {
-    const { role, transcript, ftAnswers } = data;
-    console.log(`[FRAUD-ANALYSIS] Analyzing risk for ${role}...`);
+// --- SEND HIRE EMAIL ---
+exports.sendHireEmail = onCall({
+  region: "europe-west1",
+  cors: true,
+  secrets: [resendApiKey]
+}, async (request) => {
+  const { sessionId, startDate, startTime, contactPerson, contactPhone, additionalInfo } = request.data;
+  if (!sessionId) throw new HttpsError('invalid-argument', 'Session ID required');
 
-    const GEMINI_API_KEY = functions.config().gemini?.key;
-    if (!GEMINI_API_KEY) {
-      throw new functions.https.HttpsError('failed-precondition', 'Gemini API key missing');
-    }
+  const sessionDoc = await db.collection('interview_sessions').doc(sessionId).get();
+  if (!sessionDoc.exists) throw new HttpsError('not-found', 'Session not found');
 
-    try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const sessionData = sessionDoc.data();
+  const companyDoc = await db.collection('companies').doc(sessionData.companyId).get();
 
-      const prompt = `
-          Anda adalah pakar deteksi fraud dan psikologi forensik.
-          Analisis transkrip wawancara dan jawaban kuesioner kandidat ini untuk posisi ${role}.
-          
-          TRANSKRIP WAWANCARA:
-          ${JSON.stringify(transcript)}
-          
-          JAWABAN FRAUD TRIANGLE:
-          ${JSON.stringify(ftAnswers)}
-          
-          TUGAS:
-          Berikan analisis risiko fraud menggunakan kerangka kerja Fraud Triangle (Pressure, Opportunity, Rationalization).
-          
-          OUTPUT JSON (HANYA JSON):
-          {
-            "scores": {
-                "pressure": 0-100,
-                "opportunity": 0-100,
-                "rationalization": 0-100
-            },
-            "riskLevel": "LOW" | "MEDIUM" | "HIGH",
-            "summary": "Ringkasan analisis dalam Bahasa Indonesia (2-3 paragraf)",
-            "redFlags": ["flag1", "flag2"],
-            "recommendation": "Rekomendasi (Hire/Reject/Investigate)"
-          }
-          `;
+  const resend = new Resend(resendApiKey.value());
+  const emailTemplate = EMAIL_TEMPLATES.hireEmail(sessionData.candidate?.name, companyDoc.data().name, sessionData.candidate?.role || '', startDate || '', startTime || '', contactPerson || '', contactPhone || '', additionalInfo || '');
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-
-      // Cleanup JSON
-      const cleanText = text.replace(/```json|```/g, '').trim();
-      const analysis = JSON.parse(cleanText);
-
-      console.log('[FRAUD-ANALYSIS] ✅ Analysis complete');
-      return analysis;
-
-    } catch (error) {
-      console.error('[FRAUD-ANALYSIS] Error:', error);
-      throw new functions.https.HttpsError('internal', 'AI Analysis Failed');
-    }
+  await resend.emails.send({
+    from: emailTemplate.from,
+    to: sessionData.candidate?.email,
+    subject: emailTemplate.subject,
+    html: emailTemplate.html
   });
+
+  return { success: true, message: 'Hire email sent' };
+});
+
+// --- STATS TRIGGER ---
+exports.updateGlobalStats = onDocumentWritten({
+  document: "interview_sessions/{sessionId}",
+  region: "europe-west1"
+}, async (event) => {
+  try {
+    const before = event.data?.before;
+    const after = event.data?.after;
+    if (!after || !after.exists) return;
+
+    const beforeData = before?.exists ? before.data() : null;
+    const afterData = after.data();
+    const statsRef = db.collection('stats').doc('global_metrics');
+    const statsDoc = await statsRef.get();
+    const currentStats = statsDoc.exists ? statsDoc.data() : {
+      total_assessments: 0,
+      completed_assessments: 0,
+      email_usage: 0,
+      kyc_usage: 0,
+      risk_distribution: { High: 0, Medium: 0, Low: 0 },
+      last_updated: new Date().toISOString()
+    };
+
+    let updates = {};
+    let needsUpdate = false;
+
+    if (!beforeData) {
+      updates.total_assessments = (currentStats.total_assessments || 0) + 1;
+      needsUpdate = true;
+    }
+
+    if (!beforeData?.status === 'completed' && afterData.status === 'completed') {
+      updates.completed_assessments = (currentStats.completed_assessments || 0) + 1;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      updates.last_updated = new Date().toISOString();
+      await statsRef.set(updates, { merge: true });
+    }
+  } catch (error) {
+    logger.error('[STATS] Error:', error);
+  }
+});
+
+// --- CV PARSER ---
+exports.parseDocumentWithMistral = onCall({
+  region: 'europe-west1',
+  cors: true,
+  timeoutSeconds: 300,
+  memory: '2GiB',
+  secrets: [mistralApiKey]
+}, async (request) => {
+  const { documentUrl, sessionId } = request.data;
+  if (!documentUrl || !sessionId) throw new HttpsError('invalid-argument', 'Missing params');
+
+  try {
+    const bucket = storage.bucket();
+    const urlObj = new URL(documentUrl);
+    const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
+    if (!pathMatch) throw new HttpsError('invalid-argument', 'Invalid URL');
+
+    const file = bucket.file(decodeURIComponent(pathMatch[1]));
+    const [fileBuffer] = await file.download();
+
+    let documentText = "";
+    const contentType = (await file.getMetadata())[0].contentType || '';
+
+    if (contentType.includes('pdf')) {
+      const data = await pdf(fileBuffer);
+      documentText = data.text || "";
+    } else if (contentType.includes('word')) {
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      documentText = result.value || "";
+    } else {
+      documentText = fileBuffer.toString('utf8');
+    }
+
+    documentText = documentText.replace(/\s+/g, ' ').trim();
+
+    const response = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+      model: 'mistral-large-latest',
+      messages: [{
+        role: 'system',
+        content: 'Extract CV data as JSON: {fullName, email, phone, address, summary, totalYearsExperience, experience[], education[], skills[], certifications[], languages[]}'
+      }, {
+        role: 'user',
+        content: `Extract:\n\n${documentText.substring(0, 15000)}`
+      }],
+      temperature: 0.1,
+      max_tokens: 4000
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mistralApiKey.value()}`
+      },
+      timeout: 90000
+    });
+
+    const aiContent = response.data.choices[0].message.content;
+    const cleanJson = aiContent.replace(/```json\s*|\s*```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+
+    await db.collection('interview_sessions').doc(sessionId).update({
+      cvParsedData: parsed,
+      cvParsedAt: admin.firestore.FieldValue.serverTimestamp(),
+      documentProcessed: true
+    });
+
+    return { success: true, parsedData: parsed };
+  } catch (error) {
+    logger.error('[DOC-PARSE] Error:', error);
+    throw new HttpsError('internal', `Parsing failed: ${error.message}`);
+  }
+});

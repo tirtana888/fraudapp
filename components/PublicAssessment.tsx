@@ -360,6 +360,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     setStep('analyzing');
 
     console.log('[FINISH-ASSESSMENT] Starting analysis...');
+    console.log('[FINISH-ASSESSMENT] 📊 Input Data:', {
+      role: candidateRole,
+      historyLength: chatHistory.length,
+      ftAnswersCount: ftAnswers.length,
+      sjtAnswersCount: sjtAnswers.length,
+      tier: company?.tier || 'Freemium'
+    });
 
     let finalAnalysis: FraudAnalysis;
 
@@ -369,17 +376,42 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     );
 
     try {
+      console.log('[FINISH-ASSESSMENT] 🤖 Calling analyzeFraudRisk...');
+
       finalAnalysis = await Promise.race([
         analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium'),
         analysisTimeout
       ]) as FraudAnalysis;
 
-      console.log('[FINISH-ASSESSMENT] ✅ Analysis completed');
+      console.log('[FINISH-ASSESSMENT] ✅ Analysis completed successfully!');
+      console.log('[FINISH-ASSESSMENT] 📊 AI Response:', {
+        scores: finalAnalysis.scores,
+        riskLevel: finalAnalysis.riskLevel,
+        isManualFallback: finalAnalysis.isManualFallback,
+        redFlagsCount: finalAnalysis.redFlags?.length || 0,
+        summaryLength: finalAnalysis.summary?.length || 0
+      });
+
+      // 🚨 CRITICAL CHECK: Detect if AI returned fallback scores
+      if (finalAnalysis.scores.pressure === 50 &&
+        finalAnalysis.scores.opportunity === 50 &&
+        finalAnalysis.scores.rationalization === 50) {
+        console.warn('[FINISH-ASSESSMENT] ⚠️ WARNING: AI returned fallback scores (50,50,50)!');
+        console.warn('[FINISH-ASSESSMENT] 🔍 This indicates AI analysis may have failed silently');
+        console.warn('[FINISH-ASSESSMENT] 📋 Check Cloud Function logs for errors');
+      }
 
     } catch (error) {
-      console.error("[FINISH-ASSESSMENT] Analysis failed, using fallback:", error);
+      console.error("[FINISH-ASSESSMENT] ❌ Analysis failed, using fallback:", error);
+      console.error("[FINISH-ASSESSMENT] 🚨 Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.substring(0, 200)
+      });
 
       const manualScores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
+      console.log('[FINISH-ASSESSMENT] 📊 Manual fallback scores:', manualScores);
+
       const avgScore = (manualScores.pressureScore + manualScores.rationalizationScore + manualScores.opportunityScore) / 3;
       let manualRisk = RiskLevel.LOW;
       if (avgScore > 75) manualRisk = RiskLevel.CRITICAL;
@@ -553,14 +585,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
   const Header = () => {
     const displayTitle = company?.headerTitle || company?.name || 'Portal Assessment';
 
-    console.log(`[HEADER] Rendering header with:`, {
-      hasLogoUrl: !!logoUrl,
-      logoLength: logoUrl?.length || 0,
-      logoUrl: logoUrl?.substring(0, 100),
-      companyName: company?.name,
-      headerTitle: company?.headerTitle,
-      displayTitle
-    });
+    // Removed excessive logging that caused infinite render loop
 
     return (
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-center sticky top-0 z-20 shadow-sm">
@@ -570,7 +595,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
               src={logoUrl}
               alt={displayTitle}
               className="h-10 max-w-[200px] object-contain"
-              onLoad={() => console.log(`[HEADER] ✅ Logo loaded: ${logoUrl.substring(0, 100)}`)}
+              onLoad={() => {/* Logo loaded */ }}
               onError={(e) => {
                 console.error(`[HEADER] ❌ Logo failed to load:`, {
                   src: logoUrl,

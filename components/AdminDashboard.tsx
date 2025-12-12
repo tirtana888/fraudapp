@@ -33,6 +33,7 @@ const AdminDashboard: React.FC = () => {
     status: 'Active' as 'Active' | 'Suspended' | 'Past Due',
     subscription_ends_at: '',
     custom_candidate_limit: 0, // 0 means default
+    credits: 0,
     verification_credits: 0
   });
 
@@ -119,6 +120,7 @@ const AdminDashboard: React.FC = () => {
       status: company.status as any,
       subscription_ends_at: company.subscription_ends_at ? company.subscription_ends_at.split('T')[0] : defaultExpiry.toISOString().split('T')[0],
       custom_candidate_limit: company.custom_candidate_limit || 0,
+      credits: company.credits || 0,
       verification_credits: company.verification_credits || 0
     });
 
@@ -138,6 +140,7 @@ const AdminDashboard: React.FC = () => {
         status: subFormData.status,
         subscription_ends_at: new Date(subFormData.subscription_ends_at).toISOString(),
         custom_candidate_limit: Number(subFormData.custom_candidate_limit),
+        credits: Number(subFormData.credits),
         verification_credits: Number(subFormData.verification_credits)
       };
 
@@ -271,6 +274,7 @@ const AdminDashboard: React.FC = () => {
                     <th className="p-5 font-bold">Nama Perusahaan</th>
                     <th className="p-5 font-bold">Paket (Tier)</th>
                     <th className="p-5 font-bold">Status</th>
+                    <th className="p-5 font-bold">Credits</th>
                     <th className="p-5 font-bold">Kuota Kandidat</th>
                     <th className="p-5 font-bold">Expiry Date</th>
                     <th className="p-5 font-bold text-right">Opsi</th>
@@ -279,13 +283,13 @@ const AdminDashboard: React.FC = () => {
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={6} className="p-10 text-center">
+                      <td colSpan={7} className="p-10 text-center">
                         <Loader2 className="w-8 h-8 text-brand-orange animate-spin mx-auto" />
                       </td>
                     </tr>
                   ) : companies.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-10 text-center text-gray-400 dark:text-gray-500 italic">
+                      <td colSpan={7} className="p-10 text-center text-gray-400 dark:text-gray-500 italic">
                         Belum ada data perusahaan. Klik tombol Invite untuk menambahkan.
                       </td>
                     </tr>
@@ -325,6 +329,17 @@ const AdminDashboard: React.FC = () => {
                             <span className={`w-2 h-2 rounded-full ${company.status === 'Active' ? 'bg-green-500' : company.status === 'Pending' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                               {isExpired ? 'Expired' : company.status}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <div className="flex items-center gap-2">
+                            <CreditCard size={16} className="text-brand-orange" />
+                            <span className={`font-bold text-sm ${(company.credits || 0) > 500 ? 'text-green-600 dark:text-green-400' :
+                              (company.credits || 0) > 100 ? 'text-yellow-600 dark:text-yellow-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                              {(company.credits || 0).toLocaleString('id-ID')}
                             </span>
                           </div>
                         </td>
@@ -457,7 +472,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
                     <h4 className="text-sm font-bold text-gray-800 dark:text-white mb-4">Override Kuota & Kredit</h4>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Kuota Kandidat (Custom)</label>
                         <input
@@ -468,6 +483,18 @@ const AdminDashboard: React.FC = () => {
                           className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-blue outline-none"
                         />
                         <p className="text-[10px] text-gray-400 mt-1">Isi 0 untuk mengikuti default plan.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                          <CreditCard size={12} /> Credits (Saldo Utama)
+                        </label>
+                        <input
+                          type="number"
+                          value={subFormData.credits}
+                          onChange={(e) => setSubFormData({ ...subFormData, credits: Number(e.target.value) })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Saldo untuk assessment & AI.</p>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">

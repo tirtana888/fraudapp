@@ -330,7 +330,7 @@ const App: React.FC = () => {
       status: 'Active',
       adminEmail: currentUser.email || '',
       joinedDate: new Date().toISOString(),
-      credits: 0,
+      credits: 1000, // Default initial credits for new companies
       subscription_ends_at: null
     };
 
@@ -894,7 +894,15 @@ const App: React.FC = () => {
           creditBalance={creditBalance}
         />
 
-        <main className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}>
+        <main
+          className={`${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56'} p-4 md:p-8 min-h-screen transition-all duration-300`}
+          onMouseEnter={() => {
+            // Auto-collapse mobile menu when mouse enters main content area
+            if (isMobileMenuOpen) {
+              setIsMobileMenuOpen(false);
+            }
+          }}
+        >
           <div className="max-w-7xl mx-auto">
             {/* Email Verification Warning Banner */}
             {showVerificationBanner && (
