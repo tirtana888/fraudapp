@@ -66,6 +66,14 @@ exports.createXenditInvoice = onCall({
             description = `Upgrade to ${tier} Tier - ${companyName}`;
         }
 
+        // Get API Key (Secret or Fallback for Local Dev)
+        let apiKey = xenditApiKey.value();
+        if (!apiKey || apiKey === '') {
+            logger.warn('[XENDIT] Secret/Env not found, using fallback for local dev');
+            // Fallback for local testing only
+            apiKey = 'xnd_production_dIN7dRfeoCqQx0YL5q49OOs68KNeqGgyMRl9oOQX4kAoWsfMY3nqT058TcPl';
+        }
+
         // Create invoice via Xendit API
         const response = await axios.post(
             'https://api.xendit.co/v2/invoices',
@@ -76,8 +84,8 @@ exports.createXenditInvoice = onCall({
                 description: description,
                 currency: 'IDR',
                 invoice_duration: 86400, // 24 hours
-                success_redirect_url: `${process.env.APP_URL || 'http://localhost:5173'}/payment/success`,
-                failure_redirect_url: `${process.env.APP_URL || 'http://localhost:5173'}/payment/failed`,
+                success_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/payment/success`,
+                failure_redirect_url: `${process.env.APP_URL || 'http://localhost:3001'}/payment/failed`,
                 metadata: {
                     type,
                     companyId,
@@ -87,7 +95,7 @@ exports.createXenditInvoice = onCall({
             },
             {
                 headers: {
-                    'Authorization': `Basic ${Buffer.from(xenditApiKey.value() + ':').toString('base64')}`,
+                    'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
                     'Content-Type': 'application/json'
                 }
             }

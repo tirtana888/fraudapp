@@ -79,13 +79,26 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
             if (data.success && data.invoiceUrl) {
                 // Open Xendit payment page in new tab
-                window.open(data.invoiceUrl, '_blank');
-                toast.success('Payment page opened! Complete payment to receive credits.');
+                const newWindow = window.open(data.invoiceUrl, '_blank');
+
+                // Check if popup was blocked
+                if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                    console.log('Popup blocked, redirecting using window.location');
+                    toast.success('Popup blocked. Redirecting to payment page...');
+                    // Add small delay to let toast show
+                    setTimeout(() => {
+                        window.location.href = data.invoiceUrl;
+                    }, 1000);
+                } else {
+                    toast.success('Payment page opened! Complete payment to receive credits.');
+                }
                 onClose();
             }
         } catch (error: any) {
             console.error('[PAYMENT] Error:', error);
-            toast.error(`Payment failed: ${error.message}`);
+            const errorMessage = error.message || 'Payment initiation failed';
+            toast.error(`Payment failed: ${errorMessage}`);
+            console.log(JSON.stringify(error, null, 2));
         } finally {
             setIsProcessing(false);
         }
@@ -106,8 +119,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
 
             if (data.success && data.invoiceUrl) {
-                window.open(data.invoiceUrl, '_blank');
-                toast.success('Payment page opened! Complete payment to upgrade your tier.');
+                const newWindow = window.open(data.invoiceUrl, '_blank');
+
+                if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                    console.log('Popup blocked, redirecting using window.location');
+                    toast.success('Popup blocked. Redirecting to payment page...');
+                    setTimeout(() => {
+                        window.location.href = data.invoiceUrl;
+                    }, 1000);
+                } else {
+                    toast.success('Payment page opened! Complete payment to upgrade your tier.');
+                }
                 onClose();
             }
         } catch (error: any) {
@@ -140,8 +162,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     <button
                         onClick={() => setActiveTab('credits')}
                         className={`flex-1 py-4 px-6 font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'credits'
-                                ? 'text-brand-orange border-b-2 border-brand-orange bg-white dark:bg-brand-slate-850'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                            ? 'text-brand-orange border-b-2 border-brand-orange bg-white dark:bg-brand-slate-850'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
                         <CreditCard size={20} />
@@ -150,8 +172,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     <button
                         onClick={() => setActiveTab('subscription')}
                         className={`flex-1 py-4 px-6 font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'subscription'
-                                ? 'text-brand-orange border-b-2 border-brand-orange bg-white dark:bg-brand-slate-850'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                            ? 'text-brand-orange border-b-2 border-brand-orange bg-white dark:bg-brand-slate-850'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
                         <Crown size={20} />
@@ -175,8 +197,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                                         key={pkg.amount}
                                         onClick={() => setSelectedCredits(pkg.amount as 1000 | 5000 | 10000)}
                                         className={`relative cursor-pointer rounded-xl border-2 p-6 transition-all hover:shadow-lg ${selectedCredits === pkg.amount
-                                                ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20'
-                                                : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                                            ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20'
+                                            : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
                                             }`}
                                     >
                                         {pkg.popular && (
@@ -246,8 +268,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                                         key={sub.tier}
                                         onClick={() => setSelectedTier(sub.tier)}
                                         className={`relative cursor-pointer rounded-xl border-2 p-6 transition-all hover:shadow-lg ${selectedTier === sub.tier
-                                                ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20'
-                                                : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                                            ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/20'
+                                            : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3 mb-4">
