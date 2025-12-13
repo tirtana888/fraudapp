@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Calendar, User, Briefcase, ChevronRight, Lock, Crown, Unlock, X, CreditCard, Loader2 } from 'lucide-react';
+import {
+  Search, FileText, Calendar, User, Briefcase, ChevronRight, Lock, Crown, Unlock,
+  X, CreditCard, Loader2, TrendingUp, AlertTriangle, Clock, Filter, Eye, ArrowUpRight
+} from 'lucide-react';
 import { db, COLLECTIONS } from '../services/firebase';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { InterviewSession, AssessmentInvite, CompanyProfile, SUBSCRIPTION_PLANS, CREDIT_COSTS } from '../types';
+import { InterviewSession, AssessmentInvite, CompanyProfile, SUBSCRIPTION_PLANS, CREDIT_COSTS, Job } from '../types';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
 import { useToast } from './Toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface HistoryViewProps {
   companyId: string;
@@ -17,6 +27,8 @@ interface CandidateHistory extends InterviewSession {
   assessmentCode?: string;
   riskScore?: number;
   recruitmentStage?: string;
+  appliedAt?: string; // Ensure we have a date field to use
+  jobTitle?: string;
 }
 
 const HistoryView: React.FC<HistoryViewProps> = ({
@@ -39,7 +51,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   // Freemium logic
   const isFreemium = company?.tier === 'Freemium';
-  const viewLimit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
+  const viewLimit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit || 10;
 
   useEffect(() => {
     loadAllCandidates();
@@ -61,6 +73,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         }
       });
 
+      const jobsRef = collection(db, COLLECTIONS.JOBS);
+      const jobsQuery = query(jobsRef, where('companyId', '==', companyId));
+      const jobsSnapshot = await getDocs(jobsQuery);
+      const jobsMap = new Map<string, string>();
+      jobsSnapshot.forEach(doc => {
+        const j = doc.data() as Job;
+        jobsMap.set(doc.id, j.title);
+      });
+
       const sessionsRef = collection(db, COLLECTIONS.SESSIONS);
       const sessionsQuery = query(
         sessionsRef,
@@ -71,11 +92,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       const sessionsSnapshot = await getDocs(sessionsQuery);
       const allCandidates: CandidateHistory[] = [];
 
-      console.log('[HISTORY] Loaded sessions from database:', sessionsSnapshot.size);
-
       sessionsSnapshot.forEach((doc) => {
         const data = doc.data() as InterviewSession;
-        console.log('[HISTORY] Session:', doc.id, 'status:', data.status, 'stage:', data.recruitmentStage);
 
         const riskScore = data.analysis?.scores
           ? Math.round((data.analysis.scores.pressure + data.analysis.scores.opportunity + data.analysis.scores.rationalization) / 3)
@@ -86,18 +104,19 @@ const HistoryView: React.FC<HistoryViewProps> = ({
           id: doc.id,
           assessmentCode: sessionToAccessCode[doc.id] || '-',
           riskScore,
-          recruitmentStage: data.recruitmentStage || 'assessment_complete'
+          recruitmentStage: data.recruitmentStage || 'assessment_complete',
+          appliedAt: data.date, // Use session date as apply date proxy if not available
+          jobTitle: data.jobId ? jobsMap.get(data.jobId) : undefined
         });
       });
 
       setCandidates(allCandidates);
 
-      // Calculate application ranks (based on apply date - oldest first = rank 1)
+      // Calculate application ranks
       const ranks = calculateApplicationRanks(allCandidates);
       setApplicationRanks(ranks);
-      console.log('[HISTORY] Application ranks calculated:', ranks.size);
 
-      // Load previously unlocked candidates from session data
+      // Load unlocked candidates
       const unlockedIds = new Set<string>();
       allCandidates.forEach(c => {
         if ((c as any).unlockedAt) {
@@ -105,7 +124,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         }
       });
       setUnlockedCandidates(unlockedIds);
-      console.log('[HISTORY] Previously unlocked candidates:', unlockedIds.size);
     } catch (error) {
       console.error('[HISTORY] Error loading candidates:', error);
     } finally {
@@ -122,11 +140,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   const confirmUnlock = async () => {
     if (!selectedCandidateForUnlock) return;
-
     const unlockCost = CREDIT_COSTS.UNLOCK_PROFILE;
 
     if (creditBalance < unlockCost) {
-      toast.error(`Kredit tidak cukup. Dibutuhkan: ${unlockCost}, Tersedia: ${creditBalance}`);
+      toast.error(`Credit insufficient. Need: ${unlockCost}, Available: ${creditBalance}`);
       setShowUnlockModal(false);
       return;
     }
@@ -137,7 +154,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         companyId,
         unlockCost,
         'UNLOCK_PROFILE',
-        `Unlock kandidat: ${selectedCandidateForUnlock.candidate.name}`,
+        `Unlock candidate: ${selectedCandidateForUnlock.candidate.name}`,
         {
           candidateId: selectedCandidateForUnlock.id,
           candidateName: selectedCandidateForUnlock.candidate.name,
@@ -146,7 +163,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       );
 
       if (result.success) {
-        // Save unlock status to Firestore
         const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
         await updateDoc(sessionRef, {
           unlockedAt: new Date().toISOString(),
@@ -154,60 +170,25 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         });
 
         setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
-        toast.success(`Kandidat ${selectedCandidateForUnlock.candidate.name} berhasil di-unlock! Sisa kredit: ${result.remainingCredits}`);
+        toast.success(`Candidate unlocked! Remaining credits: ${result.remainingCredits}`);
         setShowUnlockModal(false);
         onViewCandidate(selectedCandidateForUnlock.id);
       } else {
-        toast.error(result.error || 'Gagal unlock kandidat');
+        toast.error(result.error || 'Failed to unlock');
       }
     } catch (error: any) {
-      console.error('[UNLOCK] Error:', error);
-      toast.error('Terjadi kesalahan saat unlock kandidat');
+      alert('Error unlocking candidate');
     } finally {
       setIsUnlocking(false);
       setSelectedCandidateForUnlock(null);
     }
   };
 
-  const getStageLabel = (stage?: string) => {
-    const stages: Record<string, string> = {
-      'assessment_complete': 'Assessment Selesai',
-      'interview_scheduled': 'Interview Dijadwalkan',
-      'interview_completed': 'Interview Selesai',
-      'background_check': 'Background Check',
-      'offer_extended': 'Penawaran Dikirim',
-      'hired': 'Diterima',
-      'rejected': 'Ditolak',
-      'pending_review': 'Perlu Review'
-    };
-    return stages[stage || 'assessment_complete'] || stage || 'Assessment Selesai';
-  };
-
-  const getStageColor = (stage?: string) => {
-    const colors: Record<string, string> = {
-      'assessment_complete': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30',
-      'interview_scheduled': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/30',
-      'interview_completed': 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-900/30',
-      'background_check': 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900/30',
-      'offer_extended': 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-900/30',
-      'hired': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30',
-      'rejected': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30',
-      'pending_review': 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-    };
-    return colors[stage || 'assessment_complete'] || colors['assessment_complete'];
-  };
-
-  const getRiskColor = (score: number) => {
-    if (score >= 70) return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30';
-    if (score >= 50) return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900/30';
-    return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30';
-  };
-
-  const getRiskLabel = (score: number) => {
-    if (score >= 70) return 'Tinggi';
-    if (score >= 50) return 'Sedang';
-    return 'Rendah';
-  };
+  // --- Insight Metrics ---
+  const totalCandidates = candidates.length;
+  const highRiskCandidates = candidates.filter(c => (c.riskScore || 0) >= 70).length;
+  const hiredCandidates = candidates.filter(c => c.recruitmentStage === 'hired').length;
+  const pendingReview = candidates.filter(c => c.recruitmentStage === 'assessment_complete' || c.recruitmentStage === 'pending_review').length;
 
   const filteredCandidates = candidates.filter(candidate => {
     const matchesSearch =
@@ -216,374 +197,390 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       (candidate.assessmentCode && candidate.assessmentCode.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStage = filterStage === 'all' || candidate.recruitmentStage === filterStage;
-
     return matchesSearch && matchesStage;
   });
 
+  const getRelativeTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      if (diffInHours < 1) return 'Just now';
+      return `${Math.floor(diffInHours)}h ago`;
+    }
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
+  const getRiskColor = (score: number) => {
+    if (score >= 70) return 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800';
+    if (score >= 50) return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
+    return 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800';
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange mx-auto"></div>
-          <p className="text-gray-500 dark:text-gray-400">Memuat riwayat audit...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center py-32 space-y-4">
+        <Loader2 className="w-10 h-10 text-[#D95D00] animate-spin" />
+        <p className="text-slate-500 animate-pulse font-medium">Loading candidate insights...</p>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Unlock Confirmation Modal */}
-      {showUnlockModal && selectedCandidateForUnlock && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800 dark:text-white">Konfirmasi Unlock Kandidat</h3>
-              <button
-                onClick={() => setShowUnlockModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
 
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-12 w-12 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
-                  <User className="text-brand-orange" size={24} />
-                </div>
-                <div>
-                  <p className="font-bold text-gray-800 dark:text-white">{selectedCandidateForUnlock.candidate.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCandidateForUnlock.candidate.role || 'Unknown Position'}</p>
-                </div>
-              </div>
+      {/* 1. INSIGHT HEADER */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between group hover:border-[#D95D00]/50 transition-colors">
+          <div className="flex items-start justify-between">
+            <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300">
+              <User className="w-5 h-5" />
             </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="text-blue-600" size={20} />
-                  <span className="font-semibold text-gray-800 dark:text-white">Biaya Unlock:</span>
-                </div>
-                <span className="text-xl font-bold text-blue-600">{CREDIT_COSTS.UNLOCK_PROFILE} Credit</span>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Anda:</span>
-                <span className={`font-bold ${creditBalance >= CREDIT_COSTS.UNLOCK_PROFILE ? 'text-green-600' : 'text-red-600'}`}>
-                  {creditBalance} Credit
-                </span>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Dengan menggunakan {CREDIT_COSTS.UNLOCK_PROFILE} credit, Anda akan mendapatkan akses penuh untuk melihat profil dan detail assessment kandidat ini.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowUnlockModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmUnlock}
-                disabled={isUnlocking || creditBalance < CREDIT_COSTS.UNLOCK_PROFILE}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isUnlocking ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Unlock size={18} />
-                    Unlock Kandidat
-                  </>
-                )}
-              </button>
-            </div>
+            <span className="text-xs font-bold text-green-500 flex items-center gap-1 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+              <ArrowUpRight className="w-3 h-3" /> +12%
+            </span>
+          </div>
+          <div>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mt-4">Total Candidates</p>
+            <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{totalCandidates}</h3>
           </div>
         </div>
-      )}
 
-      <div className="space-y-6 animate-in fade-in">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Riwayat Audit</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Total {filteredCandidates.length} kandidat dari {candidates.length} data
-            </p>
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between group hover:border-red-500/50 transition-colors">
+          <div className="flex items-start justify-between">
+            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
           </div>
+          <div>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mt-4">High Risk</p>
+            <h3 className="text-3xl font-extrabold text-red-600 dark:text-red-400 mt-1">{highRiskCandidates}</h3>
+          </div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between group hover:border-orange-500/50 transition-colors">
+          <div className="flex items-start justify-between">
+            <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-600 dark:text-orange-400">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <div>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mt-4">Pending Review</p>
+            <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{pendingReview}</h3>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-[#D95D00] to-[#b14d00] p-5 rounded-2xl shadow-lg shadow-orange-500/20 flex flex-col justify-between text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 transform translate-x-4 -translate-y-4">
+            <Crown className="w-24 h-24" />
+          </div>
+          <div className="flex items-start justify-between relative z-10">
+            <div className="p-2 bg-white/20 rounded-lg text-white">
+              <Crown className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="relative z-10">
+            <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mt-4">Hired This Month</p>
+            <h3 className="text-3xl font-extrabold text-white mt-1">{hiredCandidates}</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. MAIN CONTENT */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative min-h-[500px]">
+
+        {/* Toolbar */}
+        <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row gap-4 items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <FileText className="w-5 h-5 text-slate-400" /> All Activities
+          </h3>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Cari nama, posisi, atau kode..."
+                placeholder="Search candidate..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-brand-orange focus:border-transparent dark:bg-slate-800 dark:text-white text-sm w-full sm:w-64"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D00]/20 focus:border-[#D95D00] transition-all"
               />
             </div>
-
-            <select
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              className="px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-brand-orange focus:border-transparent dark:bg-slate-800 dark:text-white text-sm"
-            >
-              <option value="all">Semua Stage</option>
-              <option value="assessment_complete">Assessment Selesai</option>
-              <option value="interview_scheduled">Interview Dijadwalkan</option>
-              <option value="interview_completed">Interview Selesai</option>
-              <option value="background_check">Background Check</option>
-              <option value="offer_extended">Penawaran Dikirim</option>
-              <option value="hired">Diterima</option>
-              <option value="rejected">Ditolak</option>
-            </select>
-
-            <button
-              onClick={loadAllCandidates}
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
+            <div className="relative">
+              <select
+                value={filterStage}
+                onChange={(e) => setFilterStage(e.target.value)}
+                className="appearance-none pl-4 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:border-[#D95D00] cursor-pointer"
+              >
+                <option value="all">All Stages</option>
+                <option value="assessment_complete">Assessment</option>
+                <option value="interview">Interview</option>
+                <option value="hired">Hired</option>
+              </select>
+              <Filter className="w-3 h-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
 
-        {filteredCandidates.length === 0 ? (
-          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-12 text-center">
-            <FileText className="mx-auto text-gray-300 dark:text-gray-600 mb-4" size={48} />
-            <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-              {searchQuery || filterStage !== 'all' ? 'Tidak ada data yang sesuai filter' : 'Belum ada riwayat audit'}
-            </p>
-            <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-              {searchQuery || filterStage !== 'all' ? 'Coba ubah pencarian atau filter' : 'Data kandidat akan muncul di sini setelah assessment selesai'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="hidden md:block bg-white dark:bg-brand-slate-850 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
-                    <tr>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Kandidat
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Kode Akses
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Tingkat Risiko
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                        Stage Proses
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-right">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                    {filteredCandidates.map((candidate) => {
-                      const rank = applicationRanks.get(candidate.id) || 999;
-                      const isBlurred = shouldBlurByApplicationRank(rank, company?.tier || 'Freemium') && !unlockedCandidates.has(candidate.id);
-
-                      return (
-                        <tr key={candidate.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group relative">
-                          <td className="px-6 py-4">
-                            <div className={`flex items-center space-x-3 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
-                              <div className="flex-shrink-0">
-                                <div className="h-10 w-10 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
-                                  <User className="text-brand-orange" size={20} />
-                                </div>
-                              </div>
-                              <div>
-                                <p className="font-semibold text-gray-900 dark:text-white group-hover:text-brand-orange transition-colors">
-                                  {candidate.candidate.name}
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                                  <Briefcase size={14} />
-                                  {candidate.candidate.role || 'Posisi tidak disebutkan'}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <code className={`px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-mono font-semibold ${isBlurred ? 'blur-sm select-none' : ''}`}>
-                              {candidate.assessmentCode}
-                            </code>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className={`flex items-center gap-2 ${isBlurred ? 'blur-sm select-none' : ''}`}>
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${getRiskColor(candidate.riskScore || 50)}`}>
-                                {getRiskLabel(candidate.riskScore || 50)}
-                              </span>
-                              <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                {candidate.riskScore || 50}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${getStageColor(candidate.recruitmentStage)} ${isBlurred ? 'blur-sm select-none' : ''}`}>
-                              <Calendar size={14} />
-                              {getStageLabel(candidate.recruitmentStage)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {isBlurred ? (
-                              <button
-                                onClick={() => handleUnlockClick(candidate)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md hover:shadow-lg"
-                              >
-                                <Unlock size={16} />
-                                Unlock (2 Credit)
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => onViewCandidate(candidate.id)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md hover:shadow-lg"
-                              >
-                                <FileText size={16} />
-                                Lihat Laporan
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="md:hidden space-y-4">
-              {filteredCandidates.map((candidate) => {
+        {/* Table List */}
+        <div className="relative">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-700/50">
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Candidate</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Risk Analysis</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Current Stage</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Last Active</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              {filteredCandidates.map((candidate, index) => {
+                // Calculate rank based on index in FULL list (approx) or applicationRanks map
                 const rank = applicationRanks.get(candidate.id) || 999;
-                const isBlurred = shouldBlurByApplicationRank(rank, company?.tier || 'Freemium') && !unlockedCandidates.has(candidate.id);
+                const isLocked = isFreemium && shouldBlurByApplicationRank(rank, 'Freemium') && !unlockedCandidates.has(candidate.id);
 
                 return (
-                  <div
+                  <tr
                     key={candidate.id}
-                    className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 space-y-4 relative"
-                  >
-                    <div className={`flex items-start justify-between ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
-                      <div className="flex items-start space-x-3 flex-1">
-                        <div className="flex-shrink-0">
-                          <div className="h-12 w-12 rounded-full bg-brand-orange/10 dark:bg-brand-orange/20 flex items-center justify-center">
-                            <User className="text-brand-orange" size={22} />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 dark:text-white text-base mb-1">
-                            {candidate.candidate.name}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
-                            <Briefcase size={14} />
-                            {candidate.candidate.role || 'Posisi tidak disebutkan'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={`grid grid-cols-2 gap-3 ${isBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
-                      <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
-                          Kode Akses
-                        </p>
-                        <code className="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded text-xs font-mono font-semibold inline-block">
-                          {candidate.assessmentCode}
-                        </code>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
-                          Tingkat Risiko
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getRiskColor(candidate.riskScore || 50)}`}>
-                            {getRiskLabel(candidate.riskScore || 50)}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                            {candidate.riskScore || 50}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={isBlurred ? 'blur-sm select-none pointer-events-none' : ''}>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
-                        Stage Proses
-                      </p>
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${getStageColor(candidate.recruitmentStage)}`}>
-                        <Calendar size={14} />
-                        {getStageLabel(candidate.recruitmentStage)}
-                      </span>
-                    </div>
-
-                    {isBlurred ? (
-                      <button
-                        onClick={() => handleUnlockClick(candidate)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md active:scale-95"
-                      >
-                        <Unlock size={16} />
-                        Unlock (2 Credit)
-                        <ChevronRight size={16} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onViewCandidate(candidate.id)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-all font-medium text-sm shadow-md active:scale-95"
-                      >
-                        <FileText size={16} />
-                        Lihat Laporan
-                        <ChevronRight size={16} />
-                      </button>
+                    className={cn(
+                      "group transition-colors relative",
+                      isLocked ? "bg-slate-50/50 dark:bg-slate-800/50" : "hover:bg-slate-50 dark:hover:bg-slate-700/30"
                     )}
-                  </div>
+                  // If locked, we don't want hover effect on row content except unlock actions
+                  >
+                    <td className={cn("px-6 py-4", isLocked && "blur-[6px] opacity-40 select-none")}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-slate-500 font-bold border-2 border-white dark:border-slate-800 shadow-sm">
+                          {candidate.candidate.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm">{candidate.candidate.name}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{candidate.jobTitle || candidate.candidate.role}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className={cn("px-6 py-4", isLocked && "blur-[6px] opacity-40 select-none")}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn("px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5", getRiskColor(candidate.riskScore || 50))}>
+                          {(candidate.riskScore || 0) >= 70 && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                          )}
+                          {candidate.riskScore}% Risk
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className={cn("px-6 py-4", isLocked && "blur-[6px] opacity-40 select-none")}>
+                      {(() => {
+                        // New 8-stage recruitment workflow (matching CandidatesAutoView)
+                        const RECRUITMENT_STAGES = [
+                          { id: 'applied', label: 'Applied', progress: 10 },
+                          { id: 'assessment_in_progress', label: 'Assessment In Progress', progress: 30 },
+                          { id: 'awaiting_review', label: 'Awaiting Review', progress: 50 },
+                          { id: 'interview', label: 'Interview Scheduled', progress: 60 },
+                          { id: 'bc_check', label: 'Background Check', progress: 80 },
+                          { id: 'bc_complete', label: 'Background Check Complete', progress: 90 },
+                          { id: 'hired', label: 'Hired', progress: 100 },
+                          { id: 'rejected', label: 'Rejected', progress: 100 }
+                        ];
+
+                        let stageId = (candidate.recruitmentStage || 'applied').toLowerCase().trim();
+
+                        // Legacy mapping for backward compatibility
+                        if (stageId === 'screening' || stageId === 'processing') stageId = 'applied';
+                        if (stageId === 'review') stageId = 'awaiting_review';
+                        if (stageId === 'background_check') stageId = 'bc_check';
+                        if (stageId === 'approved') stageId = 'hired';
+
+                        const stageConfig = RECRUITMENT_STAGES.find(s => s.id === stageId);
+                        const label = stageConfig?.label || stageId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        const progress = stageConfig?.progress || 10;
+
+                        return (
+                          <div className="w-full max-w-[160px]">
+                            <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 mb-1">
+                              <span>{label}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${stageId === 'rejected' ? 'bg-red-500' : 'bg-[#D95D00]'}`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
+
+                    <td className={cn("px-6 py-4", isLocked && "blur-[6px] opacity-40 select-none")}>
+                      <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                        {getRelativeTime(candidate.date)}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 text-right relative z-10">
+                      {isLocked ? (
+                        <button
+                          onClick={() => handleUnlockClick(candidate)}
+                          className="p-2 bg-white dark:bg-slate-700 shadow-lg rounded-full text-[#D95D00] border border-orange-100 hover:scale-110 transform duration-200"
+                        >
+                          <Lock className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => onViewCandidate(candidate.id)}
+                            className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm"
+                          >
+                            <Eye className="w-3 h-3" /> Quick View
+                          </button>
+                          <button
+                            onClick={() => onViewCandidate(candidate.id)}
+                            className="p-1.5 bg-[#D95D00] text-white rounded-lg hover:bg-[#b14d00]"
+                          >
+                            <ChevronRight className="w-4 h-4 ml-0.5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
+            </tbody>
+          </table>
 
-            {/* Upgrade Banner for Freemium Users */}
-            {isFreemium && filteredCandidates.length > viewLimit && (
-              <div className="mt-6 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-2 border-orange-300 dark:border-orange-700 rounded-2xl p-6 text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="bg-orange-500 text-white p-3 rounded-full">
-                    <Lock size={32} />
-                  </div>
+          {/* --- FREEMIUM UPGRADE BANNER (ABSOLUTE POSITIONED OVER BLURRED AREA) --- */}
+          {isFreemium && filteredCandidates.length > viewLimit && (
+            <div
+              className="absolute left-0 right-0 bottom-0 z-20 flex items-center justify-center pointer-events-none"
+              style={{ top: `${(viewLimit + 1) * 76}px` }} // Approximate row height calculation
+            >
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="sticky top-1/2 transform -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl p-8 max-w-lg text-center pointer-events-auto"
+              >
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-500/30 transform rotate-3">
+                  <Lock className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">
                   {filteredCandidates.length - viewLimit} Kandidat Lagi Terkunci
                 </h3>
-                <p className="text-gray-700 dark:text-gray-300 mb-1">
-                  Paket Freemium terbatas melihat {viewLimit} kandidat pertama
+
+                <p className="text-slate-500 dark:text-slate-400 mb-8 px-4 leading-relaxed">
+                  Paket Freemium terbatas melihat <span className="font-bold text-slate-800 dark:text-slate-200">{viewLimit} kandidat pertama</span>.
+                  Upgrade ke Premium untuk akses unlimited kandidat + fitur lengkap.
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  Upgrade ke Premium untuk akses unlimited kandidat + fitur lengkap
-                </p>
+
                 <button
                   onClick={() => onUpgradeClick && onUpgradeClick()}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-bold text-base shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#D95D00] to-[#FF8C00] text-white font-bold text-lg shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                 >
-                  <Crown size={20} />
+                  <Crown className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                   Upgrade ke Premium Sekarang
                 </button>
-              </div>
-            )}
-          </>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Full Frost Overlay covering the rest of the table */}
+          {isFreemium && filteredCandidates.length > viewLimit && (
+            <div
+              className="absolute left-0 right-0 bottom-0 backdrop-blur-[4px] bg-white/30 dark:bg-black/30 z-10 pointer-events-none"
+              style={{ top: `${(viewLimit * 76) + 60}px` }}
+            />
+          )}
+        </div>
+
+        {filteredCandidates.length === 0 && (
+          <div className="p-12 text-center text-slate-400">
+            <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No candidates found matching your criteria.</p>
+          </div>
         )}
       </div>
-    </>
+
+      {/* UNLOCK MODAL */}
+      <AnimatePresence>
+        {showUnlockModal && selectedCandidateForUnlock && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowUnlockModal(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative z-10 border border-slate-200 dark:border-slate-700"
+            >
+              <button
+                onClick={() => setShowUnlockModal(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white">{selectedCandidateForUnlock.candidate.name}</h3>
+                  <p className="text-sm text-slate-500">{selectedCandidateForUnlock.candidate.role}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-700">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-slate-500">Unlock Cost</span>
+                  <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                    <CreditCard className="w-4 h-4 text-slate-400" />
+                    {CREDIT_COSTS.UNLOCK_PROFILE} Credits
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <span className="text-sm text-slate-500">Your Balance</span>
+                  <span className={cn("font-bold flex items-center gap-1", creditBalance >= CREDIT_COSTS.UNLOCK_PROFILE ? "text-green-600" : "text-red-500")}>
+                    {creditBalance} Credits
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUnlockModal(false)}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmUnlock}
+                  disabled={isUnlocking || creditBalance < CREDIT_COSTS.UNLOCK_PROFILE}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-[#D95D00] hover:bg-[#b14d00] shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2"
+                >
+                  {isUnlocking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Unlock className="w-5 h-5" />}
+                  Unlock Profile
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 };
 
 export default HistoryView;
-

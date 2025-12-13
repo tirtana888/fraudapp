@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search, FileCheck, Share2, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
-import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES } from '../types';
+import {
+  Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search,
+  FileCheck, Share2, CheckCircle, XCircle, AlertCircle, ArrowRight,
+  GripVertical, Layout, Box, Coins, Clock
+} from 'lucide-react';
+import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES, WorkflowTemplate } from '../types';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../services/firebase';
 import { useToast } from './Toast';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface WorkflowManagerProps {
   companyId: string;
@@ -78,7 +89,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     setIsCreating(true);
     setWorkflowName(workflow.name);
     setWorkflowDescription(workflow.description);
-    
+
     const steps: { [key: string]: boolean } = {};
     workflow.steps.forEach(step => {
       steps[step.id] = step.isEnabled;
@@ -88,11 +99,11 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
 
   const handleToggleStep = (stepId: string, isMandatory: boolean) => {
     if (isMandatory) return; // Cannot toggle mandatory steps
-    
+
     // Check if step is coming soon
     const template = WORKFLOW_TEMPLATES.find(t => t.id === stepId);
     if (template && template.isAvailable === false) return; // Cannot toggle coming soon steps
-    
+
     setSelectedSteps(prev => ({
       ...prev,
       [stepId]: !prev[stepId]
@@ -118,7 +129,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
 
     try {
       setIsSaving(true);
-      
+
       const steps: WorkflowStep[] = WORKFLOW_TEMPLATES
         .filter(template => selectedSteps[template.id])
         .map((template, index) => ({
@@ -176,354 +187,340 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       await deleteDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
       console.log('[WORKFLOW] Deleted workflow:', workflowId);
       loadWorkflows();
+      toast.success('Workflow berhasil dihapus');
     } catch (error) {
       console.error('[WORKFLOW] Error deleting workflow:', error);
-      alert('Gagal menghapus workflow. Silakan coba lagi.');
+      toast.error('Gagal menghapus workflow. Silakan coba lagi.');
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'assessment': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'interview': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
-      case 'verification': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300';
-      case 'decision': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300';
+      case 'assessment': return 'from-blue-500 to-cyan-400 border-blue-200 text-blue-900';
+      case 'interview': return 'from-purple-500 to-pink-400 border-purple-200 text-purple-900';
+      case 'verification': return 'from-amber-400 to-orange-500 border-orange-200 text-orange-900';
+      case 'decision': return 'from-emerald-500 to-green-400 border-green-200 text-green-900';
+      default: return 'from-slate-500 to-gray-400 border-gray-200 text-gray-900';
+    }
+  };
+
+  const getCategoryBadge = (category: string) => {
+    switch (category) {
+      case 'assessment': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200';
+      case 'interview': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200';
+      case 'verification': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200';
+      case 'decision': return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200';
+      default: return 'bg-gray-100 text-gray-700';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange"></div>
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D95D00]"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Layout className="w-5 h-5 text-[#D95D00] opacity-50" />
+          </div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Workflow Rekrutmen</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Buat dan kelola workflow rekrutmen untuk lowongan kerja Anda
-          </p>
-        </div>
-        {!isCreating && (
-          <button
-            onClick={handleCreateWorkflow}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors shadow-md"
-          >
-            <Plus size={20} />
-            <span>Buat Workflow Baru</span>
-          </button>
-        )}
-      </div>
+  // --- EDITOR VIEW ---
+  if (isCreating) {
+    const activeSteps = WORKFLOW_TEMPLATES.filter(t => selectedSteps[t.id]);
 
-      {/* Create/Edit Form */}
-      {isCreating && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              {editingWorkflow ? 'Edit Workflow' : 'Buat Workflow Baru'}
-            </h3>
+    return (
+      <div className="flex flex-col h-[calc(100vh-8rem)] bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+
+        {/* Editor Toolbar */}
+        <div className="h-16 px-6 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 z-20 shadow-sm relative">
+          <div className="flex items-center gap-4 flex-1">
             <button
-              onClick={() => {
-                setIsCreating(false);
-                setEditingWorkflow(null);
-              }}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              onClick={() => setIsCreating(false)}
+              className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
             >
-              <X size={24} />
+              <X className="w-5 h-5 text-slate-500" />
             </button>
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nama Workflow *
-              </label>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+            <div className="flex-1 max-w-md">
               <input
                 type="text"
+                placeholder="Nama Workflow (mis: Standard Hiring)"
                 value={workflowName}
                 onChange={(e) => setWorkflowName(e.target.value)}
-                placeholder="e.g. Standard Hiring Process"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-brand-orange dark:bg-slate-700 dark:text-white"
+                className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Deskripsi
-              </label>
-              <textarea
+              <input
+                type="text"
+                placeholder="Deskripsi singkat..."
                 value={workflowDescription}
                 onChange={(e) => setWorkflowDescription(e.target.value)}
-                placeholder="Deskripsi workflow ini..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-brand-orange dark:bg-slate-700 dark:text-white"
+                className="w-full bg-transparent text-xs text-slate-500 dark:text-slate-400 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Workflow Steps Selection */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Pilih Tahapan Workflow
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {WORKFLOW_TEMPLATES.map((template) => {
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg">
+              <Coins className="w-4 h-4 text-orange-500" />
+              <div className="flex flex-col items-end leading-none">
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{calculateTotalCredits()}</span>
+                <span className="text-[10px] text-slate-500">CREDITS</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSaveWorkflow}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-5 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B14d00] transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:grayscale"
+            >
+              {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>Simpan Workflow</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Split View */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* LEFT: TIMELINE CANVAS */}
+          <div className="flex-1 bg-slate-50/50 dark:bg-[#0B1120] relative overflow-y-auto p-8 custom-scrollbar">
+            <div className="max-w-xl mx-auto">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 text-center">Visual Timeline</h4>
+
+              <div className="relative pl-8 border-l-2 border-slate-200 dark:border-slate-800 space-y-8 pb-32">
+                <AnimatePresence mode='popLayout'>
+                  {activeSteps.map((template, index) => {
+                    const Icon = iconMap[template.icon];
+                    return (
+                      <motion.div
+                        key={template.id}
+                        initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                        layout
+                        className="relative"
+                      >
+                        {/* Connector Dot */}
+                        <div className="absolute -left-[41px] top-6 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-slate-300 dark:bg-slate-700 z-10 box-content" />
+
+                        {/* Card */}
+                        <div className={cn(
+                          "bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 group md:hover:scale-[1.02] transition-transform duration-300",
+                          template.isMandatory ? "border-l-4 border-l-slate-400 dark:border-l-slate-600" : "border-l-4 border-l-[#D95D00]"
+                        )}>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-inner text-white",
+                                getCategoryColor(template.category).split(' border')[0] // Extract gradient only
+                              )}>
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-slate-900 dark:text-white">{template.name}</h3>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("text-[10px] uppercase font-bold px-1.5 py-0.5 rounded", getCategoryBadge(template.category))}>
+                                    {template.category}
+                                  </span>
+                                  {template.credits > 0 && (
+                                    <span className="text-[10px] font-medium text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                                      <Coins className="w-3 h-3" /> {template.credits}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            {!template.isMandatory && (
+                              <button
+                                onClick={() => handleToggleStep(template.id, false)}
+                                className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {template.isMandatory && (
+                              <span className="text-xs text-slate-400 italic">Required</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 pl-[52px]">
+                            {template.description}
+                          </p>
+                        </div>
+
+                        {/* Arrow Connector (except last) */}
+                        {index < activeSteps.length - 1 && (
+                          <div className="absolute left-6 -bottom-6 w-px h-6 bg-slate-200 dark:bg-slate-700" />
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+
+              <div className="mt-8 text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-500">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  End of Workflow
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: LIBRARY */}
+          <div className="w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col z-10 shadow-xl">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Box className="w-4 h-4 text-[#D95D00]" /> Step Library
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">Click to add steps to timeline</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              {WORKFLOW_TEMPLATES.filter(t => !t.isMandatory).map(template => {
                 const Icon = iconMap[template.icon];
                 const isSelected = selectedSteps[template.id];
-                const isDisabled = template.isMandatory;
                 const isComingSoon = template.isAvailable === false;
 
                 return (
-                  <div
+                  <button
                     key={template.id}
-                    onClick={() => !isComingSoon && handleToggleStep(template.id, template.isMandatory)}
-                    className={`
-                      relative p-4 border-2 rounded-xl transition-all
-                      ${isComingSoon 
-                        ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-700' 
-                        : isSelected 
-                          ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10 cursor-pointer' 
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 cursor-pointer'
-                      }
-                      ${isDisabled && !isComingSoon ? 'opacity-75 cursor-not-allowed' : ''}
-                    `}
+                    onClick={() => !isComingSoon && handleToggleStep(template.id, false)}
+                    disabled={isComingSoon}
+                    className={cn(
+                      "w-full text-left p-3 rounded-xl border transition-all duration-200 group relative active:scale-[0.98]",
+                      isSelected
+                        ? "bg-slate-50 dark:bg-slate-800 border-[#D95D00] shadow-sm ring-1 ring-[#D95D00]/20"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm",
+                      isComingSoon && "opacity-60 cursor-not-allowed grayscale"
+                    )}
                   >
-                    {/* Top Right Badges */}
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      {isComingSoon && (
-                        <span className="px-2 py-1 bg-gray-600 text-white dark:bg-gray-700 dark:text-gray-200 text-xs font-bold rounded">
-                          COMING SOON
-                        </span>
-                      )}
-                      {template.isMandatory && !isComingSoon && (
-                        <span className="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs font-bold rounded">
-                          WAJIB
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className={`
-                        w-10 h-10 rounded-lg flex items-center justify-center
-                        ${getCategoryColor(template.category)}
-                      `}>
-                        <Icon size={20} />
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-md flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors",
+                        isSelected && "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                      )}>
+                        <Icon className="w-4 h-4" />
                       </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h5 className="font-semibold text-gray-900 dark:text-white">
-                            {template.name}
-                          </h5>
-                          {template.credits === 0 ? (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold rounded">
-                              FREE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
-                              {template.credits} credits
-                            </span>
-                          )}
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                          {template.name}
+                        </h5>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-slate-500">{template.credits} credits</span>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {template.description}
-                        </p>
                       </div>
-
-                      {!isComingSoon && (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          disabled={isDisabled}
-                          onChange={() => {}}
-                          className="w-5 h-5 text-brand-orange rounded focus:ring-brand-orange"
-                        />
+                      {isSelected && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <CheckCircle className="w-4 h-4 text-[#D95D00]" />
+                        </motion.div>
                       )}
                       {isComingSoon && (
-                        <div className="w-5 h-5 rounded bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                          <span className="text-gray-500 dark:text-gray-400 text-xs">🔒</span>
-                        </div>
+                        <span className="absolute top-2 right-2 text-[8px] font-bold bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">SOON</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Total Credits */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-xl p-5 mb-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Total Credits Per Kandidat
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
-                  Biaya yang akan dideduct saat workflow selesai
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-brand-orange to-purple-600 bg-clip-text text-transparent">
-                  {calculateTotalCredits()}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-                  credits
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleSaveWorkflow}
-              disabled={isSaving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-orange"
-            >
-              {isSaving ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Menyimpan...</span>
-                </>
-              ) : (
-                <>
-                  <Save size={20} />
-                  <span>{editingWorkflow ? 'Update Workflow' : 'Simpan Workflow'}</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setIsCreating(false);
-                setEditingWorkflow(null);
-              }}
-              disabled={isSaving}
-              className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Batal
-            </button>
-          </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* Workflows List */}
-      {!isCreating && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {workflows.length === 0 ? (
-            <div className="col-span-2 text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-              <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Belum Ada Workflow
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Buat workflow pertama Anda untuk mengatur proses rekrutmen
-              </p>
-              <button
-                onClick={handleCreateWorkflow}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors"
-              >
-                <Plus size={20} />
-                <span>Buat Workflow</span>
-              </button>
-            </div>
-          ) : (
-            workflows.map((workflow) => (
-              <div
-                key={workflow.id}
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                      {workflow.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {workflow.description || 'Tidak ada deskripsi'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditWorkflow(workflow)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                      title="Edit workflow"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteWorkflow(workflow.id!)}
-                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="Hapus workflow"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+  // --- MAIN LIST VIEW ---
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Workflow Manager</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">
+            Design your automated hiring pipelines with our visual builder.
+          </p>
+        </div>
+        <button
+          onClick={handleCreateWorkflow}
+          className="flex items-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-xl hover:bg-[#B14d00] transition-all shadow-lg shadow-orange-900/20 active:scale-95 group"
+        >
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+          <span className="font-semibold">New Workflow</span>
+        </button>
+      </div>
+
+      {/* Grid */}
+      {workflows.length === 0 ? (
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 text-center h-96 flex flex-col items-center justify-center">
+          <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-full shadow-sm flex items-center justify-center mx-auto mb-6">
+            <Layout className="w-10 h-10 text-slate-400" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Workflows Yet</h3>
+          <p className="text-slate-500 max-w-sm mx-auto mb-8">
+            Create your first workflow to start automating your candidate screening process.
+          </p>
+          <button
+            onClick={handleCreateWorkflow}
+            className="inline-flex items-center gap-2 text-[#D95D00] font-semibold hover:underline"
+          >
+            Create your first workflow <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {workflows.map((workflow) => (
+            <div
+              key={workflow.id}
+              className="group bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-[#D95D00]/30 transition-all duration-300 relative overflow-hidden flex flex-col h-full"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
+                <button
+                  onClick={() => handleEditWorkflow(workflow)}
+                  className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:text-blue-500 transition-colors text-slate-500"
+                  title="Edit"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteWorkflow(workflow.id!)}
+                  className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:text-red-500 transition-colors text-slate-500"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/20 dark:to-orange-900/10 flex items-center justify-center text-[#D95D00]">
+                  <Layout className="w-6 h-6" />
                 </div>
-
-                {/* Steps */}
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                    Tahapan ({workflow.steps.length})
-                  </p>
-                  <div className="space-y-1">
-                    {workflow.steps.map((step, index) => {
-                      const template = WORKFLOW_TEMPLATES.find(t => t.id === step.id);
-                      const Icon = template ? iconMap[template.icon] : CheckCircle;
-                      
-                      return (
-                        <div
-                          key={step.id}
-                          className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg"
-                        >
-                          <span className="text-xs font-bold text-gray-400 w-6">
-                            {index + 1}.
-                          </span>
-                          <Icon size={16} className="text-gray-500 dark:text-gray-400" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
-                            {step.name}
-                          </span>
-                          {step.credits === 0 ? (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-bold rounded">
-                              FREE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-bold rounded">
-                              {step.credits} credits
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Total Credits */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-slate-700">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Total Credits
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-slate-900 dark:text-white leading-tight truncate pr-16">{workflow.name}</h3>
+                  <span className="text-xs text-slate-400">
+                    Updated {new Date(workflow.updatedAt).toLocaleDateString()}
                   </span>
-                  <div className="text-right">
-                    <span className="text-xl font-bold text-brand-orange">
-                      {workflow.totalCredits}
-                    </span>
-                    <span className="text-sm text-gray-500 ml-1">
-                      credits
-                    </span>
-                  </div>
                 </div>
               </div>
-            ))
-          )}
+
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 line-clamp-2 min-h-[3rem] flex-1">
+                {workflow.description || "No description provided."}
+              </p>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-auto">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  {workflow.steps.length} Steps
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-full">
+                  <Coins className="w-3.5 h-3.5 text-orange-500" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{workflow.totalCredits}</span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

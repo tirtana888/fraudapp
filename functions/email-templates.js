@@ -124,7 +124,7 @@ module.exports = {
         return {
             from: EMAIL_SENDERS.business,
             subject: `Undangan Bergabung - ${companyName}`,
-            html: createEmailLayout(`Welcome to HireGood.one`, content)
+            html: createEmailLayout(`Welcome to Hiregood.one`, content)
         };
     },
 

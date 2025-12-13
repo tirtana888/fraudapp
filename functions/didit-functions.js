@@ -116,7 +116,16 @@ exports.diditWebhook = onRequest({
 
     try {
         const body = req.body;
-        const rawBodyBuffer = Buffer.from(JSON.stringify(body));
+        // IMPACT: JSON.stringify(req.body) does not guarantee original byte order/format.
+        // req.rawBody is required for accurate signature verification on Firebase/Express.
+        let rawBodyString;
+        if (req.rawBody) {
+            rawBodyString = req.rawBody.toString('utf8');
+        } else {
+            logger.warn('[DIDIT-WEBHOOK] req.rawBody MISSING! Falling back to JSON.stringify (Unreliable)');
+            rawBodyString = JSON.stringify(body);
+        }
+
         const signature = req.headers['x-signature'] || req.headers['X-Signature'];
         const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
 
@@ -128,14 +137,14 @@ exports.diditWebhook = onRequest({
         // Log received data for debugging
         logger.info('[DIDIT-WEBHOOK] Received webhook', {
             timestamp: timestamp,
-            timestampType: typeof timestamp,
             signatureReceived: signature,
-            bodyKeys: Object.keys(body),
-            vendor_data: body.vendor_data
+            hasRawBody: !!req.rawBody,
+            contentLength: req.headers['content-length']
         });
 
         // Verify HMAC signature
-        const verifiableString = `${timestamp}.${rawBodyBuffer.toString('utf8')}`;
+        // Didit Spec: SHA256 HMAC of (timestamp + "." + raw_body)
+        const verifiableString = `${timestamp}.${rawBodyString}`;
         const webhookSecret = diditWebhookSecret.value();
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
@@ -162,7 +171,7 @@ exports.diditWebhook = onRequest({
             logger.warn('[DIDIT-WEBHOOK] Queuing despite invalid signature (TEMPORARY)');
             await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
                 headers: { signature, timestamp },
-                rawBody: rawBodyBuffer.toString('utf8'),
+                rawBody: rawBodyString,
                 receivedAt: admin.firestore.FieldValue.serverTimestamp(),
                 processed: false,
                 signatureValid: false // Mark as invalid
@@ -174,7 +183,7 @@ exports.diditWebhook = onRequest({
         // Queue for async processing
         await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
             headers: { signature, timestamp },
-            rawBody: rawBodyBuffer.toString('utf8'),
+            rawBody: rawBodyString,
             receivedAt: admin.firestore.FieldValue.serverTimestamp(),
             processed: false,
             signatureValid: true
@@ -232,43 +241,43 @@ exports.processDiditWebhook = onDocumentCreated({
 
             const backgroundCheckData = {
                 status: mappedStatus,
-                diditSessionId: diditSessionId,
+                diditSessionId: diditSessionId || null,
                 decision: decisionText,
                 verificationLink: webhookData.session_url || null,
-                createdAt: admin.firestore.Timestamp.fromMillis(created_at * 1000),
-                lastUpdated: admin.firestore.Timestamp.fromMillis((webhookTimestamp || created_at) * 1000),
+                createdAt: created_at ? admin.firestore.Timestamp.fromMillis(created_at * 1000) : admin.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: admin.firestore.Timestamp.fromMillis(((webhookTimestamp || created_at) || Date.now() / 1000) * 1000),
                 rawWebhookData: {
-                    status: status,
-                    webhook_type: webhook_type,
-                    session_number: webhookData.session_number
+                    status: status || null,
+                    webhook_type: webhook_type || null,
+                    session_number: webhookData.session_number || null
                 },
 
                 idVerification: decision?.id_verification ? {
-                    fullName: decision.id_verification.full_name,
-                    documentNumber: decision.id_verification.document_number,
-                    documentType: decision.id_verification.document_type,
-                    dateOfBirth: decision.id_verification.date_of_birth,
-                    placeOfBirth: decision.id_verification.place_of_birth,
-                    gender: decision.id_verification.gender,
-                    address: decision.id_verification.address,
-                    status: decision.id_verification.status,
-                    portraitImage: decision.id_verification.portrait_image,
-                    frontImage: decision.id_verification.front_image,
-                    backImage: decision.id_verification.back_image,
+                    fullName: decision.id_verification.full_name || null,
+                    documentNumber: decision.id_verification.document_number || null,
+                    documentType: decision.id_verification.document_type || null,
+                    dateOfBirth: decision.id_verification.date_of_birth || null,
+                    placeOfBirth: decision.id_verification.place_of_birth || null,
+                    gender: decision.id_verification.gender || null,
+                    address: decision.id_verification.address || null,
+                    status: decision.id_verification.status || null,
+                    portraitImage: decision.id_verification.portrait_image || null,
+                    frontImage: decision.id_verification.front_image || null,
+                    backImage: decision.id_verification.back_image || null,
                 } : null,
 
                 faceMatch: decision?.face_match ? {
-                    score: decision.face_match.score,
-                    status: decision.face_match.status,
-                    sourceImage: decision.face_match.source_image,
-                    targetImage: decision.face_match.target_image,
+                    score: decision.face_match.score ?? null,
+                    status: decision.face_match.status || null,
+                    sourceImage: decision.face_match.source_image || null,
+                    targetImage: decision.face_match.target_image || null,
                 } : null,
 
                 liveness: decision?.liveness ? {
-                    score: decision.liveness.score,
-                    status: decision.liveness.status,
-                    ageEstimation: decision.liveness.age_estimation,
-                    referenceImage: decision.liveness.reference_image,
+                    score: decision.liveness.score ?? null,
+                    status: decision.liveness.status || null,
+                    ageEstimation: decision.liveness.age_estimation ?? null,
+                    referenceImage: decision.liveness.reference_image || null,
                 } : null,
 
                 warnings: [
@@ -278,10 +287,10 @@ exports.processDiditWebhook = onDocumentCreated({
                 ],
 
                 ipAnalysis: decision?.ip_analysis ? {
-                    ipAddress: decision.ip_analysis.ip_address,
-                    country: decision.ip_analysis.ip_country,
-                    isVpnOrTor: decision.ip_analysis.is_vpn_or_tor,
-                    status: decision.ip_analysis.status,
+                    ipAddress: decision.ip_analysis.ip_address || null,
+                    country: decision.ip_analysis.ip_country || null,
+                    isVpnOrTor: decision.ip_analysis.is_vpn_or_tor ?? false,
+                    status: decision.ip_analysis.status || null,
                 } : null
             };
 

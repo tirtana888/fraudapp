@@ -8,6 +8,7 @@ import ActiveInterview from './components/ActiveInterview';
 import ReportView from './components/ReportView';
 import LoginPage from './components/LoginPage';
 import SignUpPage from './components/SignUpPage';
+import SettingsPage from './components/SettingsPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicAssessment from './components/PublicAssessment';
 import AssessmentSettings from './components/AssessmentSettings';
@@ -131,6 +132,14 @@ const App: React.FC = () => {
   const [isPublicMode, setIsPublicMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const pathname = window.location.pathname;
+
+    // Don't treat payment redirects as public mode
+    const isPaymentRedirect = params.get('payment') && params.get('redirect');
+    if (isPaymentRedirect) {
+      console.log('[APP] Payment redirect detected, not public mode');
+      return false;
+    }
+
     return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname === '/background-check-callback';
   });
 
@@ -459,18 +468,31 @@ const App: React.FC = () => {
 
   // Handle payment success redirect
   useEffect(() => {
+    // Check URL parameters on every mount/update
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment');
     const redirectTo = params.get('redirect');
 
-    if (paymentStatus === 'success' && redirectTo === 'credits' && currentUser) {
-      console.log('[APP] 💳 Payment success detected, redirecting to credit management');
+    console.log('[APP] Checking payment redirect:', { paymentStatus, redirectTo, hasUser: !!currentUser });
+
+    if (paymentStatus === 'success' && redirectTo === 'credits') {
+      console.log('[APP] 💳 Payment success detected!');
+
+      // Wait for user to be loaded if not yet
+      if (!currentUser) {
+        console.log('[APP] Waiting for user to load...');
+        return;
+      }
+
+      console.log('[APP] Redirecting to credit management...');
 
       // Navigate to credit management
       setActiveTab('credit-management');
 
-      // Clean up URL
+      // Clean up URL and localStorage
       window.history.replaceState({}, '', window.location.pathname);
+      localStorage.removeItem('pendingPaymentRedirect');
+      localStorage.removeItem('pendingPaymentType');
 
       // Show success message after a short delay
       setTimeout(() => {
@@ -481,12 +503,15 @@ const App: React.FC = () => {
           }
         });
         window.dispatchEvent(event);
-      }, 500);
-    } else if (paymentStatus === 'failed' && currentUser) {
+      }, 1000);
+
+    } else if (paymentStatus === 'failed') {
       console.log('[APP] ❌ Payment failed detected');
 
-      // Clean up URL
+      // Clean up URL and localStorage
       window.history.replaceState({}, '', window.location.pathname);
+      localStorage.removeItem('pendingPaymentRedirect');
+      localStorage.removeItem('pendingPaymentType');
 
       // Show error message
       setTimeout(() => {
@@ -497,9 +522,37 @@ const App: React.FC = () => {
           }
         });
         window.dispatchEvent(event);
-      }, 500);
+      }, 1000);
     }
-  }, [currentUser]);
+
+    // Also check localStorage for pending payment redirect (for when user logs in after payment)
+    else if (currentUser) {
+      const pendingRedirect = localStorage.getItem('pendingPaymentRedirect');
+      const pendingType = localStorage.getItem('pendingPaymentType');
+
+      if (pendingRedirect === 'credits' && pendingType) {
+        console.log('[APP] 💳 Found pending payment redirect in localStorage!');
+
+        // Navigate to credit management
+        setActiveTab('credit-management');
+
+        // Clean up localStorage
+        localStorage.removeItem('pendingPaymentRedirect');
+        localStorage.removeItem('pendingPaymentType');
+
+        // Show message
+        setTimeout(() => {
+          const event = new CustomEvent('show-toast', {
+            detail: {
+              type: 'info',
+              message: 'Menunggu konfirmasi pembayaran...'
+            }
+          });
+          window.dispatchEvent(event);
+        }, 1000);
+      }
+    }
+  }, [currentUser, window.location.search]); // Trigger when user loads or URL changes
 
   useEffect(() => {
     if (!currentUser) return;
@@ -772,6 +825,7 @@ const App: React.FC = () => {
           onViewAll={() => setActiveTab('history')}
           creditBalance={creditBalance}
           onUnlockCandidate={handleUnlockCandidate}
+          onNavigateToCredits={handleNavigateToCredits}
         />;
       case 'jobs':
         return <JobManager currentCompany={currentCompany!} />;
@@ -847,65 +901,13 @@ const App: React.FC = () => {
       case 'admin-panel':
         return <AdminDashboard />;
       case 'settings':
-        return (
-          <div className="animate-in fade-in space-y-6">
-            {/* Sub Navigation Tabs */}
-            <div className="flex space-x-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto self-start inline-flex">
-              <button
-                onClick={() => setSettingsTab('profile')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'profile'
-                  ? 'bg-white dark:bg-brand-slate-900 text-brand-dark dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-              >
-                <User size={16} /> Profil Akun
-              </button>
-              <button
-                onClick={() => setSettingsTab('subscription')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${settingsTab === 'subscription'
-                  ? 'bg-white dark:bg-brand-slate-900 text-brand-orange shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-              >
-                <CreditCard size={16} /> Paket Langganan
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            {settingsTab === 'profile' ? (
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Informasi Pengguna</h2>
-
-                  <div className="p-5 bg-brand-blue/5 dark:bg-brand-blue/10 rounded-2xl border border-brand-blue/10 dark:border-brand-blue/20 flex items-center gap-4">
-                    {currentUser?.avatar && <img src={currentUser.avatar} alt="User" className="w-14 h-14 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />}
-                    <div>
-                      <p className="font-bold text-gray-800 dark:text-white text-lg">{currentUser?.name}</p>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">{currentUser?.email}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-xs font-bold rounded">{currentUser?.role}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {currentCompany && (
-                  <CompanyProfileSettings
-                    company={currentCompany}
-                    onUpdate={async () => {
-                      if (currentUser?.companyId) {
-                        const updated = await getCompanyById(currentUser.companyId);
-                        setCurrentCompany(updated);
-                      }
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-brand-slate-850 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700">
-                <PricingView currentTier={currentCompany?.tier || 'Basic'} />
-              </div>
-            )}
-          </div>
-        );
+        return <SettingsPage
+          currentUser={currentUser!}
+          currentCompany={currentCompany!}
+          onCompanyUpdate={handleCompanyUpdate}
+          onNavigateToCredits={handleNavigateToCredits}
+          onLogout={handleLogout}
+        />;
       default:
         return null;
     }

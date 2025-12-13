@@ -1,536 +1,402 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  BookOpen,
-  Briefcase,
-  Users,
-  History,
-  Settings,
-  ClipboardCheck,
-  ChevronDown,
-  ChevronRight,
   Search,
+  Menu,
+  ChevronRight,
   Lightbulb,
   CheckCircle2,
   AlertCircle,
-  Mail,
-  Link as LinkIcon,
-  Upload,
-  Eye,
-  BarChart3,
-  Globe
+  ExternalLink,
+  CornerDownRight,
+  Hash
 } from 'lucide-react';
+import { DOCUMENTATION_DATA, DocSection, DocContent } from '../constants/documentationData';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface DocSection {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  content: DocContent[];
+// Utility for merging tailwind classes
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
-interface DocContent {
-  subtitle: string;
-  description: string;
-  steps?: string[];
-  tips?: string[];
-  warnings?: string[];
-}
-
-const Documentation: React.FC = () => {
-  const [expandedSection, setExpandedSection] = useState<string>('jobs');
+export default function Documentation() {
+  const [activeSection, setActiveSection] = useState<string>('jobs');
+  const [activeSubSection, setActiveSubSection] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [searchResults, setSearchResults] = useState<{ section: DocSection, content: DocContent }[]>([]);
 
-  const sections: DocSection[] = [
-    {
-      id: 'jobs',
-      title: 'Kelola Lowongan',
-      icon: <Briefcase className="w-5 h-5" />,
-      content: [
-        {
-          subtitle: 'Membuat Lowongan Baru',
-          description: 'Cara membuat dan mempublikasikan lowongan pekerjaan baru di platform HireGood.',
-          steps: [
-            'Klik tombol "Buat Lowongan Baru" di halaman Kelola Lowongan',
-            'Isi informasi lowongan: Judul, Lokasi, Tipe Pekerjaan (Full-time/Part-time/Contract/Internship)',
-            'Tulis deskripsi lengkap menggunakan rich text editor. Gunakan Bold untuk kata penting seperti "Requirements", "Responsibilities"',
-            'Aktifkan "Enable Instant Integrity Assessment" jika ingin kandidat langsung mengikuti AI assessment setelah melamar',
-            'Pilih status lowongan: Active atau Closed',
-            'Klik "Buat Lowongan" untuk mempublikasikan'
-          ],
-          tips: [
-            'Gunakan formatting (Bold, List) untuk membuat deskripsi lebih mudah dibaca',
-            'Aktifkan Auto-Screen untuk otomasi proses seleksi kandidat',
-            'Setiap lowongan memiliki URL unik yang bisa dibagikan langsung'
-          ]
-        },
-        {
-          subtitle: 'Mengelola Lowongan Aktif',
-          description: 'Cara mengedit, menonaktifkan, atau melihat detail lowongan yang sudah dibuat.',
-          steps: [
-            'Di tabel lowongan, klik icon Edit (pensil) untuk mengubah detail lowongan',
-            'Klik icon Copy (salin) untuk menyalin link lowongan ke clipboard',
-            'Klik icon External Link untuk melihat tampilan publik lowongan',
-            'Ubah status menjadi "Closed" untuk menonaktifkan lowongan'
-          ],
-          tips: [
-            'Link lowongan tetap valid meskipun lowongan di-edit',
-            'Kandidat tidak bisa melamar ke lowongan dengan status "Closed"'
-          ]
-        },
-        {
-          subtitle: 'Laman Karir Perusahaan',
-          description: 'Halaman khusus yang menampilkan semua lowongan aktif perusahaan dalam satu link.',
-          steps: [
-            'Link laman karir otomatis tersedia di bagian atas halaman Kelola Lowongan',
-            'Klik "Salin Link" untuk menyalin URL laman karir',
-            'Klik "Preview" untuk melihat tampilan laman karir',
-            'Bagikan link ini di Bio Instagram, LinkedIn, atau website perusahaan'
-          ],
-          tips: [
-            'Laman karir otomatis menampilkan semua lowongan dengan status Active',
-            'Tambahkan logo perusahaan di Pengaturan → Profil Perusahaan untuk tampilan lebih profesional',
-            'Laman karir responsive dan mobile-friendly'
-          ]
-        }
-      ]
-    },
-    {
-      id: 'assessment',
-      title: 'Link Assessment',
-      icon: <ClipboardCheck className="w-5 h-5" />,
-      content: [
-        {
-          subtitle: 'Cara Kerja Assessment',
-          description: 'Platform HireGood menggunakan AI Integrity Assessment untuk screening kandidat secara otomatis.',
-          steps: [
-            'Kandidat mengisi survei self-assessment (Fraud Triangle, Financial Strain, SJT Scenarios)',
-            'Kandidat melakukan wawancara AI singkat (10-15 menit)',
-            'Sistem menganalisis jawaban dan memberikan skor risiko integritas',
-            'HR mendapat laporan lengkap dengan rekomendasi'
-          ]
-        },
-        {
-          subtitle: 'Mengundang Kandidat (Manual Invite)',
-          description: 'Cara mengundang kandidat secara manual untuk mengikuti assessment.',
-          steps: [
-            'Buka menu "Kandidat" → Tab "Review & Invite"',
-            'Klik "Undang Kandidat" atau "Bulk Invite"',
-            'Isi data kandidat: Nama, Email, Posisi',
-            'Sistem akan generate kode akses unik dan mengirim email undangan',
-            'Kandidat menggunakan kode akses untuk memulai assessment'
-          ],
-          tips: [
-            'Satu kode akses hanya bisa digunakan sekali',
-            'Email undangan dikirim otomatis berisi link dan kode akses',
-            'Kandidat bisa mengakses assessment dari device apapun'
-          ]
-        },
-        {
-          subtitle: 'Auto-Screen via Lowongan',
-          description: 'Kandidat yang melamar lewat lowongan dengan Auto-Screen aktif akan langsung mendapat assessment.',
-          steps: [
-            'Pastikan lowongan memiliki "Enable Instant Integrity Assessment" aktif',
-            'Kandidat submit aplikasi (CV + data diri)',
-            'Sistem otomatis mengirim email dengan kode akses assessment',
-            'Kandidat langsung bisa mengikuti assessment tanpa menunggu HR'
-          ],
-          tips: [
-            'Proses ini sepenuhnya otomatis, menghemat waktu HR',
-            'Hasil assessment langsung masuk ke dashboard "Kandidat → Auto View"',
-            'CV kandidat tersimpan dan bisa didownload dari detail kandidat'
-          ]
-        },
-        {
-          subtitle: 'Membaca Hasil Assessment',
-          description: 'Cara melihat dan menginterpretasi hasil assessment kandidat.',
-          steps: [
-            'Buka menu "Kandidat" → Tab yang sesuai (Auto View/Review & Invite)',
-            'Klik nama kandidat untuk melihat detail',
-            'Review skor risiko: Low, Medium, High, Critical',
-            'Baca red flags dan rekomendasi AI',
-            'Lihat transkrip wawancara lengkap untuk verifikasi manual'
-          ],
-          warnings: [
-            'Hasil assessment adalah rekomendasi, bukan keputusan final',
-            'Selalu lakukan verifikasi tambahan untuk posisi sensitif',
-            'Pertimbangkan konteks bisnis dan budaya perusahaan'
-          ]
-        }
-      ]
-    },
-    {
-      id: 'candidates',
-      title: 'Kandidat',
-      icon: <Users className="w-5 h-5" />,
-      content: [
-        {
-          subtitle: 'Tab Auto View',
-          description: 'Kandidat yang melamar via lowongan dengan Auto-Screen aktif akan muncul di sini.',
-          steps: [
-            'Klik tab "Auto View" di menu Kandidat',
-            'Lihat daftar kandidat yang sudah menyelesaikan assessment',
-            'Filter berdasarkan Risk Level: All/Low/Medium/High/Critical',
-            'Klik kandidat untuk melihat detail lengkap dan laporan assessment'
-          ],
-          tips: [
-            'Kandidat diurutkan berdasarkan tanggal assessment terbaru',
-            'Badge warna menunjukkan level risiko dengan jelas',
-            'CV kandidat bisa didownload langsung dari detail'
-          ]
-        },
-        {
-          subtitle: 'Tab Review & Invite',
-          description: 'Kandidat yang diundang manual atau belum mengikuti assessment.',
-          steps: [
-            'Klik tab "Review & Invite"',
-            'Lihat daftar kandidat dengan status: Pending/Completed',
-            'Kandidat dengan status Pending belum menyelesaikan assessment',
-            'Klik "Undang Kandidat" untuk menambah kandidat baru',
-            'Gunakan "Bulk Invite" untuk mengundang banyak kandidat sekaligus'
-          ],
-          tips: [
-            'Kirim reminder ke kandidat yang belum menyelesaikan assessment',
-            'Status akan otomatis berubah setelah kandidat selesai assessment'
-          ]
-        },
-        {
-          subtitle: 'Detail Kandidat',
-          description: 'Informasi lengkap tentang kandidat dan hasil assessment-nya.',
-          steps: [
-            'Klik nama kandidat dari daftar untuk membuka detail',
-            'Lihat informasi dasar: Nama, Email, Posisi, Tanggal Assessment',
-            'Review skor Fraud Triangle: Pressure, Opportunity, Rationalization',
-            'Baca summary analisis dan red flags yang terdeteksi',
-            'Scroll ke bawah untuk melihat transkrip wawancara lengkap',
-            'Download CV kandidat jika tersedia'
-          ],
-          tips: [
-            'Transkrip wawancara sangat berguna untuk memahami konteks jawaban kandidat',
-            'Perhatikan konsistensi antara jawaban survei dan wawancara',
-            'Red flags yang sama muncul berkali-kali perlu perhatian khusus'
-          ]
-        },
-        {
-          subtitle: 'Timeline Kandidat',
-          description: 'Pelacakan otomatis perjalanan kandidat dari aplikasi hingga interview.',
-          steps: [
-            'Buka detail kandidat',
-            'Lihat bagian "Timeline" di samping kanan',
-            'Timeline menampilkan semua tahapan yang dilalui kandidat',
-            'Status saat ini ditandai dengan warna highlight'
-          ],
-          tips: [
-            'Timeline otomatis terupdate saat kandidat menyelesaikan tahapan',
-            'Berguna untuk tracking progress kandidat dalam proses rekrutmen'
-          ]
-        }
-      ]
-    },
-    {
-      id: 'history',
-      title: 'Riwayat',
-      icon: <History className="w-5 h-5" />,
-      content: [
-        {
-          subtitle: 'Melihat Riwayat Assessment',
-          description: 'Semua assessment yang pernah dilakukan tersimpan di menu Riwayat.',
-          steps: [
-            'Klik menu "Riwayat" di sidebar',
-            'Lihat daftar semua assessment yang sudah selesai',
-            'Filter berdasarkan status atau risk level',
-            'Klik kandidat untuk membuka laporan lengkap'
-          ],
-          tips: [
-            'Riwayat mencakup kandidat dari Auto View dan Manual Invite',
-            'Data tersimpan permanen dan bisa diakses kapan saja',
-            'Berguna untuk membandingkan kandidat atau audit rekrutmen'
-          ]
-        },
-        {
-          subtitle: 'Export dan Laporan',
-          description: 'Cara mengekspor data kandidat untuk keperluan reporting.',
-          steps: [
-            'Buka detail kandidat yang ingin di-export',
-            'Klik tombol "Export Report" atau "Download CV"',
-            'Data kandidat bisa di-copy atau di-screenshot untuk dokumentasi'
-          ],
-          tips: [
-            'Screenshot laporan untuk dokumentasi internal',
-            'Simpan CV kandidat yang lolos untuk arsip perusahaan'
-          ]
-        }
-      ]
-    },
-    {
-      id: 'settings',
-      title: 'Pengaturan',
-      icon: <Settings className="w-5 h-5" />,
-      content: [
-        {
-          subtitle: 'Profil Perusahaan',
-          description: 'Kustomisasi tampilan dan branding perusahaan di halaman publik.',
-          steps: [
-            'Buka menu "Pengaturan"',
-            'Klik tab "Profil Perusahaan"',
-            'Upload logo perusahaan (PNG/JPG, max 5MB)',
-            'Pilih warna brand untuk konsistensi visual',
-            'Edit header title dan welcome message untuk laman karir',
-            'Klik "Simpan Perubahan"'
-          ],
-          tips: [
-            'Logo akan muncul di laman karir dan halaman assessment',
-            'Warna brand diterapkan di semua halaman publik',
-            'Welcome message muncul di laman karir untuk menarik kandidat'
-          ]
-        },
-        {
-          subtitle: 'Pengaturan Assessment',
-          description: 'Kustomisasi pertanyaan dan bobot assessment sesuai kebutuhan perusahaan.',
-          steps: [
-            'Buka tab "Pengaturan Assessment"',
-            'Lihat daftar pertanyaan Fraud Triangle dan SJT Scenarios',
-            'Edit pertanyaan atau tambah pertanyaan baru (fitur Premium/Enterprise)',
-            'Sesuaikan bobot pertanyaan berdasarkan prioritas perusahaan',
-            'Klik "Simpan Pengaturan"'
-          ],
-          warnings: [
-            'Perubahan pengaturan hanya berlaku untuk assessment baru',
-            'Assessment yang sudah selesai tidak terpengaruh perubahan'
-          ]
-        },
-        {
-          subtitle: 'Background Check Integration',
-          description: 'Integrasi dengan layanan background check pihak ketiga (tersedia untuk tier tertentu).',
-          steps: [
-            'Buka tab "Background Check"',
-            'Hubungkan akun Didit atau layanan lainnya',
-            'Pilih kandidat yang ingin di-background check',
-            'Sistem akan mengirim permintaan otomatis',
-            'Hasil akan muncul di detail kandidat'
-          ],
-          tips: [
-            'Background check membantu verifikasi identitas dan riwayat kandidat',
-            'Berguna untuk posisi yang memerlukan tingkat kepercayaan tinggi'
-          ]
-        }
-      ]
+  // Search Logic
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults([]);
+      return;
     }
-  ];
+    const query = searchQuery.toLowerCase();
+    const results: { section: DocSection, content: DocContent }[] = [];
 
-  const toggleSection = (sectionId: string) => {
-    if (expandedSection === sectionId) {
-      setExpandedSection('');
-    } else {
-      setExpandedSection(sectionId);
-      setTimeout(() => {
-        const element = sectionRefs.current[sectionId];
-        if (element) {
-          const yOffset = -20;
-          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-          window.scrollTo({ top: y, behavior: 'smooth' });
+    DOCUMENTATION_DATA.forEach(section => {
+      section.content.forEach(content => {
+        if (
+          content.subtitle.toLowerCase().includes(query) ||
+          content.description.toLowerCase().includes(query) ||
+          section.title.toLowerCase().includes(query)
+        ) {
+          results.push({ section, content });
         }
-      }, 100);
+      });
+    });
+    setSearchResults(results);
+  }, [searchQuery]);
+
+  // Scroll Spy Logic
+  useEffect(() => {
+    const handleScroll = () => {
+      const headings = document.querySelectorAll('h3[id], h4[id]');
+      let current = '';
+
+      headings.forEach(heading => {
+        const top = heading.getBoundingClientRect().top;
+        if (top < 150) {
+          current = heading.id;
+        }
+      });
+
+      if (current) {
+        // Check if it's a section or subsection
+        const isSection = DOCUMENTATION_DATA.find(s => s.id === current);
+        if (isSection) {
+          setActiveSection(current);
+        } else {
+          // Find parent section
+          const parent = DOCUMENTATION_DATA.find(s => s.content.some(c => c.id === current));
+          if (parent) setActiveSection(parent.id);
+          setActiveSubSection(current);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToId = (id: string, isMobile = false) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      if (isMobile) setSidebarOpen(false);
+      setSearchQuery(''); // Close search results
     }
   };
 
-  const filteredSections = sections.filter(section => {
-    if (!searchQuery) return true;
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      section.title.toLowerCase().includes(searchLower) ||
-      section.content.some(c =>
-        c.subtitle.toLowerCase().includes(searchLower) ||
-        c.description.toLowerCase().includes(searchLower)
-      )
-    );
-  });
-
   return (
-    <div className="animate-in fade-in duration-500 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-[#0F172A] flex items-center gap-3 mb-2">
-          <BookOpen className="w-8 h-8" style={{ color: '#D95D00' }} />
-          Dokumentasi
-        </h2>
-        <p className="text-gray-600">
-          Panduan lengkap menggunakan platform HireGood untuk proses rekrutmen yang lebih efisien
-        </p>
-      </div>
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100">
+      {/* Mobile Sidebar Toggle */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-[#D95D00] text-white rounded-full shadow-lg hover:bg-[#B14d00] transition-transform active:scale-95"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari topik atau kata kunci..."
-            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#D95D00] focus:border-transparent transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Quick Start Guide */}
-      <div className="bg-gradient-to-br from-orange-50 to-blue-50 rounded-2xl p-6 mb-8 border-2 border-[#D95D00]">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex-shrink-0">
-            <Lightbulb className="w-6 h-6 text-[#D95D00]" />
+      {/* Sidebar Navigation */}
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:h-[calc(100vh-2rem)] lg:sticky lg:top-8 rounded-xl",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="h-full overflow-y-auto p-4 custom-scrollbar">
+          <div className="mb-8 px-2">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#D95D00] to-orange-400 bg-clip-text text-transparent">
+              Dokumentasi
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">HireGood Platform Guide</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Quick Start Guide</h3>
-            <div className="space-y-2 text-sm text-gray-700">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <span><strong>Langkah 1:</strong> Setup profil perusahaan di menu Pengaturan (logo, warna, welcome message)</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <span><strong>Langkah 2:</strong> Buat lowongan pertama Anda di menu Kelola Lowongan</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <span><strong>Langkah 3:</strong> Aktifkan Auto-Screen untuk otomasi atau undang kandidat manual</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <span><strong>Langkah 4:</strong> Review hasil assessment di menu Kandidat</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Documentation Sections */}
-      <div className="space-y-4">
-        {filteredSections.map((section) => (
-          <div
-            key={section.id}
-            ref={(el) => (sectionRefs.current[section.id] = el)}
-            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden transition-all hover:shadow-md"
-          >
-            {/* Section Header */}
-            <button
-              onClick={() => toggleSection(section.id)}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg text-[#D95D00] flex-shrink-0">
-                  {section.icon}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 text-left">{section.title}</h3>
-              </div>
-              {expandedSection === section.id ? (
-                <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-              )}
-            </button>
+          <nav className="space-y-1">
+            {DOCUMENTATION_DATA.map((section) => (
+              <div key={section.id} className="mb-4">
+                <button
+                  onClick={() => scrollToId(section.id, true)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors group",
+                    activeSection === section.id
+                      ? "bg-orange-50 text-[#D95D00] dark:bg-orange-900/10 dark:text-orange-400"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+                  )}
+                >
+                  <span className={cn("transition-colors", activeSection === section.id ? "text-[#D95D00]" : "text-slate-400 group-hover:text-slate-600")}>
+                    {section.icon}
+                  </span>
+                  {section.title}
+                </button>
 
-            {/* Section Content */}
-            {expandedSection === section.id && (
-              <div className="px-4 sm:px-6 pb-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                {section.content.map((content, idx) => (
-                  <div key={idx} className="border-l-4 border-[#D95D00] pl-4 sm:pl-6 py-2">
-                    <h4 className="text-base sm:text-lg font-bold text-gray-800 mb-2">
-                      {content.subtitle}
-                    </h4>
-                    <p className="text-sm sm:text-base text-gray-600 mb-4 leading-relaxed">
-                      {content.description}
-                    </p>
-
-                    {/* Steps */}
-                    {content.steps && content.steps.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Langkah-langkah:</p>
-                        <ol className="space-y-2">
-                          {content.steps.map((step, stepIdx) => (
-                            <li key={stepIdx} className="flex items-start gap-3 text-sm text-gray-700">
-                              <span className="flex-shrink-0 w-6 h-6 bg-[#D95D00] text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                {stepIdx + 1}
-                              </span>
-                              <span className="flex-1 pt-0.5">{step}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-
-                    {/* Tips */}
-                    {content.tips && content.tips.length > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4 flex-shrink-0" />
-                          Tips:
-                        </p>
-                        <ul className="space-y-1">
-                          {content.tips.map((tip, tipIdx) => (
-                            <li key={tipIdx} className="text-sm text-blue-800 flex items-start gap-2">
-                              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                              <span className="flex-1">{tip}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Warnings */}
-                    {content.warnings && content.warnings.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                          Perhatian:
-                        </p>
-                        <ul className="space-y-1">
-                          {content.warnings.map((warning, warnIdx) => (
-                            <li key={warnIdx} className="text-sm text-amber-800 flex items-start gap-2">
-                              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                              <span className="flex-1">{warning}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                {/* Nested Links */}
+                {activeSection === section.id && (
+                  <div className="mt-1 ml-4 pl-4 border-l border-slate-200 dark:border-slate-800 space-y-1">
+                    {section.content.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={() => scrollToId(sub.id, true)}
+                        className={cn(
+                          "block w-full text-left px-2 py-1.5 text-xs rounded-md transition-colors truncate",
+                          activeSubSection === sub.id
+                            ? "text-[#D95D00] font-medium bg-orange-50/50 dark:bg-transparent"
+                            : "text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300"
+                        )}
+                      >
+                        {sub.subtitle}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+            ))}
+          </nav>
+        </div>
 
-      {/* Support Section */}
-      <div className="mt-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 sm:p-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-center md:text-left">
-            <h3 className="text-xl sm:text-2xl font-bold mb-2">Butuh Bantuan Lebih Lanjut?</h3>
-            <p className="text-gray-300 text-sm sm:text-base">
-              Tim support kami siap membantu Anda 24/7
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[-1] lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-8 relative">
+        <div className="max-w-3xl mx-auto">
+
+          {/* Global Search Bar */}
+          <div className="relative mb-10 group z-20">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-[#D95D00] transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="Cari dokumentasi... (Tekan '/')"
+              className="block w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-[#D95D00] shadow-sm transition-all focus:shadow-md"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+
+            {/* Search Dropdown */}
+            <AnimatePresence>
+              {searchQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden z-50 max-h-[60vh] overflow-y-auto"
+                >
+                  {searchResults.length === 0 ? (
+                    <div className="p-4 text-center text-slate-500 text-sm">Tidak ada hasil untuk "{searchQuery}"</div>
+                  ) : (
+                    <div className="py-2">
+                      {searchResults.map((result, idx) => (
+                        <button
+                          key={`${result.section.id}-${result.content.id}-${idx}`}
+                          onClick={() => scrollToId(result.content.id)}
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 last:border-0 dark:border-slate-700/50"
+                        >
+                          <div className="text-xs font-semibold text-[#D95D00] mb-0.5 flex items-center gap-1">
+                            {result.section.title} <ChevronRight className="w-3 h-3" /> {result.content.subtitle}
+                          </div>
+                          <div className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                            {result.content.description}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Intro Section */}
+          <div className="mb-12">
+            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">
+              Dokumentasi
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+              Panduan lengkap menggunakan platform HireGood untuk proses rekrutmen yang lebih efisien dan terintegrasi dengan AI Integrity Assessment.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            <a
-              href="mailto:support@hiregood.one"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+
+          {/* Quick Start Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
+            <div
+              onClick={() => scrollToId('create-job')}
+              className="group p-6 bg-gradient-to-br from-orange-50 to-white dark:from-slate-800 dark:to-slate-800/50 rounded-2xl border border-orange-100 dark:border-slate-700 cursor-pointer hover:shadow-md transition-all hover:bg-white"
             >
-              <Mail className="w-5 h-5 flex-shrink-0" />
-              <span>Email Support</span>
-            </a>
-            <a
-              href="https://hiregood.one"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-[#D95D00] text-white rounded-lg font-semibold hover:bg-[#B14D00] transition-colors"
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 text-[#D95D00] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Lightbulb className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-2 group-hover:text-[#D95D00] transition-colors">Mulai Merekrut</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Pelajari cara membuat lowongan pertama Anda dan mengundang kandidat.</p>
+            </div>
+
+            <div
+              onClick={() => scrollToId('how-it-works')}
+              className="group p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:shadow-md transition-all"
             >
-              <Globe className="w-5 h-5 flex-shrink-0" />
-              <span>Visit Website</span>
-            </a>
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 transition-colors">Memahami Skor AI</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Pelajari bagaimana AI Integrity Assessment menganalisis risiko kandidat.</p>
+            </div>
           </div>
+
+          <div className="w-full h-px bg-slate-200 dark:bg-slate-800 mb-12"></div>
+
+          {/* Sections Renderer */}
+          <div className="space-y-24">
+            {DOCUMENTATION_DATA.map((section) => (
+              <section key={section.id} id={section.id} className="scroll-mt-24">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-300">
+                    {section.icon}
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {section.title}
+                  </h2>
+                </div>
+
+                <div className="space-y-16 border-l border-slate-200 dark:border-slate-800 pl-8 ml-4">
+                  {section.content.map((content) => (
+                    <div key={content.id} id={content.id} className="scroll-mt-28 relative group">
+                      {/* Anchor Link Hover */}
+                      <div className="absolute -left-[42px] top-1 hidden lg:flex items-center justify-center w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => scrollToId(content.id)}>
+                        <Hash className="w-3 h-3 text-slate-400" />
+                      </div>
+
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                        {content.subtitle}
+                      </h3>
+
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+                        {content.description}
+                      </p>
+
+                      {/* Steps */}
+                      {content.steps && (
+                        <div className="mb-6">
+                          <ol className="space-y-4">
+                            {content.steps.map((step, idx) => (
+                              <li key={idx} className="flex gap-4">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs font-bold text-slate-500 font-mono">
+                                  {idx + 1}
+                                </div>
+                                <span className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed pt-0.5">{step}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {/* Tips */}
+                      {content.tips && (
+                        <div className="my-6 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30">
+                          <div className="flex gap-3">
+                            <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div className="space-y-2">
+                              {content.tips.map((tip, idx) => (
+                                <p key={idx} className="text-sm text-blue-900 dark:text-blue-300 leading-relaxed">
+                                  {tip}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Warnings */}
+                      {content.warnings && (
+                        <div className="my-6 p-4 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
+                          <div className="flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div className="space-y-2">
+                              {content.warnings.map((warn, idx) => (
+                                <p key={idx} className="text-sm text-amber-900 dark:text-amber-300 leading-relaxed">
+                                  {warn}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+
         </div>
-      </div>
+      </main>
+
+      {/* Right Sidebar (TOC) */}
+      <aside className="hidden xl:block w-64 p-8 sticky top-8 h-[calc(100vh-2rem)] overflow-y-auto">
+        <h5 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">
+          On This Page
+        </h5>
+        <div className="space-y-1 relative border-l border-slate-200 dark:border-slate-800">
+          {DOCUMENTATION_DATA.map((section) => (
+            <div key={section.id}>
+              <button
+                onClick={() => scrollToId(section.id)}
+                className={cn(
+                  "block w-full text-left px-4 py-1.5 text-xs transition-colors border-l -ml-px",
+                  activeSection === section.id
+                    ? "text-[#D95D00] font-medium border-[#D95D00]"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border-transparent"
+                )}
+              >
+                {section.title}
+              </button>
+              {/* Active Section Sub-items */}
+              {activeSection === section.id && (
+                <div className="space-y-1">
+                  {section.content.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => scrollToId(sub.id)}
+                      className={cn(
+                        "block w-full text-left pl-8 pr-2 py-1 text-[11px] transition-colors border-l -ml-px",
+                        activeSubSection === sub.id
+                          ? "text-[#D95D00] font-medium border-[#D95D00]"
+                          : "text-slate-400 hover:text-slate-600 dark:text-slate-500 border-transparent"
+                      )}
+                    >
+                      {sub.subtitle}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <a href="mailto:support@hiregood.one" className="flex items-center text-xs text-slate-500 hover:text-[#D95D00] transition-colors gap-2">
+            <ExternalLink className="w-3 h-3" />
+            Butuh bantuan?
+          </a>
+        </div>
+      </aside>
     </div>
   );
-};
-
-export default Documentation;
+}

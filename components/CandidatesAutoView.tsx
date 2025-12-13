@@ -1,11 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle, CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock, User, Bot, Shield, Lock, Crown, Unlock, X, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Zap, Download, Eye, Mail, Phone, Filter, Loader2, FileText, AlertCircle,
+  CheckCircle2, AlertTriangle, Briefcase, MapPin, Calendar, TrendingUp, Clock,
+  User, Bot, Shield, Lock, Crown, Unlock, X, CreditCard, LayoutGrid, List,
+  MoreHorizontal, ArrowRight, Search
+} from 'lucide-react';
 import { InterviewSession, Job, RiskLevel, SUBSCRIPTION_PLANS, CompanyProfile, CREDIT_COSTS } from '../types';
-import { db, COLLECTIONS } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, COLLECTIONS, functions } from '../services/firebase';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useToast } from './Toast';
 import { calculateAssessmentScores } from '../services/genai';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface CandidatesAutoViewProps {
   companyId: string;
@@ -18,660 +26,490 @@ interface AutoCandidate extends InterviewSession {
   completedAt?: string;
   currentQuestionIndex?: number;
   totalQuestions?: number;
+  interviewEmailSent?: boolean;
+  assessmentStarted?: boolean; // For detecting "Assessment In Progress" stage
+  assessmentCompleted?: boolean; // For detecting when assessment is done
 }
 
+// -- CONSTANTS --
+// New 8-stage recruitment workflow
+const RECRUITMENT_STAGES = [
+  { id: 'applied', label: 'Applied', color: 'bg-slate-50 border-slate-200 text-slate-700', progress: 10 },
+  { id: 'assessment_in_progress', label: 'Assessment In Progress', color: 'bg-blue-50 border-blue-200 text-blue-700', progress: 30 },
+  { id: 'awaiting_review', label: 'Awaiting Review', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', progress: 50 },
+  { id: 'interview', label: 'Interview Scheduled', color: 'bg-orange-50 border-orange-200 text-orange-700', progress: 60 },
+  { id: 'bc_check', label: 'Background Check', color: 'bg-purple-50 border-purple-200 text-purple-700', progress: 80 },
+  { id: 'bc_complete', label: 'Background Check Complete', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', progress: 90 },
+  { id: 'hired', label: 'Hired', color: 'bg-green-50 border-green-200 text-green-700', progress: 100 },
+  { id: 'rejected', label: 'Rejected', color: 'bg-red-50 border-red-200 text-red-700', progress: 100 }
+];
 const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onViewSession }) => {
   const toast = useToast();
+
+  // -- DATA STATE --
   const [candidates, setCandidates] = useState<AutoCandidate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedJob, setSelectedJob] = useState<string>('all');
-  const [riskFilter, setRiskFilter] = useState<string>('all');
-  const [stageFilter, setStageFilter] = useState<string>('all');
+  const [creditBalance, setCreditBalance] = useState<number>(0);
   const [companyTier, setCompanyTier] = useState<'Freemium' | 'Premium'>('Freemium');
   const [applicationRanks, setApplicationRanks] = useState<Map<string, number>>(new Map());
   const [unlockedCandidates, setUnlockedCandidates] = useState<Set<string>>(new Set());
+
+  // -- UI STATE --
+  // viewMode state removed - forcing List View
+  const [selectedJob, setSelectedJob] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // -- MODALS STATE --
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [selectedCandidateForUnlock, setSelectedCandidateForUnlock] = useState<AutoCandidate | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [creditBalance, setCreditBalance] = useState<number>(0);
+
+
+
 
   useEffect(() => {
-    loadData();
-  }, [companyId]);
+    setIsLoading(true);
 
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      console.log('[CANDIDATES-AUTO] Loading data for company:', companyId);
+    // Load Jobs (One-time fetch is fine for jobs, or make real-time if needed. Keeping simple for now)
+    const fetchJobs = async () => {
+      const jobsQ = query(collection(db, COLLECTIONS.JOBS), where('companyId', '==', companyId));
+      const jobsSnap = await getDocs(jobsQ);
+      setJobs(jobsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Job)));
+    };
+    fetchJobs();
 
-      const jobsQuery = query(
-        collection(db, COLLECTIONS.JOBS),
-        where('companyId', '==', companyId)
-      );
-      const jobsSnapshot = await getDocs(jobsQuery);
-      const jobsData = jobsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Job));
-      setJobs(jobsData);
+    // Load Company Tier (One-time)
+    getDoc(doc(db, COLLECTIONS.COMPANIES, companyId)).then(snap => {
+      if (snap.exists()) setCompanyTier((snap.data() as CompanyProfile).tier || 'Freemium');
+    });
 
-      // Query: Hanya ambil kandidat dari job_application yang langsung auto-complete (Instant ON)
-      // Excludes: pending_review (ini untuk Review Invite) dan manual invite (yang ada access_code)
-      const sessionsQuery = query(
-        collection(db, COLLECTIONS.SESSIONS),
-        where('companyId', '==', companyId),
-        where('source', '==', 'job_application')
-      );
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      console.log('[CANDIDATES-AUTO] Found all job application sessions:', sessionsSnapshot.docs.length);
+    // REAL-TIME LISTENER for Sessions
+    const sessionsQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where('companyId', '==', companyId)
+    );
 
-      // Filter: Ambil yang bukan pending_review DAN bukan dari manual invite (tidak ada accessCode di candidate data)
-      const autoCandidateSessions = sessionsSnapshot.docs.filter(doc => {
-        const data = doc.data();
-        // Hanya tampilkan yang auto-complete dari job portal (Instant ON)
-        // Exclude: pending_review dan yang ada inviteSource
-        return data.status !== 'pending_review' && !data.inviteSource;
-      });
-      console.log('[CANDIDATES-AUTO] Filtered to auto-complete only (Instant ON, excluding pending_review & manual invites):', autoCandidateSessions.length);
-
-      const candidatesWithDetails: AutoCandidate[] = await Promise.all(
-        autoCandidateSessions.map(async (docSnap) => {
-          const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
-
-          let jobTitle = 'Unknown Position';
-          let jobLocation = 'Unknown Location';
-
-          if (sessionData.jobId) {
-            const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, sessionData.jobId));
-            if (jobDoc.exists()) {
-              const job = jobDoc.data();
-              jobTitle = job.title;
-              jobLocation = job.location;
-            }
-          }
-
-          const completedAt = sessionData.completedAt || sessionData.date;
-
-          return {
-            ...sessionData,
-            jobTitle,
-            jobLocation,
-            completedAt
-          } as AutoCandidate;
-        })
-      );
-
-      candidatesWithDetails.sort((a, b) => {
-        return new Date(b.completedAt || b.date).getTime() - new Date(a.completedAt || a.date).getTime();
+    const unsubscribe = onSnapshot(sessionsQ, (snapshot) => {
+      const filteredSessions = snapshot.docs.filter(doc => {
+        const d = doc.data();
+        return !d.inviteSource;
       });
 
-      // Calculate application ranks based on apply date (oldest first = rank 1)
-      const ranks = calculateApplicationRanks(candidatesWithDetails);
-      setApplicationRanks(ranks);
-      console.log('[CANDIDATES-AUTO] Application ranks calculated:', ranks.size);
+      const processData = async () => {
+        // We need jobs loaded to map titles. 
+        // If jobs fetch is slow, we might miss titles initially. 
+        // Ideally jobs should be in a context or also real-time, but for now we'll fetch/use existing state if possible.
+        // Since we can't easily access 'jobs' state inside this closure without dependency issues, 
+        // let's grab jobs simply or assume they load fast. 
+        // Better approach: just store jobId and map it in render, OR fetch jobs inside here.
+        // For stability, let's just map what we can. 
 
-      // Load previously unlocked candidates from session data
-      const unlockedIds = new Set<string>();
-      candidatesWithDetails.forEach(c => {
-        if ((c as any).unlockedAt) {
-          unlockedIds.add(c.id);
-        }
-      });
-      setUnlockedCandidates(unlockedIds);
-      console.log('[CANDIDATES-AUTO] Previously unlocked candidates:', unlockedIds.size);
+        // Re-fetch jobs to be safe or rely on outer scope if "jobs" dependency is added (but that causes re-subscription loop).
+        // Let's do a quick read or just map basic data.
+        // ACTUALLY, simpler: Just map the data we have.
 
-      // Fetch company tier
-      const companyDoc = await getDoc(doc(db, COLLECTIONS.COMPANIES, companyId));
-      if (companyDoc.exists()) {
-        const tier = (companyDoc.data() as CompanyProfile).tier || 'Freemium';
-        setCompanyTier(tier);
-        console.log('[CANDIDATES-AUTO] Company tier:', tier);
-      }
-
-      setCandidates(candidatesWithDetails);
-      console.log('[CANDIDATES-AUTO] ✅ Total candidates loaded:', candidatesWithDetails.length);
-    } catch (error) {
-      console.error('[CANDIDATES-AUTO] Error loading data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUnlockClick = async (candidate: AutoCandidate) => {
-    // Fetch current credit balance
-    const balance = await getCreditBalance(companyId);
-    setCreditBalance(balance);
-    setSelectedCandidateForUnlock(candidate);
-    setShowUnlockModal(true);
-  };
-
-  const confirmUnlock = async () => {
-    if (!selectedCandidateForUnlock) return;
-
-    const unlockCost = CREDIT_COSTS.UNLOCK_PROFILE;
-
-    if (creditBalance < unlockCost) {
-      toast.error(`Kredit tidak cukup. Dibutuhkan: ${unlockCost}, Tersedia: ${creditBalance}`);
-      setShowUnlockModal(false);
-      return;
-    }
-
-    setIsUnlocking(true);
-    try {
-      const result = await deductCredit(
-        companyId,
-        unlockCost,
-        'UNLOCK_PROFILE',
-        `Unlock kandidat: ${selectedCandidateForUnlock.candidate.name}`,
-        {
-          candidateId: selectedCandidateForUnlock.id,
-          candidateName: selectedCandidateForUnlock.candidate.name,
-          sessionId: selectedCandidateForUnlock.id
-        }
-      );
-
-      if (result.success) {
-        // Save unlock status to Firestore
-        const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
-        await updateDoc(sessionRef, {
-          unlockedAt: new Date().toISOString(),
-          unlockedByCompanyId: companyId
+        const candidatesData = filteredSessions.map(docSnap => {
+          const data = { id: docSnap.id, ...docSnap.data() } as any;
+          // Job Title lookup will be done in render or we assume jobs loaded.
+          // We can trigger a separate effect to map jobs if needed.
+          return { ...data, completedAt: data.completedAt || data.date } as AutoCandidate;
         });
 
-        // Add to unlocked set
-        setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
-        toast.success(`Kandidat ${selectedCandidateForUnlock.candidate.name} berhasil di-unlock! Sisa kredit: ${result.remainingCredits}`);
-        setShowUnlockModal(false);
-        // View the candidate immediately
-        onViewSession(selectedCandidateForUnlock.id);
-      } else {
-        toast.error(result.error || 'Gagal unlock kandidat');
+        // Sort
+        candidatesData.sort((a, b) => {
+          const dateA = new Date(a.completedAt || 0).getTime();
+          const dateB = new Date(b.completedAt || 0).getTime();
+          return dateB - dateA;
+        });
+
+        setApplicationRanks(calculateApplicationRanks(candidatesData));
+
+        const unlocked = new Set<string>();
+        candidatesData.forEach(c => { if ((c as any).unlockedAt) unlocked.add(c.id); });
+        setUnlockedCandidates(unlocked);
+
+        setCandidates(candidatesData);
+        setIsLoading(false);
+      };
+
+      processData();
+    });
+
+    return () => unsubscribe();
+  }, [companyId]);
+
+  // Derived state to merge Job Titles properly whenever Candidates OR Jobs change
+  const candidatesWithJobs = useMemo(() => {
+    return candidates.map(c => {
+      let jobTitle = 'Unknown';
+      if (c.jobId) {
+        const j = jobs.find(job => job.id === c.jobId);
+        if (j) jobTitle = j.title;
       }
-    } catch (error: any) {
-      console.error('[UNLOCK] Error:', error);
-      toast.error('Terjadi kesalahan saat unlock kandidat');
-    } finally {
-      setIsUnlocking(false);
-      setSelectedCandidateForUnlock(null);
+      return { ...c, jobTitle };
+    });
+  }, [candidates, jobs]);
+
+  // -- HELPER: RISK SCORE & COLOR --
+  const getRiskScore = (c: AutoCandidate): number | null => {
+    // If no analysis exists, return null (Not Assessed)
+    if (!c.analysis) return null;
+
+    if (c.analysis.scores) {
+      const { pressure = 0, opportunity = 0, rationalization = 0 } = c.analysis.scores;
+      return Math.round((pressure + opportunity + rationalization) / 3);
     }
+    const risk = c.analysis.riskLevel?.toLowerCase();
+    if (risk === 'critical') return 90;
+    if (risk === 'high') return 65;
+    if (risk === 'medium') return 35;
+    if (risk === 'low') return 10;
+
+    return null;
   };
 
-  const filteredCandidates = candidates.filter(candidate => {
-    if (selectedJob !== 'all' && candidate.jobId !== selectedJob) return false;
-    if (riskFilter !== 'all') {
-      const risk = candidate.analysis?.riskLevel?.toLowerCase() || 'low';
-      if (riskFilter !== risk) return false;
-    }
-    if (stageFilter !== 'all') {
-      let stage = candidate.recruitmentStage || 'screening';
-      if (stage === 'processing') stage = 'screening';
-      if (stage === 'background_check') stage = 'bc_check';
-      if (stage === 'approved') stage = 'hired';
-      if (stageFilter !== stage) return false;
-    }
-    return true;
-  });
-
-  const getRiskBadge = (riskLevel?: RiskLevel) => {
-    const risk = riskLevel?.toLowerCase() || 'low';
-    const styles = {
-      critical: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300',
-      high: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300',
-      medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300',
-      low: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300'
-    };
-    const icons = {
-      critical: AlertCircle,
-      high: AlertTriangle,
-      medium: AlertTriangle,
-      low: CheckCircle2
-    };
-    const Icon = icons[risk as keyof typeof icons] || CheckCircle2;
-    return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${styles[risk as keyof typeof styles]}`}>
-        <Icon size={14} />
-        {riskLevel || 'Low'}
-      </span>
-    );
+  const getRiskColor = (score: number | null) => {
+    if (score === null) return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', hex: '#94a3b8' }; // Not Assessed (Gray)
+    if (score <= 30) return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', hex: '#22C55E' }; // Good
+    if (score <= 60) return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', hex: '#EAB308' }; // Need Review
+    if (score <= 80) return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hex: '#F97316' }; // Moderate
+    return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', hex: '#EF4444' }; // High
   };
 
-  const downloadCV = (cvUrl?: string, candidateName?: string) => {
-    if (!cvUrl) {
-      toast.error('CV tidak tersedia');
-      return;
-    }
-    window.open(cvUrl, '_blank');
-  };
+  // -- ACTIONS --
+  // (Kanban drag-and-drop functions removed as List View is now the only view)
 
-  const calculateRiskScore = (candidate: AutoCandidate): number => {
-    // Priority 1: Use analysis.scores if available
-    if (candidate.analysis?.scores) {
-      const { pressure = 0, opportunity = 0, rationalization = 0 } = candidate.analysis.scores;
-      const avgScore = Math.round((pressure + opportunity + rationalization) / 3);
-      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using analysis.scores - P=${pressure}, O=${opportunity}, R=${rationalization}, Avg=${avgScore}`);
-      return avgScore;
-    }
 
-    // Priority 2: Calculate from structuredAssessment and sjtResults
-    if (candidate.structuredAssessment && candidate.structuredAssessment.length > 0) {
-      const scores = calculateAssessmentScores(
-        candidate.structuredAssessment,
-        candidate.sjtResults || [],
-        candidate.financialStrainResults || []
-      );
-      const avgScore = Math.round((scores.pressureScore + scores.opportunityScore + scores.rationalizationScore) / 3);
-      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Calculated from assessment - P=${scores.pressureScore}, O=${scores.opportunityScore}, R=${scores.rationalizationScore}, Avg=${avgScore}`);
-      return avgScore;
-    }
+  const executeUnlock = async () => {
+    if (!selectedCandidateForUnlock) return;
+    const cost = CREDIT_COSTS.UNLOCK_PROFILE;
+    const bal = await getCreditBalance(companyId);
+    if (bal < cost) { toast.error('Credit tidak cukup'); return; }
 
-    // Priority 3: Fallback to riskLevel estimation
-    if (candidate.analysis?.riskLevel) {
-      const riskLevel = candidate.analysis.riskLevel.toLowerCase();
-      console.log(`[RISK-SCORE] ${candidate.candidate?.name}: Using riskLevel fallback=${riskLevel}`);
-      if (riskLevel === 'critical') return 90;
-      if (riskLevel === 'high') return 65;
-      if (riskLevel === 'medium') return 35;
-      if (riskLevel === 'low') return 10;
-    }
+    setIsUnlocking(true);
+    // Simulate API call for brevity in this refactor, replacing with actual hook/service call
+    const res = await deductCredit(companyId, cost, 'UNLOCK_PROFILE', `Unlock ${selectedCandidateForUnlock.candidate.name}`, { sessionId: selectedCandidateForUnlock.id, candidateName: selectedCandidateForUnlock.candidate.name });
 
-    console.log(`[RISK-SCORE] ${candidate.candidate?.name}: No data available, returning 0`);
-    return 0;
-  };
-
-  const getRiskScoreBadge = (candidate: AutoCandidate) => {
-    if (!candidate.analysis) {
-      return (
-        <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold text-xs flex items-center gap-1">
-          <Clock size={12} />
-          Pending
-        </span>
-      );
-    }
-
-    const score = calculateRiskScore(candidate);
-    const riskLevel = candidate.analysis.riskLevel?.toLowerCase() || 'low';
-
-    if (riskLevel === 'critical' || score >= 75) {
-      return (
-        <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold text-xs flex items-center gap-1">
-          <AlertCircle size={12} />
-          {score}/100
-        </span>
-      );
-    } else if (riskLevel === 'high' || score >= 50) {
-      return (
-        <span className="px-2.5 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-semibold text-xs flex items-center gap-1">
-          <AlertTriangle size={12} />
-          {score}/100
-        </span>
-      );
-    } else if (riskLevel === 'medium' || score >= 30) {
-      return (
-        <span className="px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-semibold text-xs flex items-center gap-1">
-          <AlertTriangle size={12} />
-          {score}/100
-        </span>
-      );
+    if (res.success) {
+      await updateDoc(doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id), {
+        unlockedAt: new Date().toISOString(), unlockedByCompanyId: companyId
+      });
+      setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
+      toast.success('Candidate Unlocked!');
+      setShowUnlockModal(false);
+      onViewSession(selectedCandidateForUnlock.id); // View details immediately
     } else {
-      return (
-        <span className="px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-semibold text-xs flex items-center gap-1">
-          <CheckCircle2 size={12} />
-          {score}/100
-        </span>
-      );
+      toast.error(res.error);
     }
+    setIsUnlocking(false);
   };
 
-  const getStageBadge = (candidate: AutoCandidate) => {
-    const recruitmentStage = candidate.recruitmentStage || 'screening';
-    const hasAnalysis = !!candidate.analysis;
+  // -- FILTERED DATA --
+  const filteredCandidates = useMemo(() => {
+    return candidatesWithJobs.filter(c => {
+      const matchJob = selectedJob === 'all' || c.jobId === selectedJob;
+      const matchSearch = c.candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchJob && matchSearch;
+    });
+  }, [candidatesWithJobs, selectedJob, searchQuery]);
 
-    const stageMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
-      'screening': {
-        label: 'Screening 🤖',
-        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        icon: <Bot size={12} />
-      },
-      'review': {
-        label: 'Review 📋',
-        color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
-        icon: <FileText size={12} />
-      },
-      'interview': {
-        label: 'Interview 🤝',
-        color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-        icon: <User size={12} />
-      },
-      'bc_check': {
-        label: 'BC Check 🛡️',
-        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-        icon: <Shield size={12} />
-      },
-      'hired': {
-        label: 'Hired 🎉',
-        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-        icon: <CheckCircle2 size={12} />
-      },
-      'rejected': {
-        label: 'Rejected',
-        color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
-        icon: <AlertCircle size={12} />
-      },
-      'processing': {
-        label: 'Screening 🤖',
-        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        icon: <Bot size={12} />
-      },
-      'background_check': {
-        label: 'BC Check 🛡️',
-        color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-        icon: <Shield size={12} />
-      },
-      'approved': {
-        label: 'Hired 🎉',
-        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-        icon: <CheckCircle2 size={12} />
-      }
+  // -- METRICS --
+  const metrics = useMemo(() => {
+    return {
+      total: candidates.length,
+      screened: candidates.filter(c => c.recruitmentStage && c.recruitmentStage !== 'screening').length,
+      interview: candidates.filter(c => c.recruitmentStage === 'interview').length,
+      hired: candidates.filter(c => c.recruitmentStage === 'hired').length
     };
+  }, [candidates]);
 
-    const stage = stageMap[recruitmentStage] || stageMap['screening'];
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border ${stage.color}`}>
-        {stage.icon}
-        {stage.label}
-      </span>
-    );
-  };
-
-  const getAvatarInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
+  const riskData = useMemo(() => {
+    const critical = candidates.filter(c => c.analysis?.riskLevel === RiskLevel.CRITICAL).length;
+    const high = candidates.filter(c => c.analysis?.riskLevel === RiskLevel.HIGH).length;
+    const medium = candidates.filter(c => c.analysis?.riskLevel === RiskLevel.MEDIUM).length;
+    const low = candidates.filter(c => c.analysis?.riskLevel === RiskLevel.LOW).length;
+    return [
+      { name: 'Critical', value: critical, color: '#EF4444' },
+      { name: 'High', value: high, color: '#F97316' },
+      { name: 'Medium', value: medium, color: '#EAB308' },
+      { name: 'Low', value: low, color: '#22C55E' },
+    ];
+  }, [candidates]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh]">
-        <Loader2 className="w-10 h-10 text-brand-orange animate-spin mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">Loading candidates...</p>
-      </div>
-    );
+    return <div className="p-12 text-center text-slate-400">Loading Command Center...</div>;
   }
 
   return (
-    <>
-      {/* Unlock Confirmation Modal */}
-      {showUnlockModal && selectedCandidateForUnlock && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800 dark:text-white">Konfirmasi Unlock Kandidat</h3>
-              <button
-                onClick={() => setShowUnlockModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold">
-                  {selectedCandidateForUnlock.candidate.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                </div>
-                <div>
-                  <p className="font-bold text-gray-800 dark:text-white">{selectedCandidateForUnlock.candidate.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCandidateForUnlock.jobTitle || 'Unknown Position'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="text-blue-600" size={20} />
-                  <span className="font-semibold text-gray-800 dark:text-white">Biaya Unlock:</span>
-                </div>
-                <span className="text-xl font-bold text-blue-600">{CREDIT_COSTS.UNLOCK_PROFILE} Credit</span>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Anda:</span>
-                <span className={`font-bold ${creditBalance >= CREDIT_COSTS.UNLOCK_PROFILE ? 'text-green-600' : 'text-red-600'}`}>
-                  {creditBalance} Credit
-                </span>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Dengan menggunakan {CREDIT_COSTS.UNLOCK_PROFILE} credit, Anda akan mendapatkan akses penuh untuk melihat profil dan detail assessment kandidat ini.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowUnlockModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmUnlock}
-                disabled={isUnlocking || creditBalance < CREDIT_COSTS.UNLOCK_PROFILE}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isUnlocking ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Unlock size={18} />
-                    Unlock Kandidat
-                  </>
-                )}
-              </button>
+      {/* 1. PIPELINE FUNNEL HEADER */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Total Applicants</div>
+            <div className="text-3xl font-bold text-slate-800">{metrics.total}</div>
+            <div className="text-xs text-blue-600 mt-2 font-medium flex items-center gap-1">
+              <User size={12} /> Source Pool
             </div>
           </div>
         </div>
-      )}
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+          {/* Connector Arrow */}
+          <div className="hidden lg:block absolute -left-3 top-1/2 -translate-y-1/2 z-20 bg-white rounded-full p-1 border border-slate-200 text-slate-300">
+            <ArrowRight size={14} />
+          </div>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-orange-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Screening Passed</div>
+            <div className="text-3xl font-bold text-slate-800">{metrics.screened}</div>
+            <div className="text-xs text-orange-600 mt-2 font-medium flex items-center gap-1">
+              <Bot size={12} /> AI Filtered
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="hidden lg:block absolute -left-3 top-1/2 -translate-y-1/2 z-20 bg-white rounded-full p-1 border border-slate-200 text-slate-300">
+            <ArrowRight size={14} />
+          </div>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">In Interview</div>
+            <div className="text-3xl font-bold text-slate-800">{metrics.interview}</div>
+            <div className="text-xs text-purple-600 mt-2 font-medium flex items-center gap-1">
+              <Calendar size={12} /> Scheduled
+            </div>
+          </div>
+        </div>
+
+        {/* RISK HEATMAP WIDGET */}
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg text-white relative overflow-hidden flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <Zap className="text-brand-orange" size={28} />
-              Otomatis (Instant Assessment)
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Kandidat yang auto-complete test via Job Portal
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-white dark:bg-brand-slate-850 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
-              <span className="text-2xl font-bold text-gray-800 dark:text-white">{filteredCandidates.length}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">Kandidat</span>
+            <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Risk Radar</div>
+            <div className="text-sm text-slate-300 leading-tight">
+              {(riskData.find(r => r.name === 'Low')?.value || 0)} Low Risk Candidates
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex -space-x-2">
+                <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-slate-900"></div>
+                <div className="w-6 h-6 rounded-full bg-orange-500 border-2 border-slate-900"></div>
+                <div className="w-6 h-6 rounded-full bg-green-500 border-2 border-slate-900"></div>
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Health: Good</span>
             </div>
           </div>
+          <div className="w-16 h-16">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={riskData} dataKey="value" cx="50%" cy="50%" innerRadius={15} outerRadius={30} paddingAngle={2}>
+                  {riskData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
+      </div>
 
-        <div className="bg-white dark:bg-brand-slate-850 p-4 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
-            <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Filter:</span>
+      {/* 2. COMMAND BAR (Filters Only - View Toggle Removed) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-30">
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search candidates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D00]"
+            />
           </div>
           <select
             value={selectedJob}
             onChange={(e) => setSelectedJob(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D00]"
           >
-            <option value="all">Semua Posisi</option>
-            {jobs.map(job => (
-              <option key={job.id} value={job.id}>{job.title}</option>
-            ))}
-          </select>
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
-          >
-            <option value="all">Semua Stage</option>
-            <option value="screening">Screening 🤖</option>
-            <option value="review">Review 📋</option>
-            <option value="interview">Interview 🤝</option>
-            <option value="bc_check">BC Check 🛡️</option>
-            <option value="hired">Hired 🎉</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <select
-            value={riskFilter}
-            onChange={(e) => setRiskFilter(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange bg-white dark:bg-slate-800 dark:text-gray-200"
-          >
-            <option value="all">Semua Risk Level</option>
-            <option value="low">Low Risk</option>
-            <option value="medium">Medium Risk</option>
-            <option value="high">High Risk</option>
-            <option value="critical">Critical Risk</option>
+            <option value="all">All Jobs</option>
+            {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
           </select>
         </div>
-
-        {filteredCandidates.length === 0 ? (
-          <div className="bg-white dark:bg-brand-slate-850 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-12 text-center">
-            <Zap className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">Belum Ada Kandidat Otomatis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              Kandidat yang complete instant assessment akan muncul di sini
-            </p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      Candidate
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      Applied For
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      Stage
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      Risk Score
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                  {filteredCandidates.map((candidate) => {
-                    const rank = applicationRanks.get(candidate.id) || 999;
-                    const isBlurred = shouldBlurByApplicationRank(rank, companyTier) && !unlockedCandidates.has(candidate.id);
-                    const viewLimit = SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit;
-
-                    return (
-                      <tr
-                        key={candidate.id}
-                        className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors relative"
-                      >
-                        {/* Candidate Column */}
-                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-blue flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                              {getAvatarInitials(candidate.candidate.name)}
-                            </div>
-                            <div>
-                              <div className="font-bold text-gray-900 dark:text-white">
-                                {candidate.candidate.name}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {isBlurred ? '••••••@••••••' : candidate.candidate.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Applied For Column */}
-                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
-                          <div className="font-semibold text-gray-900 dark:text-white">
-                            {candidate.jobTitle}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <MapPin size={12} />
-                            {candidate.jobLocation}
-                          </div>
-                        </td>
-
-                        {/* Stage Column */}
-                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
-                          {getStageBadge(candidate)}
-                        </td>
-
-                        {/* Risk Score Column */}
-                        <td className={`px-6 py-4 ${isBlurred ? 'blur-[2px] select-none' : ''}`}>
-                          {getRiskScoreBadge(candidate)}
-                        </td>
-
-                        {/* Action Column - NOT BLURRED */}
-                        <td className="px-6 py-4 text-right">
-                          {isBlurred ? (
-                            <button
-                              onClick={() => handleUnlockClick(candidate)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-md text-xs font-semibold transition-colors shadow-sm"
-                            >
-                              <Unlock size={14} />
-                              Unlock (2 Credit)
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => onViewSession(candidate.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md text-xs font-semibold transition-colors"
-                            >
-                              <Eye size={14} />
-                              View
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Upgrade Banner for Freemium */}
-            {companyTier === 'Freemium' && candidates.length > SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit && (
-              <div className="p-4 bg-gradient-to-r from-orange-50 to-blue-50 dark:from-orange-900/20 dark:to-blue-900/20 border-t border-orange-200 dark:border-orange-800">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-full">
-                      <Lock size={20} className="text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-800 dark:text-white">
-                        Freemium: Hanya {SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit} kandidat pertama yang apply dapat dilihat
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {candidates.length - SUBSCRIPTION_PLANS.FREEMIUM.candidateViewLimit} kandidat lainnya tersembunyi. Upgrade untuk akses penuh!
-                      </p>
-                    </div>
-                  </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-orange to-brand-blue text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
-                    <Crown size={16} />
-                    Upgrade Premium
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
-    </>
+
+      {/* 3. MAIN CONTENT (List View Only) */}
+      {filteredCandidates.length === 0 ? (
+        <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 opacity-75">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <User className="text-slate-300" size={32} />
+          </div>
+          <h3 className="font-bold text-slate-500">No candidates found</h3>
+          <p className="text-sm text-slate-400">Waiting for applications...</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Kandidat</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Risk Score</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Stage</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredCandidates.map(c => {
+                const isLocked = shouldBlurByApplicationRank(applicationRanks.get(c.id) || 999, companyTier) && !unlockedCandidates.has(c.id);
+
+                return (
+                  <tr key={c.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => {
+                    if (isLocked) {
+                      setSelectedCandidateForUnlock(c); setShowUnlockModal(true);
+                    } else {
+                      onViewSession(c.id);
+                    }
+                  }}>
+                    <td className="px-6 py-4 relative">
+                      <div className={isLocked ? 'blur-[3px] select-none opacity-60' : ''}>
+                        <div className="font-bold text-slate-800">{c.candidate.name}</div>
+                      </div>
+                      {isLocked && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Lock size={16} className="text-slate-400" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      <div className={isLocked ? 'blur-[3px] select-none opacity-60' : ''}>
+                        {c.jobTitle !== 'Unknown' ? c.jobTitle : c.candidate.role}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={isLocked ? 'blur-[3px] select-none opacity-60' : ''}>
+                        {(() => {
+                          const score = getRiskScore(c);
+                          const color = getRiskColor(score);
+                          return (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${color.bg} ${color.text}`}>
+                              {score !== null ? `${score}/100` : 'Pending'}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={isLocked ? 'blur-[3px] select-none opacity-60' : ''}>
+                        {(() => {
+                          let stageId = (c.recruitmentStage || 'applied').toLowerCase().trim();
+
+                          // Legacy mapping for backward compatibility
+                          if (stageId === 'screening' || stageId === 'processing') stageId = 'applied';
+                          if (stageId === 'review') stageId = 'awaiting_review';
+                          if (stageId === 'background_check') stageId = 'bc_check';
+                          if (stageId === 'approved') stageId = 'hired';
+
+                          // Smart detection: If interview email sent, map to interview stage
+                          if (stageId === 'processing' && c.interviewEmailSent) {
+                            stageId = 'interview';
+                          }
+
+                          // Smart detection: Assessment in progress (if we have the flag)
+                          if (c.assessmentStarted && !c.assessmentCompleted) {
+                            stageId = 'assessment_in_progress';
+                          }
+
+                          const stageConfig = RECRUITMENT_STAGES.find(s => s.id === stageId);
+                          const label = stageConfig?.label || stageId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                          const progress = stageConfig?.progress || 10;
+
+                          return (
+                            <div className="w-full max-w-[160px]">
+                              <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 mb-1">
+                                <span>{label}</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${stageId === 'rejected' ? 'bg-red-500' : 'bg-[#D95D00]'}`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {isLocked ? (
+                        <button className="text-xs font-bold bg-[#D95D00]/10 text-[#D95D00] px-3 py-1.5 rounded-full flex items-center gap-1 ml-auto hover:bg-[#D95D00]/20 transition-colors">
+                          <Unlock size={12} /> Unlock (2)
+                        </button>
+                      ) : (
+                        <button className="text-[#D95D00] text-xs font-bold hover:underline">View Details</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+      )}
+
+      {/* --- UPGRADE BANNER (Sticky Bottom) --- */}
+      {
+        companyTier === 'Freemium' && (
+          <div className="fixed bottom-4 left-64 right-4 bg-slate-900/90 backdrop-blur-md text-white p-4 rounded-xl shadow-2xl flex justify-between items-center z-40 border border-slate-700">
+            <div className="flex items-center gap-3">
+              <Crown size={24} className="text-yellow-400" />
+              <div>
+                <div className="font-bold text-sm">Upgrade ke Premium untuk Unlimited Access</div>
+                <div className="text-xs text-slate-400">Anda dibatasi melihat 10 kandidat pertama.</div>
+              </div>
+            </div>
+            <button className="bg-[#D95D00] hover:bg-[#b14d00] px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+              Upgrade Now
+            </button>
+          </div>
+        )
+      }
+
+      {/* --- MODALS --- */}
+
+      {/* 1. CONFIRM MOVE MODAL */}
+
+
+      {/* 2. UNLOCK MODAL */}
+      {
+        showUnlockModal && selectedCandidateForUnlock && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Unlock size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Unlock Candidate?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Buka profil lengkap <b>{selectedCandidateForUnlock.candidate.name}</b> dengan <b>{CREDIT_COSTS.UNLOCK_PROFILE} Credit</b>.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowUnlockModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl">Cancel</button>
+                <button onClick={executeUnlock} disabled={isUnlocking} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2">
+                  {isUnlocking ? <Loader2 className="animate-spin" size={16} /> : 'Unlock Now'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 
 export default CandidatesAutoView;
-

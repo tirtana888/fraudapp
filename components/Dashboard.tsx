@@ -14,9 +14,10 @@ interface DashboardProps {
   onViewAll?: () => void;
   creditBalance?: number;
   onUnlockCandidate?: (candidate: InterviewSession) => void;
+  onNavigateToCredits?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll, creditBalance, onUnlockCandidate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, onViewSession, onReviewSession, onViewAll, creditBalance, onUnlockCandidate, onNavigateToCredits }) => {
   const [copied, setCopied] = useState(false);
   const [applicationRanks, setApplicationRanks] = useState<Map<string, number>>(new Map());
   const [unlockedCandidates, setUnlockedCandidates] = useState<Set<string>>(new Set());
@@ -269,7 +270,10 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
               <p className="text-amber-100 text-xs font-bold uppercase tracking-wider mb-1">Sisa Credit</p>
               <h3 className="text-4xl font-extrabold">{creditBalance !== undefined ? creditBalance : '-'}</h3>
             </div>
-            <button className="mt-4 w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm py-2 rounded-lg text-xs font-bold transition-colors">
+            <button
+              onClick={onNavigateToCredits}
+              className="mt-4 w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm py-2 rounded-lg text-xs font-bold transition-colors hover:shadow-lg"
+            >
               Top Up Credit
             </button>
           </div>

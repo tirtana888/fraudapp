@@ -68,6 +68,12 @@ export const createTopUpInvoice = async (
 
     if (data.success && data.invoiceUrl) {
       console.log('[XENDIT] Invoice created successfully:', data.invoiceId);
+
+      // Save pending payment redirect to localStorage
+      localStorage.setItem('pendingPaymentRedirect', 'credits');
+      localStorage.setItem('pendingPaymentType', 'top-up');
+      console.log('[XENDIT] Saved payment redirect flag to localStorage');
+
       return {
         success: true,
         invoiceUrl: data.invoiceUrl,

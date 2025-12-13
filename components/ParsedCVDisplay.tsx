@@ -1,16 +1,17 @@
 import React from 'react';
-import { User, MapPin, Briefcase, GraduationCap, Award, Languages, Lightbulb } from 'lucide-react';
+import { User, MapPin, Briefcase, GraduationCap, Award, Languages, Lightbulb, Lock } from 'lucide-react';
 import { ParsedCVData } from '../types';
 
 interface ParsedCVDisplayProps {
   parsedData: ParsedCVData;
+  isLocked?: boolean;
 }
 
-const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
+const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData, isLocked = false }) => {
   // Calculate total years of experience
   const calculateTotalExperience = () => {
     if (!parsedData.experience || parsedData.experience.length === 0) return 0;
-    
+
     let totalYears = 0;
     parsedData.experience.forEach(exp => {
       // Try to extract years from duration string
@@ -19,12 +20,12 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         totalYears += parseInt(match[1]);
       }
     });
-    
+
     return totalYears;
   };
-  
+
   const totalExperience = calculateTotalExperience();
-  
+
   return (
     <div className="space-y-3">
       {/* Compact Header */}
@@ -41,7 +42,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
                 <span className="truncate">{parsedData.address}</span>
               </div>
             )}
-            
+
             {/* Inline Stats */}
             {(totalExperience > 0 || parsedData.education?.length > 0) && (
               <div className="flex gap-4 mt-2 text-sm">
@@ -73,26 +74,40 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         </div>
       )}
 
-      {parsedData.experience && parsedData.experience.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2 text-sm">
-            <Briefcase size={16} className="text-[#D95D00]" />
-            Pengalaman Kerja ({parsedData.experience.length})
-          </h3>
-          <div className="space-y-3">
-            {parsedData.experience.map((exp, index) => (
-              <div key={index} className="border-l-2 border-[#D95D00] pl-3 pb-3 last:pb-0">
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{exp.title}</h4>
-                <p className="text-[#D95D00] font-medium text-xs">{exp.company}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{exp.duration}</p>
-                {exp.description && (
-                  <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed line-clamp-2">{exp.description}</p>
-                )}
-              </div>
-            ))}
+      <div className={`relative ${isLocked ? 'overflow-hidden' : ''}`}>
+        {parsedData.experience && parsedData.experience.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2 text-sm">
+              <Briefcase size={16} className="text-[#D95D00]" />
+              Pengalaman Kerja ({parsedData.experience.length})
+            </h3>
+            <div className="space-y-3">
+              {parsedData.experience.map((exp, index) => (
+                <div key={index} className="border-l-2 border-[#D95D00] pl-3 pb-3 last:pb-0 relative">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{exp.title}</h4>
+                  <p className="text-[#D95D00] font-medium text-xs">{exp.company}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{exp.duration}</p>
+
+                  {/* Blurring logic for description if locked */}
+                  <div className={`text-gray-600 dark:text-gray-300 text-xs leading-relaxed ${isLocked ? 'blur-sm select-none opacity-60' : ''}`}>
+                    {exp.description ? exp.description : 'Deskripsi pekerjaan detail tidak tersedia.'}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* LOCKED OVERLAY FOR EXPERIENCE */}
+        {isLocked && (
+          <div className="absolute inset-0 top-20 bg-gradient-to-b from-transparent to-white/90 z-10 flex flex-col items-center justify-end pb-8">
+            <div className="p-3 bg-white rounded-full shadow-lg border border-gray-100 mb-2">
+              <Lock size={20} className="text-orange-500" />
+            </div>
+            <p className="text-xs font-bold text-gray-600">Detail Pengalaman Terkunci</p>
+          </div>
+        )}
+      </div>
 
       {parsedData.education && parsedData.education.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -123,7 +138,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
               Keahlian ({parsedData.skills.length})
             </h3>
             <div className="flex flex-wrap gap-1.5">
-              {parsedData.skills.map((skill, index) => (
+              {parsedData.skills.slice(0, isLocked ? 5 : undefined).map((skill, index) => (
                 <span
                   key={index}
                   className="px-2 py-0.5 bg-[#D95D00]/10 dark:bg-[#D95D00]/20 text-[#D95D00] dark:text-orange-400 rounded text-xs font-medium"
@@ -131,6 +146,9 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
                   {skill}
                 </span>
               ))}
+              {isLocked && parsedData.skills.length > 5 && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-medium">+{parsedData.skills.length - 5} lainnya</span>
+              )}
             </div>
           </div>
         )}
@@ -155,7 +173,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
         )}
       </div>
 
-      {parsedData.certifications && parsedData.certifications.length > 0 && (
+      {parsedData.certifications && parsedData.certifications.length > 0 && !isLocked && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2 text-sm">
             <Award size={16} className="text-[#D95D00]" />
@@ -176,3 +194,4 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData }) => {
 };
 
 export default ParsedCVDisplay;
+

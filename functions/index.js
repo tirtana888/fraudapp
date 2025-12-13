@@ -411,7 +411,7 @@ exports.parseDocumentWithMistral = onCall({
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${mistralApiKey.value()}`
       },
-      timeout: 90000
+      timeout: 280000 // 280s (leave 20s buffer for Cloud Function 300s timeout)
     });
 
     const aiContent = response.data.choices[0].message.content;
