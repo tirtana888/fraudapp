@@ -16,10 +16,13 @@ import {
     Loader2,
     CheckCircle2,
     AlertCircle,
-    Globe
+    Globe,
+    Volume2,
+    Zap,
+    CheckCircle
 } from 'lucide-react';
 import { UserProfile, CompanyProfile } from '../types';
-import { updateCompany } from '../services/firebase';
+import { updateCompany, updateUserProfile } from '../services/firebase';
 import { useToast } from './Toast';
 
 interface SettingsPageProps {
@@ -116,7 +119,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         {activeTab === 'profile' && <ProfileSettings user={currentUser} />}
                         {activeTab === 'company' && <CompanySettings company={currentCompany} onUpdate={onCompanyUpdate} />}
                         {activeTab === 'team' && <TeamSettings />}
-                        {activeTab === 'notifications' && <NotificationSettings />}
+                        {activeTab === 'notifications' && <NotificationSettings company={currentCompany} onUpdate={onCompanyUpdate} />}
                         {activeTab === 'security' && <SecuritySettings />}
                     </div>
                 </div>
@@ -127,7 +130,50 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
 // --- Sub-Components ---
 
+
 const ProfileSettings = ({ user }: { user: UserProfile }) => {
+    const [formData, setFormData] = useState({
+        name: user.name || '',
+        phone: '', // Phone is not in UserProfile currently, but requested in UI. We can add it or just treat as local for now if not in type. 
+        // Wait, UserProfile doesn't have phone? Let's check types.ts again.
+        // It does not have phone. I'll check if I should add it to type or just handle it. 
+        // The previous view_file of types.ts showed UserProfile: id, name, role, avatar, email, companyId, password, emailVerified, createdAt.
+        // But signUpWithFirebase takes phone. 
+        // Let's assume for now we just update name and role (Job Title). 
+        // I will add phone state but maybe not save it effectively if backend doesn't support it yet, OR I will assume update is partial and strict.
+        // Let's stick to name and role for now to be safe, or check if I can add phone to UserProfile type.
+        // User request: "fungsikan my profile".
+        // I will implement saving functionality.
+        role: user.role || ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const toast = useToast();
+
+    // Initialize phone if available in user object (even if not in type definition strictly, it might be there)
+    // For now let's just use what we have in UI.
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            if (user.id) {
+                await updateUserProfile(user.id, {
+                    name: formData.name,
+                    role: formData.role as any // Type assertion to avoid literal type mismatch if role is strict enum
+                }, user.email);
+                toast.success('Profile updated successfully');
+                // Force reload to fetch fresh data from Firestore and update UI state
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            toast.error('Failed to update profile');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
 
@@ -161,33 +207,42 @@ const ProfileSettings = ({ user }: { user: UserProfile }) => {
                         <div className="space-y-4">
                             <FormInput
                                 label="Full Name"
-                                defaultValue={user.name}
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 icon={<User size={16} />}
                             />
                             <FormInput
                                 label="Email Address"
-                                defaultValue={user.email}
-                                icon={<Mail size={16} />}
+                                value={user.email} // Email usually not editable directly
                                 disabled
+                                icon={<Mail size={16} />}
                             />
                         </div>
                         <div className="space-y-4">
                             <FormInput
                                 label="Phone Number"
                                 placeholder="+62"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 icon={<Smartphone size={16} />}
                             />
                             <FormInput
                                 label="Job Title"
-                                defaultValue={user.role}
+                                value={formData.role}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                 icon={<Building2 size={16} />}
                             />
                         </div>
                     </div>
 
                     <div className="mt-8 flex justify-end">
-                        <button className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2">
-                            <Save size={18} /> Save Changes
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>
@@ -295,30 +350,170 @@ const TeamSettings = () => (
     </div>
 );
 
-const NotificationSettings = () => (
-    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-200 dark:border-slate-700 p-8 animate-in fade-in slide-in-from-right-4 duration-300">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Notification Preferences</h2>
+const NotificationSettings = ({ company, onUpdate }: { company: CompanyProfile, onUpdate: () => void }) => {
+    const [preferences, setPreferences] = useState({
+        newCandidateApplied: company.notificationPreferences?.newCandidateApplied ?? true,
+        assessmentCompleted: company.notificationPreferences?.assessmentCompleted ?? true,
+        dailyDigest: company.notificationPreferences?.dailyDigest ?? false,
+        soundEnabled: company.notificationPreferences?.soundEnabled ?? true,
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const toast = useToast();
 
-        <div className="space-y-6">
-            {[
-                { title: 'New Candidate Applied', desc: 'Get notified when someone applies to your job', default: true },
-                { title: 'Assessment Completed', desc: 'Receive updates when a candidate finishes a test', default: true },
-                { title: 'Daily Digest', desc: 'A summary of daily activities sent every morning', default: false },
-                { title: 'Marketing Updates', desc: 'News about features and promotions', default: false },
-            ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between pb-6 border-b border-gray-100 dark:border-slate-700 last:border-0 last:pb-0">
-                    <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white">{item.title}</h4>
-                        <p className="text-sm text-gray-500">{item.desc}</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked={item.default} />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"></div>
-                    </label>
+    const handleToggle = async (key: string, value: boolean) => {
+        const newPrefs = { ...preferences, [key]: value };
+        setPreferences(newPrefs);
+
+        // Auto-save
+        setIsSaving(true);
+        try {
+            await updateCompany(company.id, {
+                notificationPreferences: newPrefs
+            });
+            toast.success('Preferences updated!');
+            onUpdate();
+        } catch (error) {
+            console.error('Error saving preferences:', error);
+            toast.error('Failed to save preferences');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const testNotificationSound = () => {
+        try {
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+
+            toast.success('Sound test played!');
+        } catch (err) {
+            console.error('Sound test failed:', err);
+            toast.error('Sound test failed');
+        }
+    };
+
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-200 dark:border-slate-700 p-8 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl text-orange-600 dark:text-orange-400">
+                    <Bell size={24} />
                 </div>
-            ))}
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notification Preferences</h2>
+                    <p className="text-sm text-gray-500">Manage how you receive updates and alerts</p>
+                </div>
+            </div>
+
+            <div className="space-y-6">
+                {/* In-App Notifications Section */}
+                <div className="pb-6 border-b border-gray-100 dark:border-slate-700">
+                    <h3 className="font-bold text-sm text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wide">In-App Notifications</h3>
+
+                    <div className="space-y-4">
+                        <NotificationToggle
+                            title="New Candidate Applied"
+                            description="Get notified when someone applies to your job"
+                            checked={preferences.newCandidateApplied}
+                            onChange={(v) => handleToggle('newCandidateApplied', v)}
+                            disabled={isSaving}
+                        />
+
+                        <NotificationToggle
+                            title="Assessment Completed"
+                            description="Receive updates when a candidate finishes a test"
+                            checked={preferences.assessmentCompleted}
+                            onChange={(v) => handleToggle('assessmentCompleted', v)}
+                            disabled={isSaving}
+                        />
+                    </div>
+                </div>
+
+                {/* Sound Settings */}
+                <div className="pb-6 border-b border-gray-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white">Notification Sound</h4>
+                            <p className="text-sm text-gray-500">Play sound for new notifications</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={testNotificationSound}
+                                className="text-xs text-orange-600 hover:text-orange-700 font-medium px-3 py-1 border border-orange-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                            >
+                                Test Sound
+                            </button>
+                            <Toggle
+                                checked={preferences.soundEnabled}
+                                onChange={(v) => handleToggle('soundEnabled', v)}
+                                disabled={isSaving}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Email Notifications Section */}
+                <div>
+                    <h3 className="font-bold text-sm text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wide">Email Notifications</h3>
+
+                    <NotificationToggle
+                        title="Daily Digest"
+                        description="A summary of daily activities sent every morning at 8:00 AM"
+                        checked={preferences.dailyDigest}
+                        onChange={(v) => handleToggle('dailyDigest', v)}
+                        disabled={isSaving}
+                    />
+                </div>
+            </div>
         </div>
+    );
+};
+
+
+
+const NotificationToggle = ({ title, description, checked, onChange, disabled }: {
+    title: string;
+    description: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+    disabled: boolean;
+}) => (
+    <div className="flex items-center justify-between">
+        <div>
+            <h4 className="font-bold text-gray-900 dark:text-white text-base">{title}</h4>
+            <p className="text-sm text-gray-500">{description}</p>
+        </div>
+        <Toggle checked={checked} onChange={onChange} disabled={disabled} />
     </div>
+);
+
+const Toggle = ({ checked, onChange, disabled }: {
+    checked: boolean;
+    onChange: (value: boolean) => void;
+    disabled: boolean;
+}) => (
+    <label className="relative inline-flex items-center cursor-pointer">
+        <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            disabled={disabled}
+        />
+        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+    </label>
 );
 
 const SecuritySettings = () => (

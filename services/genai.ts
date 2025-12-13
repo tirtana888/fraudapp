@@ -32,14 +32,35 @@ export const analyzeFraudRisk = async (
     const analyzeRisk = httpsCallable(functions, "analyzeFraudRisk");
     const result = await analyzeRisk({
       role,
-      transcript, // Cloud Function expects 'transcript'
-      ftAnswers: ftAnswers || {},
-      sjtAnswers: sjtAnswers || {},
+      history: transcript, // Cloud Function expects 'history', not 'transcript'
+      structuredAssessment: ftAnswers || {}, // Cloud Function expects 'structuredAssessment'
+      sjtResults: sjtAnswers || {}, // Cloud Function expects 'sjtResults'
+      financialStrainResults: {}, // Add this field even if empty
       tier
     });
 
     console.log('[GENAI] ✅ Analysis completed');
-    return result.data as FraudAnalysis;
+
+    // Cloud Function returns { success, analysis, provider }
+    // We need to extract the analysis property
+    const responseData = result.data as { success?: boolean; analysis?: FraudAnalysis; provider?: string } | FraudAnalysis;
+
+    // Check if response has nested analysis property (new format)
+    if (responseData && 'analysis' in responseData && responseData.analysis) {
+      console.log('[GENAI] Response format: { success, analysis, provider }');
+      console.log('[GENAI] Provider used:', (responseData as any).provider);
+      return responseData.analysis as FraudAnalysis;
+    }
+
+    // Fallback: response might be direct FraudAnalysis (old format)
+    if (responseData && 'scores' in responseData) {
+      console.log('[GENAI] Response format: direct FraudAnalysis');
+      return responseData as FraudAnalysis;
+    }
+
+    // If neither format matches, throw error
+    console.error('[GENAI] ❌ Unexpected response format:', responseData);
+    throw new Error('Invalid response format from analyzeFraudRisk');
 
   } catch (error: any) {
     console.error('[GENAI] Error analyzing fraud risk:', error);

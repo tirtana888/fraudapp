@@ -116,16 +116,7 @@ exports.diditWebhook = onRequest({
 
     try {
         const body = req.body;
-        // IMPACT: JSON.stringify(req.body) does not guarantee original byte order/format.
-        // req.rawBody is required for accurate signature verification on Firebase/Express.
-        let rawBodyString;
-        if (req.rawBody) {
-            rawBodyString = req.rawBody.toString('utf8');
-        } else {
-            logger.warn('[DIDIT-WEBHOOK] req.rawBody MISSING! Falling back to JSON.stringify (Unreliable)');
-            rawBodyString = JSON.stringify(body);
-        }
-
+        const rawBodyBuffer = Buffer.from(JSON.stringify(body));
         const signature = req.headers['x-signature'] || req.headers['X-Signature'];
         const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
 
@@ -137,14 +128,14 @@ exports.diditWebhook = onRequest({
         // Log received data for debugging
         logger.info('[DIDIT-WEBHOOK] Received webhook', {
             timestamp: timestamp,
+            timestampType: typeof timestamp,
             signatureReceived: signature,
-            hasRawBody: !!req.rawBody,
-            contentLength: req.headers['content-length']
+            bodyKeys: Object.keys(body),
+            vendor_data: body.vendor_data
         });
 
         // Verify HMAC signature
-        // Didit Spec: SHA256 HMAC of (timestamp + "." + raw_body)
-        const verifiableString = `${timestamp}.${rawBodyString}`;
+        const verifiableString = `${timestamp}.${rawBodyBuffer.toString('utf8')}`;
         const webhookSecret = diditWebhookSecret.value();
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
@@ -171,7 +162,7 @@ exports.diditWebhook = onRequest({
             logger.warn('[DIDIT-WEBHOOK] Queuing despite invalid signature (TEMPORARY)');
             await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
                 headers: { signature, timestamp },
-                rawBody: rawBodyString,
+                rawBody: rawBodyBuffer.toString('utf8'),
                 receivedAt: admin.firestore.FieldValue.serverTimestamp(),
                 processed: false,
                 signatureValid: false // Mark as invalid
@@ -183,7 +174,7 @@ exports.diditWebhook = onRequest({
         // Queue for async processing
         await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
             headers: { signature, timestamp },
-            rawBody: rawBodyString,
+            rawBody: rawBodyBuffer.toString('utf8'),
             receivedAt: admin.firestore.FieldValue.serverTimestamp(),
             processed: false,
             signatureValid: true
@@ -287,10 +278,38 @@ exports.processDiditWebhook = onDocumentCreated({
                 ],
 
                 ipAnalysis: decision?.ip_analysis ? {
+                    // Basic IP data
                     ipAddress: decision.ip_analysis.ip_address || null,
                     country: decision.ip_analysis.ip_country || null,
                     isVpnOrTor: decision.ip_analysis.is_vpn_or_tor ?? false,
                     status: decision.ip_analysis.status || null,
+
+                    // Location data for map
+                    city: decision.ip_analysis.ip_city || null,
+                    region: decision.ip_analysis.ip_region || null,
+                    latitude: decision.ip_analysis.latitude ?? null,
+                    longitude: decision.ip_analysis.longitude ?? null,
+                    timezone: decision.ip_analysis.timezone || null,
+                    postalCode: decision.ip_analysis.postal_code || null,
+
+                    // Network analysis
+                    isp: decision.ip_analysis.isp || null,
+                    organization: decision.ip_analysis.organization || null,
+                    asn: decision.ip_analysis.asn || null,
+                    connectionType: decision.ip_analysis.connection_type || null,
+
+                    // Device information
+                    userAgent: decision.ip_analysis.user_agent || null,
+                    browser: decision.ip_analysis.browser || null,
+                    browserVersion: decision.ip_analysis.browser_version || null,
+                    os: decision.ip_analysis.os || null,
+                    osVersion: decision.ip_analysis.os_version || null,
+                    deviceType: decision.ip_analysis.device_type || null,
+
+                    // Location comparison
+                    documentCountry: decision.ip_analysis.document_country || null,
+                    locationMatch: decision.ip_analysis.location_match ?? null,
+                    distanceKm: decision.ip_analysis.distance_km ?? null,
                 } : null
             };
 

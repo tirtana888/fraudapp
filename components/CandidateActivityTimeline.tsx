@@ -33,8 +33,12 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
       'applied': <Mail size={16} className="text-brand-blue" />,
       'cv_uploaded': <Upload size={16} className="text-brand-blue" />,
       'screening': <FileText size={16} className="text-brand-orange" />,
+      'integrity_assessment': <Shield size={16} className="text-brand-orange" />,
       'assessment_started': <PlayCircle size={16} className="text-brand-orange" />,
       'assessment_completed': <CheckCircle2 size={16} className="text-green-600" />,
+      'technical_test': <FileText size={16} className="text-purple-600" />,
+      'hr_interview': <MessageSquare size={16} className="text-blue-600" />,
+      'user_interview': <MessageSquare size={16} className="text-indigo-600" />,
       'interview': <MessageSquare size={16} className="text-brand-orange" />,
       'bc_check': <Shield size={16} className="text-brand-blue" />,
       'background_check': <Shield size={16} className="text-brand-blue" />,
@@ -47,21 +51,25 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
 
   const getEventLabel = (stage: string) => {
     const labelMap: { [key: string]: string } = {
-      'applied': 'Melamar Posisi',
-      'cv_uploaded': 'CV Terupload',
+      'applied': 'Kandidat Melamar',
+      'cv_uploaded': 'CV Berhasil Diunggah',
       'screening': 'Tahap Screening',
-      'assessment_started': 'Mulai Assessment',
-      'assessment_completed': 'Selesai Assessment',
+      'integrity_assessment': 'Assessment Integritas',
+      'assessment_started': 'Mulai Mengerjakan Assessment',
+      'assessment_completed': 'Menyelesaikan Assessment',
+      'technical_test': 'Tes Teknikal',
+      'hr_interview': 'Interview HR',
+      'user_interview': 'Interview User',
       'processing': 'Proses Analisis AI',
       'review': 'Dalam Review HR',
       'interview': 'Wawancara',
-      'bc_check': 'Background Check',
-      'background_check': 'Background Check',
-      'hired': 'Diterima',
-      'approved': 'Diterima',
+      'bc_check': 'Pemeriksaan Latar Belakang',
+      'background_check': 'Pemeriksaan Latar Belakang',
+      'hired': 'Diterima Bekerja',
+      'approved': 'Disetujui',
       'rejected': 'Ditolak'
     };
-    return labelMap[stage] || stage;
+    return labelMap[stage] || stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getEventColor = (stage: string, status: string) => {
@@ -121,28 +129,30 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
 
   return (
     <div className="bg-white dark:bg-brand-slate-850 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-6">
         <Clock size={20} className="text-brand-orange" />
         <h3 className="font-bold text-gray-800 dark:text-white">Riwayat Aktivitas Kandidat</h3>
       </div>
 
-      <div className="relative">
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-slate-700"></div>
+      {/* Timeline container with aggressive spacing to prevent overlap */}
+      <div className="relative pt-8">
+        {/* Vertical line with lower z-index */}
+        <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-200 dark:bg-slate-700 z-0"></div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">{/* Timeline items */}
           {sortedTimeline.map((event, index) => (
             <div key={index} className="relative flex gap-4">
-              <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                event.status === 'completed'
-                  ? 'bg-green-50 border-green-500 dark:bg-green-900/30 dark:border-green-600'
-                  : event.status === 'current'
-                  ? 'bg-orange-50 border-brand-orange dark:bg-orange-900/30 dark:border-brand-orange'
-                  : 'bg-gray-50 border-gray-300 dark:bg-slate-800 dark:border-slate-600'
-              }`}>
+              {/* Icon container with solid background to prevent overlap */}
+              <div className={`z-20 flex items-center justify-center w-8 h-8 rounded-full border-2 flex-shrink-0 shadow-sm ${event.status === 'completed'
+                ? 'bg-green-50 border-green-500 dark:bg-green-900/50 dark:border-green-600'
+                : event.status === 'current'
+                  ? 'bg-orange-50 border-brand-orange dark:bg-orange-900/50 dark:border-brand-orange'
+                  : 'bg-gray-50 border-gray-300 dark:bg-slate-700 dark:border-slate-600'
+                }`}>
                 {getEventIcon(event.stage)}
               </div>
 
-              <div className="flex-1 pb-4">
+              <div className="flex-1 pb-2">
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getEventColor(event.stage, event.status)}`}>
                   <span className="font-semibold text-sm">{getEventLabel(event.stage)}</span>
                   {event.status === 'completed' && (
@@ -150,13 +160,13 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
                   )}
                 </div>
 
-                <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Clock size={12} />
                   <span>{formatDate(event.date)}</span>
                 </div>
 
                 {event.note && (
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 rounded-lg p-2">
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 rounded-lg p-3 leading-relaxed">
                     {event.note}
                   </p>
                 )}

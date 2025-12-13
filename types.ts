@@ -204,6 +204,13 @@ export interface CompanyProfile {
   companySlug?: string;
   whatsapp?: string;
   address?: string;
+  notificationPreferences?: {
+    newCandidateApplied?: boolean;
+    assessmentCompleted?: boolean;
+    dailyDigest?: boolean;
+    soundEnabled?: boolean;
+    digestTime?: string; // "08:00"
+  };
 }
 
 export interface CreditTransaction {
@@ -273,6 +280,25 @@ export interface AssessmentInvite {
   sessionId?: string;
   jobId?: string;
   applicationId?: string;
+}
+
+export interface Notification {
+  id?: string;
+  companyId: string;
+  type: 'new_candidate' | 'assessment_completed';
+  title: string;
+  message: string;
+  icon: string;
+  link: string;
+  read: boolean;
+  createdAt: any;
+  metadata?: {
+    candidateId?: string;
+    candidateName?: string;
+    jobTitle?: string;
+    sessionId?: string;
+    riskLevel?: string;
+  };
 }
 
 export interface TimelineEvent {

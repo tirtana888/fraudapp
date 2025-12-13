@@ -35,6 +35,7 @@ import PaymentModal from './components/PaymentModal';
 import { ToastProvider, useToast } from './components/Toast';
 import { db, COLLECTIONS } from './services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import NotificationCenter from './components/NotificationCenter';
 
 // Unlock Modal Component
 interface UnlockModalProps {
@@ -839,6 +840,7 @@ const App: React.FC = () => {
             onBack={() => {
               setViewingCandidateId(null);
             }}
+            onNavigateToCredits={() => setActiveTab('credits')}
           />;
         }
         return <CandidatesAutoView
@@ -855,6 +857,7 @@ const App: React.FC = () => {
             onBack={() => {
               setViewingCandidateId(null);
             }}
+            onNavigateToCredits={() => setActiveTab('credits')}
           />;
         }
         return <CandidatesManualInvite
@@ -882,6 +885,7 @@ const App: React.FC = () => {
             onBack={() => {
               setViewingCandidateId(null);
             }}
+            onNavigateToCredits={() => setActiveTab('credits')}
           />;
         }
         return <HistoryView
@@ -924,9 +928,12 @@ const App: React.FC = () => {
             </div>
             <span className="font-bold text-gray-800 dark:text-white">FraudGuard</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-500">
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            {currentCompany?.id && <NotificationCenter companyId={currentCompany.id} />}
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-500">
+              <Menu size={24} />
+            </button>
+          </div>
         </div>
 
         <Sidebar

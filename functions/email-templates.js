@@ -246,5 +246,150 @@ module.exports = {
             subject: `Selamat! Anda Diterima di ${companyName}`,
             html: createEmailLayout(`Welcome Aboard!`, content)
         };
+    },
+
+    dailyDigest: (companyName, adminEmail, date, newCandidates = [], completedAssessments = [], dashboardUrl = 'https://hiregood.one/candidates') => {
+        const totalNew = newCandidates.length;
+        const totalCompleted = completedAssessments.length;
+
+        // Format date in Indonesian
+        const formattedDate = new Date(date).toLocaleDateString('id-ID', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Build candidates list HTML
+        let candidatesHTML = '';
+        if (totalNew > 0) {
+            candidatesHTML = newCandidates.slice(0, 10).map(candidate => `
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+                        <strong style="color: ${BRAND_COLORS.secondary};">${candidate.name}</strong>
+                        <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${candidate.jobTitle || 'Position not specified'}</div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            candidatesHTML = `
+                <tr>
+                    <td style="padding: 20px; text-align: center; color: #94a3b8; font-size: 14px;">
+                        Tidak ada kandidat baru hari ini
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Build assessments list HTML
+        let assessmentsHTML = '';
+        if (totalCompleted > 0) {
+            assessmentsHTML = completedAssessments.slice(0, 10).map(assessment => {
+                const riskEmoji = {
+                    'Low': '🟢',
+                    'Medium': '🟡',
+                    'High': '🟠',
+                    'Critical': '🔴'
+                }[assessment.riskLevel] || '⚪';
+
+                const riskColor = {
+                    'Low': '#10b981',
+                    'Medium': '#f59e0b',
+                    'High': '#f97316',
+                    'Critical': '#ef4444'
+                }[assessment.riskLevel] || '#94a3b8';
+
+                return `
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: ${BRAND_COLORS.secondary};">${assessment.name}</strong>
+                                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${assessment.jobTitle || 'Position not specified'}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 20px;">${riskEmoji}</span>
+                                <div style="font-size: 12px; color: ${riskColor}; font-weight: 600; margin-top: 2px;">${assessment.riskLevel} Risk</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        } else {
+            assessmentsHTML = `
+                <tr>
+                    <td style="padding: 20px; text-align: center; color: #94a3b8; font-size: 14px;">
+                        Tidak ada assessment yang diselesaikan hari ini
+                    </td>
+                </tr>
+            `;
+        }
+
+        const content = `
+            <h2 style="margin-top: 0; color: ${BRAND_COLORS.secondary}; font-size: 22px;">Selamat Pagi! ☀️</h2>
+            <p>Berikut adalah ringkasan aktivitas rekrutmen Anda untuk <strong>${formattedDate}</strong>:</p>
+            
+            <!-- Summary Stats -->
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0;">
+                <tr>
+                    <td width="48%" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 36px; font-weight: 700; color: white; margin-bottom: 5px;">${totalNew}</div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.9);">Kandidat Baru</div>
+                    </td>
+                    <td width="4%"></td>
+                    <td width="48%" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 36px; font-weight: 700; color: white; margin-bottom: 5px;">${totalCompleted}</div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.9);">Assessment Selesai</div>
+                    </td>
+                </tr>
+            </table>
+
+            ${totalNew > 0 ? `
+            <!-- New Candidates Section -->
+            <div style="margin: 30px 0;">
+                <h3 style="color: ${BRAND_COLORS.secondary}; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid ${BRAND_COLORS.primary}; padding-bottom: 8px;">
+                    👤 Kandidat Baru
+                </h3>
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0;">
+                    ${candidatesHTML}
+                </table>
+                ${totalNew > 10 ? `<p style="font-size: 13px; color: #64748b; margin-top: 10px;">Dan ${totalNew - 10} kandidat lainnya...</p>` : ''}
+            </div>
+            ` : ''}
+
+            ${totalCompleted > 0 ? `
+            <!-- Completed Assessments Section -->
+            <div style="margin: 30px 0;">
+                <h3 style="color: ${BRAND_COLORS.secondary}; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid ${BRAND_COLORS.primary}; padding-bottom: 8px;">
+                    ✅ Assessment Selesai
+                </h3>
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0;">
+                    ${assessmentsHTML}
+                </table>
+                ${totalCompleted > 10 ? `<p style="font-size: 13px; color: #64748b; margin-top: 10px;">Dan ${totalCompleted - 10} assessment lainnya...</p>` : ''}
+            </div>
+            ` : ''}
+
+            ${totalNew === 0 && totalCompleted === 0 ? `
+            <div style="background-color: #f1f5f9; border-radius: 8px; padding: 30px; text-align: center; margin: 25px 0;">
+                <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                <p style="color: #64748b; margin: 0;">Tidak ada aktivitas baru hari ini</p>
+            </div>
+            ` : ''}
+
+            ${createButton('Lihat Dashboard Lengkap', dashboardUrl)}
+
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                Anda menerima email ini karena Anda mengaktifkan Daily Digest di pengaturan notifikasi. 
+                <a href="https://hiregood.one/settings" style="color: ${BRAND_COLORS.primary}; text-decoration: none;">Kelola preferensi</a>
+            </p>
+        `;
+
+        return {
+            from: EMAIL_SENDERS.business,
+            subject: `📊 Daily Digest - ${companyName} (${formattedDate})`,
+            html: createEmailLayout(`Daily Digest - ${companyName}`, content)
+        };
     }
 };

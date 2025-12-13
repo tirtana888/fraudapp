@@ -593,7 +593,8 @@ export const COLLECTIONS = {
   JOBS: 'jobs',
   APPLICATIONS: 'applications',
   WORKFLOWS: 'workflows',
-  CREDIT_TRANSACTIONS: 'credit_transactions'
+  CREDIT_TRANSACTIONS: 'credit_transactions',
+  NOTIFICATIONS: 'notifications'
 };
 
 // Seed real database with demo data
@@ -1605,12 +1606,77 @@ export const updateWorkflow = async (workflowId: string, updates: Partial<Workfl
   }
 };
 
+
 export const deleteWorkflow = async (workflowId: string): Promise<void> => {
   try {
     await deleteDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
     console.log('[WORKFLOWS] Workflow deleted:', workflowId);
   } catch (error) {
     console.error('[WORKFLOWS] Error deleting workflow:', error);
+    throw error;
+  }
+};
+
+
+
+export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>, email?: string): Promise<void> => {
+  try {
+    console.log(`[USER-UPDATE] Starting update for User ID: ${userId}, Email: ${email}`);
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    let docRef: any = null;
+
+    // 1. Try finding by ID field (if set)
+    console.log('[USER-UPDATE] Step 1: Querying by ID field...');
+    const qId = query(usersRef, where('id', '==', userId), limit(1));
+    const snapshotId = await getDocs(qId);
+
+    if (!snapshotId.empty) {
+      console.log('[USER-UPDATE] ✅ Found document by ID field. Doc ID:', snapshotId.docs[0].id);
+      docRef = snapshotId.docs[0].ref;
+    }
+    // 2. Fallback: Try finding by Email (if provided)
+    else if (email) {
+      console.log('[USER-UPDATE] ⚠️ Not found by ID. Step 2: Querying by Email...');
+      // Check for duplicates first just for debugging
+      const qEmailCheck = query(usersRef, where('email', '==', email));
+      const snapshotEmailCheck = await getDocs(qEmailCheck);
+
+      if (snapshotEmailCheck.size > 1) {
+        console.warn(`[USER-UPDATE] ⚠️ WARNING: Found ${snapshotEmailCheck.size} documents with email ${email}! Updating the first one found.`);
+      }
+
+      if (!snapshotEmailCheck.empty) {
+        console.log('[USER-UPDATE] ✅ Found document by Email. Doc ID:', snapshotEmailCheck.docs[0].id);
+        docRef = snapshotEmailCheck.docs[0].ref;
+      }
+    }
+
+    if (docRef) {
+      // Update existing
+      console.log('[USER-UPDATE] 📝 Updating existing document:', docRef.id);
+      await updateDoc(docRef, updates as any);
+      console.log('[USER-UPDATE] ✅ Update successful!');
+    } else {
+      // 3. Create new if not found (Upsert)
+      if (email) {
+        console.log('[USER-UPDATE] ⚠️ Document STILL not found. Step 3: Creating NEW profile (Upsert) for:', email);
+        const newProfile: UserProfile = {
+          id: userId,
+          email: email,
+          name: updates.name || 'User',
+          role: updates.role || 'System Admin',
+          createdAt: new Date().toISOString(),
+          ...updates
+        };
+        const newDocRef = await addDoc(usersRef, newProfile);
+        console.log('[USER-UPDATE] ✅ Created new profile with Doc ID:', newDocRef.id);
+      } else {
+        console.error('[USER-UPDATE] ❌ FAILED: User document not found and no email provided for creation.');
+        throw new Error("User profile not found and cannot be created without email");
+      }
+    }
+  } catch (error) {
+    console.error('[USER-UPDATE] ❌ Error updating profile:', error);
     throw error;
   }
 };
