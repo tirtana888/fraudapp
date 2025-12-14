@@ -130,6 +130,25 @@ export interface KYCData {
   extractedAt?: any; // Firestore Timestamp
 }
 
+// ========== IP Data Interface ==========
+export interface IPData {
+  ipAddress?: string;
+  country?: string;
+  isVpnOrTor?: boolean;
+  status?: string;
+  isp?: string;
+  timezone?: string;
+  city?: string;
+  region?: string;
+  connectionType?: string;
+  browser?: string;
+  browserVersion?: string;
+  os?: string;
+  osVersion?: string;
+  deviceType?: string;
+  userAgent?: string;
+}
+
 export interface BackgroundCheckData {
   status?: 'pending' | 'in_progress' | 'approved' | 'declined' | 'in_review';
   diditSessionId?: string;
@@ -138,6 +157,7 @@ export interface BackgroundCheckData {
   createdAt?: any;
   lastUpdated?: any;
   kycData?: KYCData;
+  ipAnalysis?: IPData;
   rawWebhookData?: {
     status?: string;
     webhook_type?: string;
@@ -465,3 +485,18 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     category: 'decision'
   }
 ];
+
+// ========== Promo Code Interface ==========
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  maxUses?: number;
+  usedCount: number;
+  validFrom: string;
+  validUntil: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}

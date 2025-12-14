@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
-import { InterviewSession, ParsedCVData, CompanyProfile } from '../types';
+import { InterviewSession, ParsedCVData, CompanyProfile, IPData } from '../types';
 import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -75,12 +75,7 @@ interface CandidateData extends InterviewSession {
       referenceImage?: string;
     };
     warnings?: string[];
-    ipAnalysis?: {
-      ipAddress?: string;
-      country?: string;
-      isVpnOrTor?: boolean;
-      status?: string;
-    };
+    ipAnalysis?: IPData;
   };
 }
 

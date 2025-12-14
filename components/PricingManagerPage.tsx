@@ -27,7 +27,13 @@ import {
     addCreditPackage,
     updateCreditPackage,
     deleteCreditPackage,
-    CreditPackage
+    CreditPackage,
+    PromoCode,
+    getPromoCodes,
+    createPromoCode,
+    updatePromoCode,
+    deactivatePromoCode,
+    deletePromoCode
 } from '../services/pricingService';
 import { auth } from '../services/firebase';
 
@@ -1093,8 +1099,8 @@ const PromoCodesTab: React.FC = () => {
                                         <button
                                             onClick={() => handleToggleActive(code)}
                                             className={`p-2 rounded-lg transition-colors ${code.isActive
-                                                    ? 'text-orange-600 hover:bg-orange-50'
-                                                    : 'text-green-600 hover:bg-green-50'
+                                                ? 'text-orange-600 hover:bg-orange-50'
+                                                : 'text-green-600 hover:bg-green-50'
                                                 }`}
                                             title={code.isActive ? 'Deactivate' : 'Activate'}
                                         >
