@@ -7,12 +7,15 @@ import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';
 import SuperAdminDashboard from './SuperAdminDashboard';
+import PricingManagerPage from './PricingManagerPage';
+import SystemConfigPage from './SystemConfigPage';
+
 
 const AdminDashboard: React.FC = () => {
   const toast = useToast();
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'management' | 'analytics'>('management');
+  const [activeTab, setActiveTab] = useState<'management' | 'analytics' | 'pricing' | 'config'>('management');
 
   // Invite Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -208,12 +211,36 @@ const AdminDashboard: React.FC = () => {
             <BarChart3 size={20} />
             Analytics Dashboard
           </button>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'pricing'
+              ? 'bg-brand-orange text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+          >
+            <CreditCard size={20} />
+            Pricing Manager
+          </button>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'config'
+              ? 'bg-brand-orange text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+          >
+            <Settings size={20} />
+            System Config
+          </button>
         </div>
       </div>
 
       {/* Conditional Content Based on Active Tab */}
       {activeTab === 'analytics' ? (
         <SuperAdminDashboard />
+      ) : activeTab === 'pricing' ? (
+        <PricingManagerPage />
+      ) : activeTab === 'config' ? (
+        <SystemConfigPage />
       ) : (
         <>
 

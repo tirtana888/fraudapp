@@ -36,6 +36,7 @@ import { ToastProvider, useToast } from './components/Toast';
 import { db, COLLECTIONS } from './services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import NotificationCenter from './components/NotificationCenter';
+import { MaintenanceBanner } from './components/MaintenanceBanner';
 
 // Unlock Modal Component
 interface UnlockModalProps {
@@ -919,6 +920,7 @@ const App: React.FC = () => {
 
   return (
     <ToastProvider>
+      <MaintenanceBanner />
       <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-brand-slate-900' : 'bg-gray-50'}`}>
         {/* Mobile Header */}
         <div className="md:hidden bg-white dark:bg-brand-slate-850 p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center sticky top-0 z-20">

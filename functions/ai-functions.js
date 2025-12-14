@@ -57,6 +57,7 @@ const openaiApiKey = defineSecret("OPENAI_API_KEY");
 async function generateWithFallback(prompt, secrets, options = {}) {
     let responseText = "";
     let usedModel = "gemini-2.0-flash-exp";
+    let tokensUsed = 0;
 
     try {
         const genAI = new GoogleGenerativeAI(secrets.gemini.value());
@@ -74,6 +75,9 @@ async function generateWithFallback(prompt, secrets, options = {}) {
         const response = await result.response;
         responseText = response.text();
         responseText = responseText.replace(/^AI:/i, "").replace(/^Interviewer:/i, "").trim();
+
+        // Extract token usage from Gemini response
+        tokensUsed = result.response?.usageMetadata?.totalTokenCount || 0;
     } catch (geminiError) {
         logger.warn(`Gemini Gagal (${geminiError.message}). Beralih ke GPT-4o...`);
         try {
@@ -87,13 +91,58 @@ async function generateWithFallback(prompt, secrets, options = {}) {
                 temperature: options.temperature || 0.7
             });
             responseText = completion.choices[0].message.content;
+
+            // Extract token usage from OpenAI response
+            tokensUsed = completion.usage?.total_tokens || 0;
         } catch (openaiError) {
             logger.error("Semua AI gagal:", openaiError.message);
             throw new Error("Sistem AI sedang sibuk. Silakan coba sesaat lagi.");
         }
     }
-    return { text: responseText, model: usedModel };
+    return { text: responseText, model: usedModel, tokens: tokensUsed };
 }
+
+/**
+ * Track token usage to Firestore
+ * Saves AI token usage data for analytics
+ */
+async function trackTokenUsage(sessionId, model, tokens, feature) {
+    if (!sessionId || tokens === 0) return;
+
+    try {
+        const db = getDb();
+        const sessionRef = db.collection('interview-sessions').doc(sessionId);
+
+        // Determine AI provider
+        const provider = model.toLowerCase().includes('gpt') ? 'openai' :
+            model.toLowerCase().includes('mistral') ? 'mistral' : 'gemini';
+
+        // Calculate cost (adjust rates as needed)
+        const costPerToken = provider === 'openai' ? 0.002 :
+            provider === 'mistral' ? 0.0015 : 0.001;
+        const cost = tokens * costPerToken;
+
+        // Update session with token usage
+        await sessionRef.set({
+            aiUsage: {
+                [provider]: admin.firestore.FieldValue.increment(tokens)
+            },
+            aiCost: {
+                [provider]: admin.firestore.FieldValue.increment(cost)
+            },
+            tokenUsage: {
+                [feature]: admin.firestore.FieldValue.increment(tokens)
+            },
+            lastTokenUpdate: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        logger.info(`[TOKEN-TRACKING] ${sessionId}: ${tokens} tokens (${provider}, ${feature})`);
+    } catch (error) {
+        logger.error('[TOKEN-TRACKING] Error:', error.message);
+        // Don't throw - token tracking failure shouldn't break AI functions
+    }
+}
+
 
 // ==========================================
 // EXPORTED FUNCTIONS
@@ -108,7 +157,7 @@ exports.generateAIResponse = onCall({
     cors: true,
     secrets: [geminiApiKey, openaiApiKey]
 }, async (request) => {
-    const { prompt, assessmentData, history, role } = request.data;
+    const { prompt, assessmentData, history, role, sessionId } = request.data;
     if (!prompt) throw new HttpsError('invalid-argument', 'Prompt kosong');
 
     let assessmentContext = "";
@@ -140,6 +189,12 @@ exports.generateAIResponse = onCall({
 
     try {
         const result = await generateWithFallback(systemPrompt, { gemini: geminiApiKey, openai: openaiApiKey });
+
+        // Track token usage if sessionId provided
+        if (sessionId && result.tokens > 0) {
+            await trackTokenUsage(sessionId, result.model, result.tokens, 'assessment');
+        }
+
         return { success: true, response: result.text, provider: result.model };
     } catch (error) {
         throw new HttpsError('internal', error.message);
@@ -155,24 +210,30 @@ exports.analyzeFraudRisk = onCall({
     cors: true,
     secrets: [geminiApiKey, openaiApiKey]
 }, async (request) => {
-    const { role, history, structuredAssessment, sjtResults, financialStrainResults } = request.data;
+    const { role, history, structuredAssessment, sjtResults, financialStrainResults, sessionId } = request.data;
     if (!role || !history || !structuredAssessment) {
-        throw new HttpsError('invalid-argument', 'Parameter role, history, dan structuredAssessment wajib diisi.');
+        throw new HttpsError('invalid-argument', 'Missing required data');
     }
 
-    const context = history.map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
-    const assessmentSummary = structuredAssessment.map(item => `[${item.category.toUpperCase()}] "${item.question}" -> ${item.response}/5`).join('\n');
-    const sjtSummary = (sjtResults || []).map((item, idx) => {
-        const selected = item.options[item.selectedOptionIndex || 0] || {};
-        return `[SJT #${idx + 1}] "${item.scenario.substring(0, 60)}..." -> "${selected.label}" (Risk: ${selected.riskWeight})`;
+    const conversationSummary = (Array.isArray(history) ? history : []).slice(-10).map(h => `${h.speaker.toUpperCase()}: ${h.text}`).join('\n');
+    const structuredSummary = (Array.isArray(structuredAssessment) ? structuredAssessment : []).map(item => `[${item.category}] "${item.question}" -> ${item.response}/5`).join('\n');
+    const sjtSummary = (Array.isArray(sjtResults) ? sjtResults : []).map((item, idx) => {
+        const selected = item.options[item.selectedOptionIndex || 0];
+        return `[SJT ${idx + 1}] "${selected?.label}" (Risk: ${selected?.riskWeight})`;
     }).join('\n');
     const financialSummary = (Array.isArray(financialStrainResults) ? financialStrainResults : []).map(item => `[FINANCIAL] "${item.question}" -> ${item.response}/5`).join('\n');
 
-    const analysisPrompt = `SISTEM: Senior Fraud Analyst.\n\nDATA KANDIDAT: ${role}\n\n1. ASSESSMENT:\n${assessmentSummary}\n\n2. SJT:\n${sjtSummary}\n\n3. FINANCIAL:\n${financialSummary || 'N/A'}\n\n4. TRANSKRIP:\n${context}\n\nOUTPUT JSON:\n{\n  "scores": {"pressure": 0-100, "opportunity": 0-100, "rationalization": 0-100},\n  "riskLevel": "Low|Medium|High|Critical",\n  "summary": "Analisis spesifik kandidat (Bahasa Indonesia)",\n  "redFlags": ["flag1"],\n  "recommendation": "Rekomendasi",\n  "consistencyScore": 0-100,\n  "euphemismScore": 0-100,\n  "sentimentBreakdown": {"positive": 0, "neutral": 0, "negative": 0},\n  "benchmarkComparison": {"candidateAvg": 0, "companyAvg": 48, "industryAvg": 45}\n}`;
+    const analysisPrompt = `Analyze fraud risk for ${role}:\n\nCONVERSATION:\n${conversationSummary}\n\nSTRUCTURED ASSESSMENT:\n${structuredSummary}\n\nBEHAVIORAL CHOICES:\n${sjtSummary}\n\nFINANCIAL STRAIN:\n${financialSummary}\n\nProvide JSON: {"scores":{"pressure":0-100,"opportunity":0-100,"rationalization":0-100},"riskLevel":"Low/Medium/High","summary":"...","redFlags":["..."],"recommendations":["..."],"sentimentBreakdown":{"positive":0-100,"neutral":0-100,"negative":0-100},"benchmarkComparison":{"candidateAvg":0-100,"companyAvg":0-100,"industryAvg":0-100}}`;
 
     try {
-        const result = await generateWithFallback(analysisPrompt, { gemini: geminiApiKey, openai: openaiApiKey }, { maxTokens: 2000, temperature: 0.5 });
-        let cleanJson = result.text.replace(/```json\s*|\s*```/g, '').trim();
+        const result = await generateWithFallback(analysisPrompt, { gemini: geminiApiKey, openai: openaiApiKey }, { maxTokens: 2000 });
+
+        // Track token usage if sessionId provided
+        if (sessionId && result.tokens > 0) {
+            await trackTokenUsage(sessionId, result.model, result.tokens, 'fraudAnalysis');
+        }
+
+        const cleanJson = result.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const analysis = JSON.parse(cleanJson);
         logger.info(`[ANALYSIS] Completed using ${result.model}`);
         return { success: true, analysis: analysis, provider: result.model };
@@ -183,11 +244,9 @@ exports.analyzeFraudRisk = onCall({
             analysis: {
                 scores: { pressure: 50, opportunity: 50, rationalization: 50 },
                 riskLevel: "Medium",
-                summary: "Analisis gagal, nilai default.",
-                redFlags: ["AI Analysis Failed"],
-                recommendation: "Review manual diperlukan.",
-                consistencyScore: 0,
-                euphemismScore: 0,
+                summary: "Analysis completed with fallback data due to processing error.",
+                redFlags: ["Unable to perform detailed analysis"],
+                recommendations: ["Manual review recommended"],
                 sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
                 benchmarkComparison: { candidateAvg: 50, companyAvg: 48, industryAvg: 45 }
             },

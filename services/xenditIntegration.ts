@@ -4,6 +4,7 @@
  */
 
 import { addCredit, upgradeToPremium, creditsToIDR } from './creditManagement';
+import { validatePromoCode, incrementPromoUsage, getFinalPrice, PromoCode } from './pricingService';
 
 const XENDIT_API_KEY = import.meta.env.VITE_XENDIT_SECRET_KEY || '';
 const XENDIT_API_URL = 'https://api.xendit.co/v2/invoices';
@@ -45,10 +46,48 @@ export const createTopUpInvoice = async (
   companyId: string,
   credits: number,
   email: string,
-  companyName: string = 'Company'
-): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string }> => {
+  companyName: string = 'Company',
+  promoCode?: string
+): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string; discount?: number; finalAmount?: number }> => {
   try {
-    console.log('[XENDIT] Creating top-up invoice via Firebase Functions:', { companyId, credits, email });
+    console.log('[XENDIT] Creating top-up invoice via Firebase Functions:', { companyId, credits, email, promoCode });
+
+    // Calculate original amount
+    const originalAmount = credits * 1000; // 1 credit = Rp 1,000
+    let finalAmount = originalAmount;
+    let discount = 0;
+    let validatedPromo: PromoCode | null = null;
+
+    // Validate and apply promo code if provided
+    if (promoCode) {
+      validatedPromo = await validatePromoCode(promoCode);
+
+      if (!validatedPromo) {
+        return {
+          success: false,
+          error: 'Invalid or expired promo code'
+        };
+      }
+
+      // Check if promo is applicable to credits
+      if (validatedPromo.applicableTo !== 'credits' && validatedPromo.applicableTo !== 'both') {
+        return {
+          success: false,
+          error: 'This promo code is not applicable to credit purchases'
+        };
+      }
+
+      // Calculate final price with discount
+      finalAmount = getFinalPrice(originalAmount, validatedPromo);
+      discount = originalAmount - finalAmount;
+
+      console.log('[XENDIT] Promo code applied:', {
+        code: promoCode,
+        originalAmount,
+        discount,
+        finalAmount
+      });
+    }
 
     // Import Firebase Functions
     const { functions } = await import('../services/firebase');
@@ -61,13 +100,21 @@ export const createTopUpInvoice = async (
       amount: credits,
       companyId,
       companyName,
-      companyEmail: email
+      companyEmail: email,
+      promoCode: promoCode || null,
+      finalAmount: finalAmount
     });
 
     const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
 
     if (data.success && data.invoiceUrl) {
       console.log('[XENDIT] Invoice created successfully:', data.invoiceId);
+
+      // Increment promo code usage if applied
+      if (validatedPromo) {
+        await incrementPromoUsage(validatedPromo.id);
+        console.log('[XENDIT] Promo code usage incremented:', promoCode);
+      }
 
       // Save pending payment redirect to localStorage
       localStorage.setItem('pendingPaymentRedirect', 'credits');
@@ -77,7 +124,9 @@ export const createTopUpInvoice = async (
       return {
         success: true,
         invoiceUrl: data.invoiceUrl,
-        invoiceId: data.invoiceId
+        invoiceId: data.invoiceId,
+        discount,
+        finalAmount
       };
     } else {
       throw new Error('Failed to create invoice');
@@ -99,10 +148,48 @@ export const createPremiumSubscriptionInvoice = async (
   companyId: string,
   email: string,
   companyName: string = 'Company',
-  tier: 'Premium' | 'Enterprise' = 'Premium'
-): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string }> => {
+  tier: 'Premium' | 'Enterprise' = 'Premium',
+  promoCode?: string
+): Promise<{ success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string; discount?: number; finalAmount?: number }> => {
   try {
-    console.log('[XENDIT] Creating subscription invoice via Firebase Functions:', { companyId, tier, email });
+    console.log('[XENDIT] Creating subscription invoice via Firebase Functions:', { companyId, tier, email, promoCode });
+
+    // Calculate original amount (Premium = Rp 99,000)
+    const originalAmount = tier === 'Premium' ? 99000 : 199000;
+    let finalAmount = originalAmount;
+    let discount = 0;
+    let validatedPromo: PromoCode | null = null;
+
+    // Validate and apply promo code if provided
+    if (promoCode) {
+      validatedPromo = await validatePromoCode(promoCode);
+
+      if (!validatedPromo) {
+        return {
+          success: false,
+          error: 'Invalid or expired promo code'
+        };
+      }
+
+      // Check if promo is applicable to subscription
+      if (validatedPromo.applicableTo !== 'subscription' && validatedPromo.applicableTo !== 'both') {
+        return {
+          success: false,
+          error: 'This promo code is not applicable to subscriptions'
+        };
+      }
+
+      // Calculate final price with discount
+      finalAmount = getFinalPrice(originalAmount, validatedPromo);
+      discount = originalAmount - finalAmount;
+
+      console.log('[XENDIT] Promo code applied:', {
+        code: promoCode,
+        originalAmount,
+        discount,
+        finalAmount
+      });
+    }
 
     // Import Firebase Functions
     const { functions } = await import('../services/firebase');
@@ -115,17 +202,28 @@ export const createPremiumSubscriptionInvoice = async (
       tier,
       companyId,
       companyName,
-      companyEmail: email
+      companyEmail: email,
+      promoCode: promoCode || null,
+      finalAmount: finalAmount
     });
 
     const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
 
     if (data.success && data.invoiceUrl) {
       console.log('[XENDIT] Subscription invoice created:', data.invoiceId);
+
+      // Increment promo code usage if applied
+      if (validatedPromo) {
+        await incrementPromoUsage(validatedPromo.id);
+        console.log('[XENDIT] Promo code usage incremented:', promoCode);
+      }
+
       return {
         success: true,
         invoiceUrl: data.invoiceUrl,
-        invoiceId: data.invoiceId
+        invoiceId: data.invoiceId,
+        discount,
+        finalAmount
       };
     } else {
       throw new Error('Failed to create invoice');

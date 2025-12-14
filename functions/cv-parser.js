@@ -150,6 +150,35 @@ exports.parseDocumentWithMistral = onCall({
 
         logger.info('[CV-PARSER] Mistral AI response received');
 
+        // Extract token usage from Mistral response
+        const tokensUsed = response.data.usage?.total_tokens || 0;
+
+        // Track token usage to Firestore
+        if (tokensUsed > 0) {
+            try {
+                const costPerToken = 0.0015; // Rp per token for Mistral
+                const cost = tokensUsed * costPerToken;
+
+                await getDb().collection('interview-sessions').doc(sessionId).set({
+                    aiUsage: {
+                        mistral: admin.firestore.FieldValue.increment(tokensUsed)
+                    },
+                    aiCost: {
+                        mistral: admin.firestore.FieldValue.increment(cost)
+                    },
+                    tokenUsage: {
+                        cvParsing: admin.firestore.FieldValue.increment(tokensUsed)
+                    },
+                    lastTokenUpdate: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                logger.info(`[CV-PARSER] Token tracking: ${tokensUsed} tokens (Rp ${cost.toFixed(2)})`);
+            } catch (trackError) {
+                logger.error('[CV-PARSER] Token tracking failed:', trackError.message);
+                // Don't throw - token tracking failure shouldn't break CV parsing
+            }
+        }
+
         // Step 4: Parse AI response
         const aiContent = response.data.choices[0].message.content;
 
