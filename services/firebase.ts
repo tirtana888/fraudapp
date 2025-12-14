@@ -892,25 +892,32 @@ export const verifyAccessCode = async (code: string): Promise<AssessmentInvite |
   if (!db) throw new Error("Database offline");
 
   try {
+    console.log('[VERIFY-CODE] Verifying access code:', code);
+
     const q = query(
       collection(db, COLLECTIONS.INVITES),
       where("access_code", "==", code.toUpperCase().trim())
     );
 
     const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
+    if (snapshot.empty) {
+      console.warn('[VERIFY-CODE] Access code not found');
+      return null;
+    }
 
     const docData = snapshot.docs[0].data() as AssessmentInvite;
 
     // Only allow PENDING codes (one-time use enforcement)
     if (docData.status !== 'PENDING') {
-      console.warn(`Access code ${code} has status: ${docData.status}. Already used.`);
+      console.warn(`[VERIFY-CODE] Access code ${code} has status: ${docData.status}. Already used.`);
       return null;
     }
 
+    console.log('[VERIFY-CODE] ✅ Access code verified successfully');
     return { ...docData, id: snapshot.docs[0].id };
+
   } catch (e) {
-    console.error("Verification failed:", e);
+    console.error('[VERIFY-CODE] Verification failed:', e);
     return null;
   }
 };
@@ -923,6 +930,8 @@ export const markAccessCodeUsed = async (
   if (!db) return;
 
   try {
+    console.log('[MARK-CODE] Marking code as:', status);
+
     const q = query(
       collection(db, COLLECTIONS.INVITES),
       where("access_code", "==", code.toUpperCase().trim())
@@ -945,9 +954,10 @@ export const markAccessCodeUsed = async (
       }
 
       await updateDoc(docRef, updateData);
+      console.log('[MARK-CODE] ✅ Access code marked successfully');
     }
   } catch (e) {
-    console.error("Failed to update access code status:", e);
+    console.error('[MARK-CODE] Failed to update access code status:', e);
   }
 };
 
@@ -1425,6 +1435,25 @@ export const createInterviewSessionFromApplication = async (
 
     const sessionRef = await addDoc(collection(db, COLLECTIONS.SESSIONS), session);
     console.log('[SESSIONS] Interview session created from job application:', sessionRef.id);
+
+    // Send welcome email to candidate with workflow steps
+    try {
+      console.log('[SESSIONS] Sending welcome email to candidate...');
+      if (functions) {
+        const sendWelcomeEmail = httpsCallable(functions, 'sendCandidateWelcomeEmail');
+        sendWelcomeEmail({ sessionId: sessionRef.id })
+          .then((result: any) => {
+            console.log('[SESSIONS] ✅ Welcome email sent successfully:', result.data);
+          })
+          .catch((error) => {
+            console.error('[SESSIONS] ⚠️ Welcome email failed (non-blocking):', error);
+            // Don't throw - Email failure shouldn't block session creation
+          });
+      }
+    } catch (error) {
+      console.error('[SESSIONS] ⚠️ Error triggering welcome email (non-blocking):', error);
+      // Don't throw - Email failure shouldn't block session creation
+    }
 
     // Auto-parse Document if exists
     if (applicationData.cvUrl) {

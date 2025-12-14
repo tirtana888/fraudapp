@@ -69,7 +69,8 @@ const {
 const {
   sendEmail,
   sendRejectionEmail,
-  sendHireEmail
+  sendHireEmail,
+  sendCandidateWelcomeEmail
 } = require('./email-functions');
 
 // Import Stage tracking functions
@@ -98,6 +99,7 @@ exports.parseDocumentWithMistral = parseDocumentWithMistral;
 exports.sendEmail = sendEmail;
 exports.sendRejectionEmail = sendRejectionEmail;
 exports.sendHireEmail = sendHireEmail;
+exports.sendCandidateWelcomeEmail = sendCandidateWelcomeEmail;
 
 // Re-export Stage tracking functions
 exports.updateCandidateStage = updateCandidateStage;
@@ -105,6 +107,119 @@ exports.getCandidateStageInfo = getCandidateStageInfo;
 
 // Email templates will be loaded from separate file
 const EMAIL_TEMPLATES = require('./email-templates');
+
+// ==========================================
+// ACCESS CODE VERIFICATION (Public Access)
+// ==========================================
+
+/**
+ * Verify Access Code
+ * Public function that can be called without authentication
+ * Uses Admin SDK to bypass security rules
+ */
+exports.verifyAccessCode = onCall({
+  region: "europe-west1",
+  cors: true
+}, async (request) => {
+  const { code } = request.data;
+
+  if (!code) {
+    throw new HttpsError('invalid-argument', 'Access code is required');
+  }
+
+  try {
+    logger.info(`[VERIFY-CODE] Verifying access code: ${code}`);
+
+    const snapshot = await db.collection('assessment_invites')
+      .where('access_code', '==', code.toUpperCase().trim())
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      logger.warn(`[VERIFY-CODE] Access code not found: ${code}`);
+      return { success: false, message: 'Invalid access code' };
+    }
+
+    const inviteDoc = snapshot.docs[0];
+    const inviteData = inviteDoc.data();
+
+    // Only allow PENDING codes (one-time use enforcement)
+    if (inviteData.status !== 'PENDING') {
+      logger.warn(`[VERIFY-CODE] Access code already used: ${code}, status: ${inviteData.status}`);
+      return { success: false, message: 'Access code has already been used' };
+    }
+
+    logger.info(`[VERIFY-CODE] ✅ Access code verified: ${code}`);
+
+    return {
+      success: true,
+      invite: {
+        id: inviteDoc.id,
+        ...inviteData
+      }
+    };
+
+  } catch (error) {
+    logger.error('[VERIFY-CODE] Error verifying access code:', error);
+    throw new HttpsError('internal', `Failed to verify access code: ${error.message}`);
+  }
+});
+
+/**
+ * Mark Access Code as Used
+ * Updates the status of an access code
+ */
+exports.markAccessCodeUsed = onCall({
+  region: "europe-west1",
+  cors: true
+}, async (request) => {
+  const { code, status, sessionId } = request.data;
+
+  if (!code || !status) {
+    throw new HttpsError('invalid-argument', 'Code and status are required');
+  }
+
+  try {
+    logger.info(`[MARK-CODE] Marking code ${code} as ${status}`);
+
+    const snapshot = await db.collection('assessment_invites')
+      .where('access_code', '==', code.toUpperCase().trim())
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      throw new HttpsError('not-found', 'Access code not found');
+    }
+
+    const inviteDoc = snapshot.docs[0];
+    const updateData = {
+      status: status,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (status === 'ACCESSING') {
+      updateData.accessedAt = admin.firestore.FieldValue.serverTimestamp();
+    } else if (status === 'IN_PROGRESS') {
+      updateData.startedAt = admin.firestore.FieldValue.serverTimestamp();
+    } else if (status === 'COMPLETED') {
+      updateData.completedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+
+    if (sessionId) {
+      updateData.sessionId = sessionId;
+    }
+
+    await inviteDoc.ref.update(updateData);
+
+    logger.info(`[MARK-CODE] ✅ Code ${code} marked as ${status}`);
+
+    return { success: true, message: 'Access code updated' };
+
+  } catch (error) {
+    logger.error('[MARK-CODE] Error updating access code:', error);
+    throw new HttpsError('internal', `Failed to update access code: ${error.message}`);
+  }
+});
 
 // ==========================================
 // CORE FUNCTIONS (Remaining in index.js)

@@ -248,6 +248,139 @@ module.exports = {
         };
     },
 
+    candidateWelcomeEmail: (candidateName, candidateEmail, companyName, role = "", workflowSteps = [], currentStep = "") => {
+        const roleText = role ? ` untuk posisi <strong>${role}</strong>` : '';
+
+        // Build workflow steps HTML
+        let stepsHTML = '';
+        if (workflowSteps.length > 0) {
+            stepsHTML = workflowSteps.map((step, index) => {
+                const isCurrent = step.id === currentStep || (index === 0 && !currentStep);
+                const stepNumber = index + 1;
+
+                // Icon mapping
+                const iconMap = {
+                    'integrity_assessment': '🛡️',
+                    'skill_interview': '🧠',
+                    'live_proctoring': '📹',
+                    'face_to_face_interview': '👥',
+                    'background_check': '🔍',
+                    'document_forgery': '📄',
+                    'social_media_screening': '📱',
+                    'hire_decision': '✅',
+                    'reject_decision': '❌'
+                };
+
+                const icon = iconMap[step.id] || '📋';
+                // Modern clean card design
+                const bgColor = '#FFFFFF';
+                const borderColor = '#E5E7EB';
+                const numberBg = '#F3F4F6';
+                const numberColor = '#6B7280';
+                const titleColor = '#111827';
+                const descColor = '#6B7280';
+
+                return `
+                <tr>
+                    <td style="padding: 0 0 16px 0;">
+                        <div style="background-color: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td width="56" style="vertical-align: top; padding-right: 16px;">
+                                        <div style="width: 48px; height: 48px; background-color: ${numberBg}; border-radius: 50%; text-align: center; line-height: 48px;">
+                                            <span style="font-size: 18px; font-weight: 600; color: ${numberColor};">${stepNumber}</span>
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align: top;">
+                                        <div style="font-size: 16px; font-weight: 600; color: ${titleColor}; margin-bottom: 6px; line-height: 1.4;">
+                                            ${icon} ${step.name}
+                                        </div>
+                                        <div style="font-size: 14px; color: ${descColor}; line-height: 1.6;">
+                                            ${step.description}
+                                        </div>
+
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        } else {
+            // Default workflow if no custom workflow
+            stepsHTML = `
+                <tr>
+                    <td style="padding: 20px; text-align: center; color: #64748b; font-size: 14px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        Workflow akan dikomunikasikan oleh tim HR
+                    </td>
+                </tr>
+            `;
+        }
+
+        const content = `
+            <h2 style="margin: 0 0 16px 0; color: #111827; font-size: 26px; font-weight: 700; line-height: 1.3;">Selamat Datang, ${candidateName}! 🎉</h2>
+            <p style="font-size: 15px; line-height: 1.7; color: #4B5563; margin: 0 0 12px 0;">Terima kasih telah melamar${roleText} di <strong style="color: #111827;">${companyName}</strong>.</p>
+            
+            <p style="font-size: 15px; line-height: 1.7; color: #4B5563; margin: 0 0 30px 0;">Kami sangat senang dengan minat Anda untuk bergabung dengan tim kami. Aplikasi Anda telah kami terima dan akan segera diproses.</p>
+
+            ${workflowSteps.length > 0 ? `
+            <div style="background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius: 12px; padding: 24px; margin: 0 0 24px 0;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 8px;">📋</span>
+                    <h3 style="color: white; margin: 0; font-size: 18px; font-weight: 700;">Proses Rekrutmen</h3>
+                </div>
+                <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 14px; line-height: 1.6;">
+                    Berikut adalah tahapan yang akan Anda lalui dalam proses seleksi kami:
+                </p>
+            </div>
+
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 0 0 24px 0;">
+                ${stepsHTML}
+            </table>
+
+            <div style="background-color: #ECFDF5; border-left: 4px solid #10B981; padding: 18px; margin: 0 0 16px 0; border-radius: 8px;">
+                <p style="margin: 0; color: #065F46; font-size: 14px; line-height: 1.7;">
+                    <strong style="font-weight: 600;">💡 Tips:</strong> Pastikan Anda memeriksa email secara berkala untuk update terkait proses rekrutmen Anda. Jika ada pertanyaan, jangan ragu untuk menghubungi kami.
+                </p>
+            </div>
+            
+            <div style="background-color: #DBEAFE; border-left: 4px solid #3B82F6; padding: 18px; margin: 0 0 30px 0; border-radius: 8px;">
+                <p style="margin: 0; color: #1E40AF; font-size: 14px; line-height: 1.7;">
+                    <strong style="font-weight: 600;">📧 Assessment Link:</strong> Anda akan menerima email berisi link assessment dalam waktu maksimal <strong>5 menit</strong> setelah email ini. Mohon periksa inbox dan folder spam Anda.
+                </p>
+            </div>
+            ` : `
+            <div style="background-color: #f1f5f9; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">
+                    Tim HR kami akan segera menghubungi Anda untuk informasi lebih lanjut mengenai tahapan seleksi.
+                </p>
+            </div>
+            
+            <div style="background-color: #DBEAFE; border-left: 4px solid #3B82F6; padding: 18px; margin: 0 0 30px 0; border-radius: 8px;">
+                <p style="margin: 0; color: #1E40AF; font-size: 14px; line-height: 1.7;">
+                    <strong style="font-weight: 600;">📧 Assessment Link:</strong> Anda akan menerima email berisi link assessment dalam waktu maksimal <strong>5 menit</strong> setelah email ini. Mohon periksa inbox dan folder spam Anda.
+                </p>
+            </div>
+            `}
+
+            <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                Kami berharap dapat segera bertemu dengan Anda dalam proses seleksi ini!
+            </p>
+
+            <p style="font-size: 16px; line-height: 1.6;">
+                Salam hangat,<br>
+                <strong>${companyName}</strong>
+            </p>
+        `;
+
+        return {
+            from: EMAIL_SENDERS.interview,
+            subject: `Selamat Datang di ${companyName} - Aplikasi Anda Diterima`,
+            html: createEmailLayout(`Welcome to ${companyName}`, content)
+        };
+    },
+
     dailyDigest: (companyName, adminEmail, date, newCandidates = [], completedAssessments = [], dashboardUrl = 'https://hiregood.one/candidates') => {
         const totalNew = newCandidates.length;
         const totalCompleted = completedAssessments.length;

@@ -142,3 +142,107 @@ exports.sendHireEmail = onCall({
 
     return { success: true, message: 'Hire email sent' };
 });
+
+/**
+ * Send Welcome Email to Candidate
+ * Sends welcome email with workflow steps when candidate first applies
+ */
+exports.sendCandidateWelcomeEmail = onCall({
+    region: "europe-west1",
+    cors: true,
+    secrets: [resendApiKey]
+}, async (request) => {
+    const { sessionId } = request.data;
+
+    if (!sessionId) {
+        throw new HttpsError('invalid-argument', 'Session ID required');
+    }
+
+    try {
+        logger.info(`[WELCOME-EMAIL] Sending welcome email for session: ${sessionId}`);
+
+        // Fetch session data
+        const sessionDoc = await getDb().collection('interview_sessions').doc(sessionId).get();
+        if (!sessionDoc.exists) {
+            throw new HttpsError('not-found', 'Session not found');
+        }
+
+        const sessionData = sessionDoc.data();
+        const candidateName = sessionData.candidate?.name || 'Kandidat';
+        const candidateEmail = sessionData.candidate?.email;
+        const candidateRole = sessionData.candidate?.role || '';
+
+        if (!candidateEmail) {
+            throw new HttpsError('invalid-argument', 'Candidate email not found');
+        }
+
+        // Fetch company data
+        const companyDoc = await getDb().collection('companies').doc(sessionData.companyId).get();
+        if (!companyDoc.exists) {
+            throw new HttpsError('not-found', 'Company not found');
+        }
+
+        const companyData = companyDoc.data();
+        const companyName = companyData.name || 'Perusahaan';
+
+        // Fetch workflow data if exists
+        let workflowSteps = [];
+        const workflowId = sessionData.workflowId;
+
+        if (workflowId) {
+            logger.info(`[WELCOME-EMAIL] Loading workflow: ${workflowId}`);
+            const workflowDoc = await getDb().collection('workflows').doc(workflowId).get();
+
+            if (workflowDoc.exists) {
+                const workflowData = workflowDoc.data();
+                // Filter only enabled steps and sort by order
+                workflowSteps = (workflowData.steps || [])
+                    .filter(step => step.isEnabled)
+                    .sort((a, b) => a.order - b.order);
+
+                logger.info(`[WELCOME-EMAIL] Loaded ${workflowSteps.length} enabled workflow steps`);
+            }
+        }
+
+        // Determine current step (first enabled step or from session)
+        const currentStep = sessionData.recruitmentStage || (workflowSteps.length > 0 ? workflowSteps[0].id : 'applied');
+
+        // Generate email template
+        const resend = new Resend(resendApiKey.value());
+        const emailTemplate = EMAIL_TEMPLATES.candidateWelcomeEmail(
+            candidateName,
+            candidateEmail,
+            companyName,
+            candidateRole,
+            workflowSteps,
+            currentStep
+        );
+
+        // Send email
+        const result = await resend.emails.send({
+            from: emailTemplate.from,
+            to: candidateEmail,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+        });
+
+        logger.info(`[WELCOME-EMAIL] ✅ Email sent successfully! ID: ${result.id}`);
+
+        return {
+            success: true,
+            messageId: result.id,
+            message: 'Welcome email sent successfully',
+            recipient: candidateEmail
+        };
+
+    } catch (error) {
+        logger.error('[WELCOME-EMAIL] Error sending welcome email:', error);
+
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+
+        throw new HttpsError('internal', `Failed to send welcome email: ${error.message}`);
+    }
+});
+

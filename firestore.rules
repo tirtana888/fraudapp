@@ -24,6 +24,20 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
     
+    // Assessment Invites - PUBLIC READ for access code verification
+    match /assessment_invites/{inviteId} {
+      allow read: if true; // ✅ Allow public read for access code verification
+      allow create: if isAuthenticated(); // Only authenticated users can create
+      allow update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Job Applications - PUBLIC CREATE for career page submissions
+    match /job_applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if true; // ✅ Allow public create for job applications
+      allow update, delete: if isAuthenticated();
+    }
+    
     // ==========================================
     // AUTHENTICATED-ONLY COLLECTIONS
     // ==========================================
