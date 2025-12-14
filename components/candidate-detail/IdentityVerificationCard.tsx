@@ -14,6 +14,21 @@ interface IdentityVerificationCardProps {
     };
 }
 
+// Helper function to get image source - handles both URL and base64
+const getImageSrc = (imageData: string | undefined): string | undefined => {
+    if (!imageData) return undefined;
+    // Check if it's already a URL (starts with http/https)
+    if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+        return imageData;
+    }
+    // Check if it's already a data URL
+    if (imageData.startsWith('data:')) {
+        return imageData;
+    }
+    // Assume it's base64 and add prefix
+    return `data:image/jpeg;base64,${imageData}`;
+};
+
 const IdentityVerificationCard: React.FC<IdentityVerificationCardProps> = ({
     ktpUrl,
     selfieUrl,
@@ -40,7 +55,7 @@ const IdentityVerificationCard: React.FC<IdentityVerificationCardProps> = ({
                         <p className="text-xs text-gray-500 mb-2 font-medium">Foto KTP</p>
                         <div className="relative aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-inner group">
                             {ktpUrl ? (
-                                <img src={ktpUrl} alt="KTP" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                <img src={getImageSrc(ktpUrl)} alt="KTP" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-400 text-xs">No Image</div>
                             )}
@@ -65,7 +80,7 @@ const IdentityVerificationCard: React.FC<IdentityVerificationCardProps> = ({
                         <p className="text-xs text-gray-500 mb-2 font-medium">Selfie Terbaru</p>
                         <div className="relative aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-inner group">
                             {selfieUrl ? (
-                                <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                <img src={getImageSrc(selfieUrl)} alt="Selfie" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-400 text-xs">No Image</div>
                             )}
