@@ -52,12 +52,12 @@ const PricingManagerPage: React.FC<PricingManagerPageProps> = ({ onBack }) => {
     const TabButton = ({ tab, label, icon: Icon }: { tab: TabType; label: string; icon: any }) => (
         <button
             onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === tab
-                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                : 'text-gray-600 hover:text-gray-800'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === tab
+                ? 'bg-white text-brand-orange shadow-sm ring-1 ring-gray-200 dark:bg-slate-700 dark:text-white dark:ring-slate-600'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
         >
-            <Icon size={18} />
+            <Icon size={16} />
             {label}
         </button>
     );
@@ -65,17 +65,17 @@ const PricingManagerPage: React.FC<PricingManagerPageProps> = ({ onBack }) => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
+            <div className="bg-white border-b border-gray-100 dark:border-slate-700 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-6 py-6">
+                    <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Pricing Manager</h1>
-                            <p className="text-sm text-gray-600 mt-1">Manage subscription plans, credit pricing, and promo codes</p>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Pricing Manager</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">Manage subscription plans, credit pricing, and promo codes</p>
                         </div>
                     </div>
 
-                    {/* Tab Navigation */}
-                    <div className="flex items-center gap-1 border-b border-gray-200 overflow-x-auto">
+                    {/* Modern Tab Navigation (Segmented Control) */}
+                    <div className="inline-flex items-center p-1.5 bg-gray-100 dark:bg-slate-800 rounded-xl">
                         <TabButton tab="plans" label="Subscription Plans" icon={Crown} />
                         <TabButton tab="credits" label="Credit Pricing" icon={Coins} />
                         <TabButton tab="promos" label="Promo Codes" icon={Tag} />
@@ -172,42 +172,53 @@ const SubscriptionPlansTab: React.FC = () => {
                 {plansArray.map((plan) => (
                     <div
                         key={plan.id}
-                        className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                        className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all duration-300"
                     >
                         {/* Plan Header */}
-                        <div className={`p-6 ${plan.id === 'premium' ? 'bg-gradient-to-r from-[#D95D00] to-[#FF8C00]' : 'bg-gray-50'}`}>
+                        <div className={`p-8 ${plan.id === 'premium'
+                            ? 'bg-gradient-to-br from-brand-orange to-orange-600'
+                            : 'bg-white dark:bg-brand-slate-850'
+                            }`}>
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <h3 className={`text-xl font-bold ${plan.id === 'premium' ? 'text-white' : 'text-gray-800'}`}>
+                                    <h3 className={`text-xl font-bold ${plan.id === 'premium' ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                                         {plan.name}
                                     </h3>
-                                    <div className={`mt-2 ${plan.id === 'premium' ? 'text-white' : 'text-gray-600'}`}>
-                                        <span className="text-3xl font-black">
-                                            {plan.price === 0 ? 'Gratis' : `Rp ${plan.price.toLocaleString('id-ID')}`}
-                                        </span>
-                                        {plan.price > 0 && <span className="text-sm opacity-90">/bulan</span>}
+                                    <div className={`mt-3 ${plan.id === 'premium' ? 'text-white/90' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className={`text-4xl font-bold ${plan.id === 'premium' ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                                                {plan.price === 0 ? 'Gratis' : `Rp ${plan.price.toLocaleString('id-ID')}`}
+                                            </span>
+                                            {plan.price > 0 && <span className="text-sm font-medium opacity-80">/mo</span>}
+                                        </div>
                                     </div>
                                 </div>
                                 {plan.id === 'premium' && (
-                                    <Crown size={24} className="text-yellow-300" />
+                                    <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                        <Crown size={24} className="text-white" />
+                                    </div>
                                 )}
                             </div>
 
                             {plan.monthlyCredits > 0 && (
-                                <div className={`mt-3 flex items-center gap-2 text-sm ${plan.id === 'premium' ? 'text-white/90' : 'text-gray-600'}`}>
-                                    <Coins size={14} />
-                                    <span>{plan.monthlyCredits} credits/bulan</span>
+                                <div className={`mt-6 flex items-center gap-2 text-sm font-medium ${plan.id === 'premium' ? 'text-white/90 bg-white/10 p-2 rounded-lg' : 'text-brand-orange bg-orange-50 dark:bg-orange-900/20 p-2 rounded-lg inline-block'
+                                    }`}>
+                                    <Coins size={16} />
+                                    <span>{plan.monthlyCredits} credits included</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Features */}
-                        <div className="p-6">
-                            <ul className="space-y-3">
+                        <div className="p-8 pt-6 border-t border-gray-100 dark:border-slate-700">
+                            <ul className="space-y-4">
                                 {plan.features.map((feature, idx) => (
-                                    <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                        <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                                        <span>{feature}</span>
+                                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                        <div className={`mt-0.5 p-0.5 rounded-full ${plan.id === 'premium' ? 'bg-orange-100 text-brand-orange dark:bg-orange-900/30' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400'
+                                            }`}>
+                                            <Check size={12} strokeWidth={3} />
+                                        </div>
+                                        <span className="leading-relaxed">{feature}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -215,10 +226,10 @@ const SubscriptionPlansTab: React.FC = () => {
                             {/* Edit Button */}
                             <button
                                 onClick={() => handleEditPlan(plan)}
-                                className="mt-6 w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                className="mt-8 w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-gray-900 dark:text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-slate-600 group"
                             >
-                                <Edit2 size={16} />
-                                Edit Plan
+                                <Edit2 size={16} className="text-gray-400 group-hover:text-gray-600" />
+                                Edit Configuration
                             </button>
                         </div>
                     </div>
@@ -574,18 +585,24 @@ const CreditPricingTab: React.FC = () => {
                         {packages.map((pkg) => (
                             <tr key={pkg.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <Coins size={18} className="text-[#D95D00]" />
-                                        <span className="font-semibold text-gray-800">{pkg.credits} Credits</span>
-                                        {pkg.isPopular && (
-                                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">
-                                                POPULAR
-                                            </span>
-                                        )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                                            <Coins size={16} className="text-brand-orange" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-gray-900 dark:text-white">{pkg.credits} Credits</div>
+                                            {pkg.isPopular && (
+                                                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
+                                                    POPULAR
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 font-semibold text-gray-800">
-                                    {formatIDR(pkg.price)}
+                                <td className="px-6 py-4">
+                                    <div className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                                        {formatIDR(pkg.price)}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     {pkg.bonusCredits > 0 ? (
@@ -602,10 +619,11 @@ const CreditPricingTab: React.FC = () => {
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${pkg.isActive
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-gray-100 text-gray-600'
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${pkg.isActive
+                                        ? 'bg-green-50 border-green-100 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                                        : 'bg-gray-50 border-gray-100 text-gray-700 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400'
                                         }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${pkg.isActive ? 'bg-green-500' : 'bg-gray-500'}`}></span>
                                         {pkg.isActive ? 'Active' : 'Inactive'}
                                     </span>
                                 </td>

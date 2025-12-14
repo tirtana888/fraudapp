@@ -16,7 +16,8 @@ import {
     Lock,
     Unlock,
     FileText,
-    Users
+    Users,
+    Clock
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { SystemSettingsSection } from './SystemSettingsSection';
@@ -95,12 +96,12 @@ const SystemConfigPage: React.FC<SystemConfigPageProps> = ({ onBack }) => {
     const SectionButton = ({ section, label, icon: Icon }: { section: SectionType; label: string; icon: any }) => (
         <button
             onClick={() => setActiveSection(section)}
-            className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeSection === section
-                ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
-                : 'text-gray-600 hover:text-gray-800'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${activeSection === section
+                ? 'bg-white text-brand-orange shadow-sm ring-1 ring-gray-200 dark:bg-slate-700 dark:text-white dark:ring-slate-600'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
         >
-            <Icon size={18} />
+            <Icon size={16} />
             {label}
         </button>
     );
@@ -146,21 +147,21 @@ const SystemConfigPage: React.FC<SystemConfigPageProps> = ({ onBack }) => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
+            <div className="bg-white dark:bg-brand-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-6 py-6">
+                    <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">System Configuration</h1>
-                            <p className="text-sm text-gray-600 mt-1">Manage API keys, system settings, and webhooks</p>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">System Configuration</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">Manage API keys, system settings, and webhooks</p>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Shield size={16} className="text-[#D95D00]" />
-                            <span>SuperAdmin Only</span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-brand-orange/10 dark:bg-brand-orange/20 rounded-full border border-brand-orange/20">
+                            <Shield size={14} className="text-brand-orange" />
+                            <span className="text-xs font-bold text-brand-orange">SuperAdmin Access</span>
                         </div>
                     </div>
 
-                    {/* Section Navigation */}
-                    <div className="flex items-center gap-1 border-b border-gray-200 overflow-x-auto">
+                    {/* Modern Section Navigation (Segmented Control) */}
+                    <div className="inline-flex items-center p-1.5 bg-gray-100 dark:bg-slate-800 rounded-xl overflow-x-auto max-w-full">
                         <SectionButton section="api-keys" label="API Integrations" icon={Key} />
                         <SectionButton section="settings" label="System Settings" icon={Settings} />
                         <SectionButton section="webhooks" label="Webhooks" icon={Globe} />
@@ -343,55 +344,50 @@ const APIKeysSection: React.FC = () => {
                 {Object.values(apiKeys).map((api) => (
                     <div
                         key={api.id}
-                        className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                        className="bg-white dark:bg-brand-slate-850 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 hover:shadow-md transition-all duration-300 group"
                     >
                         {/* API Header */}
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-3xl">{getAPIIcon(api.id)}</span>
+                        <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-gray-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                                    {getAPIIcon(api.id)}
+                                </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-800">{api.name}</h3>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {api.isConfigured ? maskAPIKey(api.key) : 'Not configured'}
-                                    </p>
+                                    <h3 className="font-bold text-gray-900 dark:text-white">{api.name}</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className={`w-2 h-2 rounded-full ${api.isConfigured ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                            {api.isConfigured ? 'Active' : 'Not configured'}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Status Badge */}
-                        <div className="mb-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${api.isConfigured
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                {api.isConfigured ? (
-                                    <span className="flex items-center gap-1">
-                                        <Check size={12} />
-                                        Connected
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1">
-                                        <AlertCircle size={12} />
-                                        Not Configured
-                                    </span>
-                                )}
-                            </span>
-                        </div>
+                        {/* Status Badge & Info */}
+                        <div className="space-y-4 mb-6">
+                            <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wider">Current Key</p>
+                                <p className="font-mono text-sm text-gray-900 dark:text-white truncate">
+                                    {api.isConfigured ? maskAPIKey(api.key) : 'No key set'}
+                                </p>
+                            </div>
 
-                        {/* Last Updated */}
-                        {api.lastUpdated && (
-                            <p className="text-xs text-gray-500 mb-4">
-                                Updated: {new Date(api.lastUpdated).toLocaleDateString('id-ID')}
-                            </p>
-                        )}
+                            {api.lastUpdated && (
+                                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                    <Clock size={12} />
+                                    Updated: {new Date(api.lastUpdated).toLocaleDateString('id-ID')}
+                                </p>
+                            )}
+                        </div>
 
                         {/* Edit Button */}
                         <button
                             onClick={() => handleEditKey(api)}
-                            className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-xl font-semibold transition-all border border-gray-200 dark:border-slate-600 flex items-center justify-center gap-2 group-hover:border-brand-orange/30 group-hover:text-brand-orange"
                         >
                             <Edit2 size={16} />
-                            {api.isConfigured ? 'Update Key' : 'Configure'}
+                            {api.isConfigured ? 'Update Configuration' : 'Configure Integration'}
                         </button>
                     </div>
                 ))}
@@ -448,15 +444,18 @@ const APIKeyModal: React.FC<APIKeyModalProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Modal Header */}
-                <div className="bg-gradient-to-r from-[#D95D00] to-[#FF8C00] p-6 flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-white">
-                        Configure {apiKey.name}
-                    </h3>
+                <div className="bg-white dark:bg-brand-slate-850 p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            Configure {apiKey.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage integration settings and keys</p>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="text-white/80 hover:text-white transition-colors"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
                     >
-                        <X size={24} />
+                        <X size={20} />
                     </button>
                 </div>
 
