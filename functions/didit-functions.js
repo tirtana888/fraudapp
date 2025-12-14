@@ -366,13 +366,22 @@ exports.processDiditWebhook = onDocumentCreated({
 
             logger.info(`[PROCESS-WEBHOOK] Updating session: ${vendor_data} -> ${mappedStatus}`);
 
-            await db.collection('interview_sessions').doc(vendor_data).update({
+            // Build update object
+            const updateData = {
                 backgroundCheck: backgroundCheckData,
                 backgroundCheckStatus: mappedStatus,
                 backgroundCheckCompletedAt: ['approved', 'declined'].includes(mappedStatus)
                     ? admin.firestore.FieldValue.serverTimestamp()
                     : null
-            });
+            };
+
+            // Update recruitmentStage to bc_completed when KYC is finished
+            if (['approved', 'declined'].includes(mappedStatus)) {
+                updateData.recruitmentStage = 'bc_completed';
+                logger.info(`[PROCESS-WEBHOOK] ✅ Stage updated to bc_completed`);
+            }
+
+            await db.collection('interview_sessions').doc(vendor_data).update(updateData);
         }
 
         await snapshot.ref.update({
@@ -555,7 +564,7 @@ exports.initiateBackgroundCheck = onCall({
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 verificationLink: verificationLink
             },
-            recruitmentStage: 'bc_check',
+            recruitmentStage: 'background_check',
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 

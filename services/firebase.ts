@@ -89,7 +89,16 @@ try {
   auth = getAuth(app);
   functions = getFunctions(app, "europe-west1"); // Set region sesuai dengan Cloud Function
   storage = getStorage(app); // Initialize Firebase Storage
-  console.log("[FraudGuard System] Connected to Firebase (Firestore + Functions + Storage).");
+
+  // Connect to emulators in development mode (when USE_EMULATOR env is set)
+  if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+    import('firebase/functions').then(({ connectFunctionsEmulator }) => {
+      connectFunctionsEmulator(functions, "localhost", 5001);
+      console.log("[FraudGuard System] 🧪 Connected to Firebase Emulator (localhost:5001)");
+    });
+  } else {
+    console.log("[FraudGuard System] ✅ Connected to Firebase Production");
+  }
 } catch (error) {
   console.error("CRITICAL: Gagal menghubungkan ke Firebase.", error);
 }
@@ -1395,7 +1404,7 @@ export const createInterviewSessionFromApplication = async (
       },
       date: now,
       status: sessionStatus as 'active' | 'pending_review',
-      recruitmentStage: workflowSteps.length > 0 ? workflowSteps[0].id : 'screening',
+      recruitmentStage: 'applied', // FIXED: Always start with 'applied' when CV is uploaded
       transcript: [
         {
           speaker: 'ai' as const,

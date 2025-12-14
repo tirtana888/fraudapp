@@ -9,6 +9,7 @@ import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
 import ParsedCVDisplay from './ParsedCVDisplay';
 import { deductCredit } from '../services/creditManagement';
+import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
 import RiskDonut from './candidate-detail/RiskDonut';
@@ -146,6 +147,21 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             toast.success('CV berhasil diparsing!');
           }
 
+          // Update assessment status and trigger stage change
+          if (data.status && prev.status !== data.status) {
+            console.log('[CANDIDATE-DETAIL] Assessment status changed:', prev.status, '→', data.status);
+            newCandidate.status = data.status;
+            updated = true;
+
+            // If assessment just completed, update stage to assessment_completed
+            if (data.status === 'completed' && prev.status !== 'completed') {
+              console.log('[STAGE-TRACKER] Assessment completed, updating stage to assessment_completed');
+              updateCandidateStage(sessionId, 'assessment_completed', 'Assessment Selesai - Need Review').catch(err =>
+                console.error('[STAGE-TRACKER] Error updating stage:', err)
+              );
+            }
+          }
+
           // Update backgroundCheck if it changes
           if (data.backgroundCheck) {
             const currentBgCheck = prev.backgroundCheck;
@@ -160,8 +176,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               // Show toast based on status
               if (newBgCheck.status === 'approved') {
                 toast.success('✓ Background check berhasil! Kandidat telah diverifikasi.');
+                // Update stage to bc_completed
+                updateCandidateStage(sessionId, 'bc_completed', 'Background Check Selesai - Approved').catch(err =>
+                  console.error('[STAGE-TRACKER] Error updating stage:', err)
+                );
               } else if (newBgCheck.status === 'declined') {
                 toast.error('✗ Background check ditolak. Verifikasi gagal.');
+                // Update stage to bc_completed
+                updateCandidateStage(sessionId, 'bc_completed', 'Background Check Selesai - Declined').catch(err =>
+                  console.error('[STAGE-TRACKER] Error updating stage:', err)
+                );
               } else if (newBgCheck.status === 'in_progress') {
                 toast.info('⏳ Background check sedang diproses...');
               }
@@ -652,14 +676,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       console.log('[INTERVIEW] ✅ Timeline updated with workflow progression');
       console.log('[INTERVIEW] Current completed, next step set to current');
 
-      // Determine recruitmentStage based on next workflow step
-      let nextStageId = 'interview';
-      if (currentStepIndex !== -1 && currentStepIndex + 1 < updatedTimeline.length) {
-        nextStageId = updatedTimeline[currentStepIndex + 1].stage;
-      }
-
+      // Always set to 'interview' when sending interview invitation
       await updateDoc(sessionRef, {
-        recruitmentStage: nextStageId,
+        recruitmentStage: 'interview', // Fixed: Always set to interview when scheduling interview
         timeline: updatedTimeline,
         updatedAt: now,
         interviewEmailSent: true,

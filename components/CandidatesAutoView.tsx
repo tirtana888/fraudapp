@@ -32,16 +32,16 @@ interface AutoCandidate extends InterviewSession {
 }
 
 // -- CONSTANTS --
-// New 8-stage recruitment workflow
+// New 8-stage recruitment workflow (matches stageTracker.ts)
 const RECRUITMENT_STAGES = [
-  { id: 'applied', label: 'Applied', color: 'bg-slate-50 border-slate-200 text-slate-700', progress: 10 },
-  { id: 'assessment_in_progress', label: 'Assessment In Progress', color: 'bg-blue-50 border-blue-200 text-blue-700', progress: 30 },
-  { id: 'awaiting_review', label: 'Awaiting Review', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', progress: 50 },
-  { id: 'interview', label: 'Interview Scheduled', color: 'bg-orange-50 border-orange-200 text-orange-700', progress: 60 },
-  { id: 'bc_check', label: 'Background Check', color: 'bg-purple-50 border-purple-200 text-purple-700', progress: 80 },
-  { id: 'bc_complete', label: 'Background Check Complete', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', progress: 90 },
-  { id: 'hired', label: 'Hired', color: 'bg-green-50 border-green-200 text-green-700', progress: 100 },
-  { id: 'rejected', label: 'Rejected', color: 'bg-red-50 border-red-200 text-red-700', progress: 100 }
+  { id: 'applied', label: 'Kandidat Apply', color: 'bg-blue-50 border-blue-200 text-blue-700', progress: 10 },
+  { id: 'integrity_assessment', label: 'Integrity Assessment', color: 'bg-orange-50 border-orange-200 text-orange-700', progress: 30 },
+  { id: 'assessment_completed', label: 'Need Review', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', progress: 50 },
+  { id: 'interview', label: 'Wawancara Scheduled', color: 'bg-purple-50 border-purple-200 text-purple-700', progress: 60 },
+  { id: 'background_check', label: 'Background Check Process', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', progress: 75 },
+  { id: 'bc_completed', label: 'Background Check Selesai', color: 'bg-teal-50 border-teal-200 text-teal-700', progress: 90 },
+  { id: 'hired', label: 'Hire', color: 'bg-green-50 border-green-200 text-green-700', progress: 100 },
+  { id: 'rejected', label: 'Tolak', color: 'bg-red-50 border-red-200 text-red-700', progress: 100 }
 ];
 const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onViewSession }) => {
   const toast = useToast();
@@ -406,21 +406,12 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
                         {(() => {
                           let stageId = (c.recruitmentStage || 'applied').toLowerCase().trim();
 
-                          // Legacy mapping for backward compatibility
+                          // Legacy mapping for backward compatibility with old data
                           if (stageId === 'screening' || stageId === 'processing') stageId = 'applied';
-                          if (stageId === 'review') stageId = 'awaiting_review';
-                          if (stageId === 'background_check') stageId = 'bc_check';
+                          if (stageId === 'review' || stageId === 'awaiting_review') stageId = 'assessment_completed';
+                          if (stageId === 'bc_check') stageId = 'background_check';
+                          if (stageId === 'bc_complete') stageId = 'bc_completed';
                           if (stageId === 'approved') stageId = 'hired';
-
-                          // Smart detection: If interview email sent, map to interview stage
-                          if (stageId === 'processing' && c.interviewEmailSent) {
-                            stageId = 'interview';
-                          }
-
-                          // Smart detection: Assessment in progress (if we have the flag)
-                          if (c.assessmentStarted && !c.assessmentCompleted) {
-                            stageId = 'assessment_in_progress';
-                          }
 
                           const stageConfig = RECRUITMENT_STAGES.find(s => s.id === stageId);
                           const label = stageConfig?.label || stageId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

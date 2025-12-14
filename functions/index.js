@@ -72,6 +72,12 @@ const {
   sendHireEmail
 } = require('./email-functions');
 
+// Import Stage tracking functions
+const {
+  updateCandidateStage,
+  getCandidateStageInfo
+} = require('./stage-functions');
+
 // Re-export Didit functions
 exports.diditWebhook = diditWebhook;
 exports.processDiditWebhook = processDiditWebhook;
@@ -92,6 +98,10 @@ exports.parseDocumentWithMistral = parseDocumentWithMistral;
 exports.sendEmail = sendEmail;
 exports.sendRejectionEmail = sendRejectionEmail;
 exports.sendHireEmail = sendHireEmail;
+
+// Re-export Stage tracking functions
+exports.updateCandidateStage = updateCandidateStage;
+exports.getCandidateStageInfo = getCandidateStageInfo;
 
 // Email templates will be loaded from separate file
 const EMAIL_TEMPLATES = require('./email-templates');

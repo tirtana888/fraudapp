@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy, Bot } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, db, COLLECTIONS } from '../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, db, COLLECTIONS, functions } from '../services/firebase';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -134,6 +135,21 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         if (companyLoaded) {
           // SUCCESS: Move to next step
           setStep('welcome');
+
+          // Update stage to 'integrity_assessment' via Cloud Function (non-blocking)
+          // This uses Admin SDK so no permission issues from public page
+          if (invite.applicationId && functions) {
+            const updateStage = httpsCallable(functions, 'updateCandidateStage');
+            updateStage({
+              applicationId: invite.applicationId,
+              stage: 'integrity_assessment',
+              note: 'Integrity Assessment - Kandidat memasukkan kode'
+            }).then(() => {
+              console.log('[PUBLIC-ASSESSMENT] ✅ Stage updated to integrity_assessment via Cloud Function');
+            }).catch((error: any) => {
+              console.error('[PUBLIC-ASSESSMENT] Error updating stage via Cloud Function:', error);
+            });
+          }
         }
 
       } else {
@@ -187,7 +203,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
       date: now,
       status: 'active',
-      recruitmentStage: 'screening',
+      recruitmentStage: 'applied', // Keep as 'applied' until assessment starts
       structuredAssessment: ftAnswers,
       financialStrainResults: finAnswers,
       sjtResults: sjtAnswers,
@@ -196,10 +212,10 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       source: sessionSource,
       timeline: [
         {
-          stage: 'screening',
+          stage: 'applied',
           status: 'current' as const,
           date: now,
-          note: `Assessment screening dimulai`
+          note: `Kandidat Apply - Menunggu memulai assessment`
         }
       ],
       workflowId: null  // Will be set if job has workflow
@@ -236,15 +252,16 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
               sessionData.timeline = sortedSteps.map((step: any, index: number) => ({
                 stage: step.id,
-                status: step.id === 'integrity_assessment' ? 'current' as const : 'pending' as const,
+                status: 'pending' as const, // All steps pending until assessment starts
                 date: now,
                 note: step.description || step.name,
                 credits: step.credits,
                 isMandatory: step.isMandatory
               }));
 
-              sessionData.recruitmentStage = 'integrity_assessment';
-              console.log('[PUBLIC-ASSESSMENT] ✅ Timeline built with workflow steps');
+              // Keep as 'applied' - will change to 'integrity_assessment' when they start
+              sessionData.recruitmentStage = 'applied';
+              console.log('[PUBLIC-ASSESSMENT] ✅ Timeline built with workflow steps, status: applied');
             }
           }
         }
@@ -302,6 +319,23 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     // Update invite status to IN_PROGRESS
     if (inviteData?.access_code) {
       await markAccessCodeUsed(inviteData.access_code, 'IN_PROGRESS', realSessionId);
+    }
+
+    // Update stage from 'applied' to 'integrity_assessment' now that assessment is starting
+    try {
+      const sessionRef = doc(db, COLLECTIONS.SESSIONS, realSessionId);
+      await updateDoc(sessionRef, {
+        recruitmentStage: 'integrity_assessment',
+        timeline: arrayUnion({
+          stage: 'integrity_assessment',
+          status: 'current',
+          date: new Date().toISOString(),
+          note: 'Integrity Assessment - Mulai mengerjakan'
+        })
+      });
+      console.log('[PUBLIC-ASSESSMENT] ✅ Stage updated to integrity_assessment');
+    } catch (error) {
+      console.error('[PUBLIC-ASSESSMENT] Error updating stage:', error);
     }
 
     setChatHistory(initialHistory);
@@ -474,7 +508,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
       await updateSessionInDB(sessionId, {
         status: 'completed',
-        recruitmentStage: 'integrity_assessment', // Keep as integrity_assessment (completed)
+        recruitmentStage: 'assessment_completed', // Changed to assessment_completed (Need Review)
         analysis: finalAnalysis,
         transcript: chatHistory,
         timeline: updatedTimeline

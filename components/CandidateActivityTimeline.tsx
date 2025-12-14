@@ -35,13 +35,14 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
       'screening': <FileText size={16} className="text-brand-orange" />,
       'integrity_assessment': <Shield size={16} className="text-brand-orange" />,
       'assessment_started': <PlayCircle size={16} className="text-brand-orange" />,
-      'assessment_completed': <CheckCircle2 size={16} className="text-green-600" />,
+      'assessment_completed': <CheckCircle2 size={16} className="text-yellow-600" />,
       'technical_test': <FileText size={16} className="text-purple-600" />,
       'hr_interview': <MessageSquare size={16} className="text-blue-600" />,
       'user_interview': <MessageSquare size={16} className="text-indigo-600" />,
       'interview': <MessageSquare size={16} className="text-brand-orange" />,
       'bc_check': <Shield size={16} className="text-brand-blue" />,
       'background_check': <Shield size={16} className="text-brand-blue" />,
+      'bc_completed': <CheckCircle2 size={16} className="text-green-600" />,
       'hired': <UserCheck size={16} className="text-green-600" />,
       'approved': <UserCheck size={16} className="text-green-600" />,
       'rejected': <Circle size={16} className="text-red-600" />
@@ -51,23 +52,24 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
 
   const getEventLabel = (stage: string) => {
     const labelMap: { [key: string]: string } = {
-      'applied': 'Kandidat Melamar',
+      'applied': 'Kandidat Apply',
       'cv_uploaded': 'CV Berhasil Diunggah',
       'screening': 'Tahap Screening',
-      'integrity_assessment': 'Assessment Integritas',
+      'integrity_assessment': 'Integrity Assessment',
       'assessment_started': 'Mulai Mengerjakan Assessment',
-      'assessment_completed': 'Menyelesaikan Assessment',
+      'assessment_completed': 'Need Review',
       'technical_test': 'Tes Teknikal',
       'hr_interview': 'Interview HR',
       'user_interview': 'Interview User',
       'processing': 'Proses Analisis AI',
       'review': 'Dalam Review HR',
-      'interview': 'Wawancara',
+      'interview': 'Wawancara Scheduled',
       'bc_check': 'Pemeriksaan Latar Belakang',
-      'background_check': 'Pemeriksaan Latar Belakang',
-      'hired': 'Diterima Bekerja',
+      'background_check': 'Background Check Process',
+      'bc_completed': 'Background Check Selesai',
+      'hired': 'Hire',
       'approved': 'Disetujui',
-      'rejected': 'Ditolak'
+      'rejected': 'Tolak'
     };
     return labelMap[stage] || stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
