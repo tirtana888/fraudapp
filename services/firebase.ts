@@ -484,41 +484,45 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
       createdAt: Timestamp.now()
     };
 
-    // Create company and user profile in background
-    (async () => {
-      try {
-        // Extract company name from email domain or use display name
-        const emailDomain = firebaseUser.email?.split('@')[1]?.split('.')[0] || 'Company';
-        const companyName = firebaseUser.displayName?.split(' ')[0] + ' Company' || emailDomain;
+    // FIXED: Create company and user profile SYNCHRONOUSLY (wait for completion)
+    try {
+      console.log('[AUTH] Creating company profile with 1000 credits...');
 
-        const companyData: Omit<CompanyProfile, 'id'> = {
-          name: companyName,
-          tier: 'Freemium',
-          status: 'Active',
-          adminEmail: firebaseUser.email!,
-          joinedDate: new Date().toISOString(),
-          usersCount: 1,
-          credits: 1000,
-          verification_credits: 100,
-          createdAt: Timestamp.now()
-        };
+      // Extract company name from email domain or use display name
+      const emailDomain = firebaseUser.email?.split('@')[1]?.split('.')[0] || 'Company';
+      const companyName = firebaseUser.displayName?.split(' ')[0] + ' Company' || emailDomain;
 
-        const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
-        console.log('[AUTH] ✅ Company profile created:', companyRef.id);
+      const companyData: Omit<CompanyProfile, 'id'> = {
+        name: companyName,
+        tier: 'Freemium',
+        status: 'Active',
+        adminEmail: firebaseUser.email!,
+        joinedDate: new Date().toISOString(),
+        usersCount: 1,
+        credits: 1000, // Initial credits
+        verification_credits: 100,
+        createdAt: Timestamp.now()
+      };
 
-        // Update user profile with real company ID
-        userProfile.companyId = companyRef.id;
+      const companyRef = await addDoc(collection(db, COLLECTIONS.COMPANIES), companyData);
+      console.log('[AUTH] ✅ Company profile created with ID:', companyRef.id);
+      console.log('[AUTH] ✅ Initial credits assigned: 1000');
 
-        // Create user profile in Firestore
-        await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
-        console.log('[AUTH] ✅ User profile created in Firestore');
+      // Update user profile with real company ID
+      userProfile.companyId = companyRef.id;
 
-      } catch (firestoreError: any) {
-        console.error('[AUTH] ⚠️ Background Firestore error (non-critical):', firestoreError.code);
-      }
-    })();
+      // Create user profile in Firestore
+      await addDoc(collection(db, COLLECTIONS.USERS), userProfile);
+      console.log('[AUTH] ✅ User profile created in Firestore');
 
-    console.log('[AUTH] ✅ Google Sign-In complete!');
+    } catch (firestoreError: any) {
+      console.error('[AUTH] ❌ Firestore error creating company/user:', firestoreError);
+      // If Firestore fails, still return user profile but log the error
+      // User can still login, but admin should check Firestore manually
+      throw new Error('Gagal membuat profil perusahaan. Silakan hubungi support.');
+    }
+
+    console.log('[AUTH] ✅ Google Sign-In complete with company ID:', userProfile.companyId);
     return userProfile;
 
   } catch (error: any) {

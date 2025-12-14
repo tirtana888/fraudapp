@@ -81,7 +81,10 @@ interface CandidateData extends InterviewSession {
 
 // Helper function to get image source - handles both URL and base64
 const getImageSrc = (imageData: string | undefined): string | undefined => {
-  if (!imageData) return undefined;
+  if (!imageData) {
+    return undefined;
+  }
+
   // Check if it's already a URL (starts with http/https)
   if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
     return imageData;
@@ -91,7 +94,8 @@ const getImageSrc = (imageData: string | undefined): string | undefined => {
     return imageData;
   }
   // Assume it's base64 and add prefix
-  return `data:image/jpeg;base64,${imageData}`;
+  const result = `data:image/jpeg;base64,${imageData}`;
+  return result;
 };
 
 const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, onBack, onNavigateToCredits }) => {
