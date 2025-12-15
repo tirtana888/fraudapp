@@ -906,7 +906,18 @@ const App: React.FC = () => {
           onUpgradeClick={() => setActiveTab('settings')}
         />;
       case 'wawancara':
-        return <InterviewSchedulePage companyId={currentCompany!.id} />;
+        if (viewingCandidateId) {
+          return <CandidateDetail
+            sessionId={viewingCandidateId}
+            company={currentCompany!}
+            onBack={() => setViewingCandidateId(null)}
+            onNavigateToCredits={() => setActiveTab('credit-management')}
+          />;
+        }
+        return <InterviewSchedulePage
+          companyId={currentCompany!.id}
+          onViewCandidate={setViewingCandidateId}
+        />;
       case 'documentation':
         return <Documentation />;
       case 'credit-management':

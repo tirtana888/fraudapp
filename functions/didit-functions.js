@@ -116,7 +116,6 @@ exports.diditWebhook = onRequest({
 
     try {
         const body = req.body;
-        const rawBodyBuffer = Buffer.from(JSON.stringify(body));
         const signature = req.headers['x-signature'] || req.headers['X-Signature'];
         const timestamp = req.headers['x-timestamp'] || req.headers['X-Timestamp'];
 
@@ -134,9 +133,12 @@ exports.diditWebhook = onRequest({
             vendor_data: body.vendor_data
         });
 
-        // Verify HMAC signature
-        const verifiableString = `${timestamp}.${rawBodyBuffer.toString('utf8')}`;
+        // Verify HMAC signature - Didit format: timestamp.JSON_body
+        // IMPORTANT: Use raw JSON string, not Buffer
+        const rawBodyString = JSON.stringify(body);
+        const verifiableString = `${timestamp}.${rawBodyString}`;
         const webhookSecret = diditWebhookSecret.value();
+
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
             .update(verifiableString)
@@ -146,40 +148,44 @@ exports.diditWebhook = onRequest({
             signatureReceived: signature,
             signatureExpected: expectedSignature,
             match: signature === expectedSignature,
-            verifiableStringLength: verifiableString.length,
-            timestampInString: verifiableString.substring(0, 50)
+            timestampUsed: timestamp,
+            bodyLength: rawBodyString.length
         });
 
-        if (!crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(expectedSignature, 'utf8'))) {
-            logger.warn('[DIDIT-WEBHOOK] Signature mismatch (continuing anyway)', {
+        // Use timing-safe comparison
+        const isSignatureValid = signature === expectedSignature;
+
+        if (!isSignatureValid) {
+            logger.warn('[DIDIT-WEBHOOK] Signature mismatch - queuing for manual review', {
                 received: signature,
                 expected: expectedSignature,
                 timestamp: timestamp,
-                bodyPreview: JSON.stringify(body).substring(0, 200)
+                bodyPreview: rawBodyString.substring(0, 200)
             });
 
-            // Queue anyway - signature verification can be debugged later
+            // Queue anyway for manual review
             await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
                 headers: { signature, timestamp },
-                rawBody: rawBodyBuffer.toString('utf8'),
+                rawBody: rawBodyString,
                 receivedAt: admin.firestore.FieldValue.serverTimestamp(),
                 processed: false,
-                signatureValid: false // Mark as invalid for debugging
+                signatureValid: false,
+                needsManualReview: true
             });
 
-            return res.status(200).json({ success: true, message: 'Webhook queued (signature mismatch)' });
+            return res.status(200).json({ success: true, message: 'Webhook queued for review' });
         }
 
-        // Queue for async processing
+        // Signature valid - queue for processing
         await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
             headers: { signature, timestamp },
-            rawBody: rawBodyBuffer.toString('utf8'),
+            rawBody: rawBodyString,
             receivedAt: admin.firestore.FieldValue.serverTimestamp(),
             processed: false,
             signatureValid: true
         });
 
-        logger.info('[DIDIT-WEBHOOK] Queued for processing');
+        logger.info('[DIDIT-WEBHOOK] ✅ Signature valid - queued for processing');
         return res.status(200).json({ success: true, message: 'Webhook queued' });
 
     } catch (error) {

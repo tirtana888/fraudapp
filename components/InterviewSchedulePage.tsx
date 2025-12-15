@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Globe, CheckCircle2, Clock3, Mail, User, Filter } from 'lucide-react';
+import { Calendar, Clock, MapPin, Globe, CheckCircle2, Clock3, Mail, User, Filter, Copy, Loader2 } from 'lucide-react';
 import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../services/firebase';
 import { useToast } from './Toast';
@@ -21,9 +21,10 @@ interface ScheduledInterview {
 
 interface InterviewSchedulePageProps {
     companyId: string;
+    onViewCandidate?: (sessionId: string) => void;
 }
 
-const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId }) => {
+const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId, onViewCandidate }) => {
     const [interviews, setInterviews] = useState<ScheduledInterview[]>([]);
     const [filteredInterviews, setFilteredInterviews] = useState<ScheduledInterview[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -163,163 +164,249 @@ const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId
         );
     };
 
+    // Helper to group interviews
+    const groupInterviews = (interviews: ScheduledInterview[]) => {
+        const groups: { [key: string]: ScheduledInterview[] } = {};
+
+        interviews.forEach(interview => {
+            const date = new Date(interview.interviewDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            let groupKey = 'Lainnya';
+            if (date.toDateString() === today.toDateString()) groupKey = 'Hari Ini';
+            else if (date.toDateString() === tomorrow.toDateString()) groupKey = 'Besok';
+            else if (date < today) groupKey = 'Selesai';
+            else groupKey = 'Akan Datang';
+
+            if (!groups[groupKey]) groups[groupKey] = [];
+            groups[groupKey].push(interview);
+        });
+
+        // Sort keys logic
+        const orderedKeys = ['Hari Ini', 'Besok', 'Akan Datang', 'Selesai'];
+        return orderedKeys.filter(key => groups[key] && groups[key].length > 0).map(key => ({
+            title: key,
+            items: groups[key]
+        }));
+    };
+
+    const groupedInterviews = groupInterviews(filteredInterviews);
+
+    const getInitials = (name: string) => {
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast.success('Link meeting berhasil disalin!');
+    };
+
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-32">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Memuat jadwal wawancara...</p>
+                    <Loader2 className="animate-spin h-10 w-10 text-brand-orange mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">Memuat jadwal...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <Calendar className="text-brand-orange" size={28} />
-                            Jadwal Wawancara
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Kelola dan pantau semua jadwal wawancara kandidat
-                        </p>
-                    </div>
-
-                    {/* Filter */}
-                    <div className="flex items-center gap-2">
-                        <Filter size={16} className="text-gray-400" />
-                        <select
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value as any)}
-                            className="px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-orange/20"
-                        >
-                            <option value="all">Semua</option>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="today">Hari Ini</option>
-                            <option value="past">Selesai</option>
-                        </select>
-                    </div>
+        <div className="space-y-8 max-w-5xl mx-auto pb-10">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <Calendar className="text-brand-orange" size={32} />
+                        Jadwal Wawancara
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">
+                        Kelola agenda interview dan pantau konfirmasi kandidat.
+                    </p>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mt-6">
-                    <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {interviews.length}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Jadwal</div>
+                {/* Stats Cards - Compact */}
+                <div className="flex gap-3">
+                    <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col items-center min-w-[100px]">
+                        <span className="text-2xl font-bold text-gray-900 dark:text-white">{interviews.length}</span>
+                        <span className="text-xs uppercase tracking-wider font-semibold text-gray-400">Total</span>
                     </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                        <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                    <div className="bg-green-50 dark:bg-green-900/10 px-5 py-3 rounded-xl border border-green-100 dark:border-green-900/30 flex flex-col items-center min-w-[100px]">
+                        <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                             {interviews.filter(i => i.confirmationStatus === 'confirmed').length}
-                        </div>
-                        <div className="text-xs text-green-600 dark:text-green-400 mt-1">Confirmed</div>
-                    </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
-                        <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                            {interviews.filter(i => i.confirmationStatus === 'pending').length}
-                        </div>
-                        <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">Pending</div>
+                        </span>
+                        <span className="text-xs uppercase tracking-wider font-semibold text-green-600 dark:text-green-400">Fixed</span>
                     </div>
                 </div>
             </div>
 
-            {/* Interview List */}
-            {filteredInterviews.length === 0 ? (
-                <div className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 p-12 text-center">
-                    <Calendar size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        Tidak ada jadwal wawancara
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {filter === 'upcoming' && 'Belum ada wawancara yang dijadwalkan untuk masa depan'}
-                        {filter === 'today' && 'Tidak ada wawancara yang dijadwalkan hari ini'}
-                        {filter === 'past' && 'Belum ada wawancara yang selesai'}
-                        {filter === 'all' && 'Jadwalkan wawancara dari detail kandidat'}
-                    </p>
+            {/* Smart Navigation Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-slate-700">
+                <nav className="flex space-x-8" aria-label="Tabs">
+                    {[
+                        { id: 'upcoming', label: 'Akan Datang' },
+                        { id: 'today', label: 'Hari Ini', count: interviews.filter(i => new Date(i.interviewDate).toDateString() === new Date().toDateString()).length },
+                        { id: 'past', label: 'Riwayat' },
+                        { id: 'all', label: 'Semua' }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setFilter(tab.id as any)}
+                            className={`
+                                relative py-4 px-1 text-sm font-medium border-b-2 transition-colors duration-200
+                                ${filter === tab.id
+                                    ? 'border-brand-orange text-brand-orange'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                }
+                            `}
+                        >
+                            <span className="flex items-center gap-2">
+                                {tab.label}
+                                {tab.count && tab.count > 0 && (
+                                    <span className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                                        {tab.count}
+                                    </span>
+                                )}
+                            </span>
+                        </button>
+                    ))}
+                </nav>
+            </div>
+
+            {/* Content Area */}
+            {groupedInterviews.length === 0 ? (
+                <div className="text-center py-20 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-gray-300 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-sm mb-4">
+                        <Calendar className="text-gray-300 dark:text-gray-600" size={32} />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Tidak ada jadwal</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Belum ada sesi wawancara untuk filter ini.</p>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {filteredInterviews.map((interview) => (
-                        <div
-                            key={interview.sessionId}
-                            className="bg-white dark:bg-brand-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:shadow-md transition-shadow"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    {/* Candidate Info */}
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-10 h-10 bg-brand-orange/10 rounded-full flex items-center justify-center">
-                                            <User size={20} className="text-brand-orange" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                {interview.candidateName}
-                                            </h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                {interview.jobTitle}
-                                            </p>
-                                        </div>
-                                    </div>
+                <div className="space-y-10">
+                    {groupedInterviews.map((group) => (
+                        <div key={group.title}>
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 pl-1">
+                                {group.title}
+                            </h2>
+                            <div className="space-y-4">
+                                {group.items.map((interview) => (
+                                    <div
+                                        key={interview.sessionId}
+                                        className="group bg-white dark:bg-brand-slate-850 rounded-2xl border border-gray-200 dark:border-slate-700 p-0 hover:shadow-lg hover:border-brand-orange/30 transition-all duration-300 dark:hover:border-slate-600 overflow-hidden"
+                                    >
+                                        <div className="flex flex-col md:flex-row">
+                                            {/* Left: Date Block */}
+                                            <div className="md:w-32 bg-gray-50 dark:bg-slate-800/80 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 dark:border-slate-700 group-hover:bg-brand-orange/5 dark:group-hover:bg-brand-orange/10 transition-colors">
+                                                <span className="text-xs font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                    {new Date(interview.interviewDate).toLocaleDateString('id-ID', { month: 'short' })}
+                                                </span>
+                                                <span className="text-3xl font-bold text-gray-900 dark:text-white my-1">
+                                                    {new Date(interview.interviewDate).getDate()}
+                                                </span>
+                                                <div className="flex items-center gap-1 text-sm font-semibold text-brand-orange">
+                                                    <Clock size={14} />
+                                                    {interview.interviewTime}
+                                                </div>
+                                            </div>
 
-                                    {/* Interview Details */}
-                                    <div className="grid grid-cols-2 gap-4 ml-13">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <Calendar size={16} className="text-gray-400" />
-                                            <span className="text-gray-700 dark:text-gray-300">
-                                                {formatDate(interview.interviewDate)}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <Clock size={16} className="text-gray-400" />
-                                            <span className="text-gray-700 dark:text-gray-300">
-                                                {interview.interviewTime} WIB
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm col-span-2">
-                                            {interview.interviewType === 'online' ? (
-                                                <>
-                                                    <Globe size={16} className="text-gray-400" />
+                                            {/* Middle: Info */}
+                                            <div className="flex-1 p-6 flex flex-col justify-center">
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <div className="flex items-center gap-4">
+                                                        {/* Avatar */}
+                                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                                            {getInitials(interview.candidateName)}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-brand-orange transition-colors">
+                                                                {interview.candidateName}
+                                                            </h3>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs font-medium">
+                                                                    {interview.jobTitle}
+                                                                </span>
+                                                                {interview.interviewType === 'online' && (
+                                                                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded font-medium">
+                                                                        <Globe size={12} /> Online
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Status Badge (Desktop) */}
+                                                    <div className="hidden md:block">
+                                                        {getStatusBadge(interview.confirmationStatus)}
+                                                    </div>
+                                                </div>
+
+                                                {/* Location / Link */}
+                                                <div className="mt-3 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg max-w-[80%]">
+                                                        {interview.interviewType === 'online' ? (
+                                                            <Globe size={14} className="text-blue-500" />
+                                                        ) : (
+                                                            <MapPin size={14} className="text-red-500" />
+                                                        )}
+                                                        <span className="truncate flex-1 font-medium">
+                                                            {interview.location || 'Lokasi belum diatur'}
+                                                        </span>
+                                                        {interview.interviewType === 'online' && interview.location && (
+                                                            <button
+                                                                onClick={() => copyToClipboard(interview.location)}
+                                                                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                                                title="Copy Link"
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Actions */}
+                                            <div className="p-6 md:w-48 border-t md:border-t-0 md:border-l border-gray-100 dark:border-slate-700 flex flex-row md:flex-col items-center justify-center gap-3 bg-gray-50/50 dark:bg-slate-800/30">
+                                                {interview.interviewType === 'online' && interview.location ? (
                                                     <a
                                                         href={interview.location}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="text-brand-orange hover:underline truncate"
+                                                        className="w-full text-center py-2 px-4 bg-brand-orange hover:bg-brand-orange/90 text-white rounded-lg text-sm font-semibold shadow-sm shadow-orange-200 dark:shadow-none transition-all hover:scale-[1.02]"
                                                     >
-                                                        {interview.location}
+                                                        Join Meeting
                                                     </a>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <MapPin size={16} className="text-gray-400" />
-                                                    <span className="text-gray-700 dark:text-gray-300 truncate">
-                                                        {interview.location}
-                                                    </span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <Mail size={16} className="text-gray-400" />
-                                            <span className="text-gray-500 dark:text-gray-400 truncate">
-                                                {interview.candidateEmail}
-                                            </span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onViewCandidate?.(interview.sessionId)}
+                                                        className="w-full py-2 px-4 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
+                                                    >
+                                                        Lihat Detail
+                                                    </button>
+                                                )}
+
+                                                {interview.interviewType === 'online' && interview.location && (
+                                                    <button
+                                                        onClick={() => onViewCandidate?.(interview.sessionId)}
+                                                        className="w-full py-2 px-4 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 group/btn"
+                                                    >
+                                                        <User size={14} className="text-gray-500 group-hover/btn:text-brand-orange transition-colors" />
+                                                        Profile
+                                                    </button>
+                                                )}
+
+                                                <button className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1">
+                                                    Reschedule
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Status Badge */}
-                                <div className="ml-4">
-                                    {getStatusBadge(interview.confirmationStatus)}
-                                    {interview.confirmedAt && (
-                                        <p className="text-xs text-gray-400 mt-2 text-right">
-                                            Confirmed {interview.confirmedAt.toLocaleDateString('id-ID')}
-                                        </p>
-                                    )}
-                                </div>
+                                ))}
                             </div>
                         </div>
                     ))}
