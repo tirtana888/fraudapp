@@ -49,7 +49,17 @@ exports.sendEmail = onCall({
                 emailTemplate = EMAIL_TEMPLATES.candidateInvitation(data.candidateName, data.candidateEmail, data.companyName, data.accessCode, data.assessmentLink, data.role);
                 break;
             case 'interview_invitation':
-                emailTemplate = EMAIL_TEMPLATES.interviewInvitation(data.candidateName, data.candidateEmail, data.companyName, data.role, data.interviewDate, data.interviewTime, data.interviewLocation, data.interviewType);
+                emailTemplate = EMAIL_TEMPLATES.interviewInvitation(
+                    data.candidateName,
+                    data.candidateEmail,
+                    data.companyName,
+                    data.role,
+                    data.interviewDate,
+                    data.interviewTime,
+                    data.interviewLocation,
+                    data.interviewType,
+                    data.sessionId || ''
+                );
                 break;
             case 'background_check_invitation':
                 emailTemplate = EMAIL_TEMPLATES.backgroundCheckInvitation(data.candidateName, data.candidateEmail, data.companyName, data.verificationLink, data.role);

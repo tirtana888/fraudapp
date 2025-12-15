@@ -27,6 +27,8 @@ import HistoryView from './components/HistoryView';
 import Documentation from './components/Documentation';
 import WorkflowManager from './components/WorkflowManager';
 import CreditManagementPage from './components/CreditManagementPage';
+import InterviewSchedulePage from './components/InterviewSchedulePage';
+import InterviewConfirmationPage from './components/InterviewConfirmationPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite, CREDIT_COSTS } from './types';
 import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
 import { getSession, clearSession, saveSession } from './services/auth';
@@ -142,7 +144,7 @@ const App: React.FC = () => {
       return false;
     }
 
-    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname === '/background-check-callback';
+    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname === '/background-check-callback' || pathname === '/confirm-interview';
   });
 
   const [isBackgroundCheckCallback, setIsBackgroundCheckCallback] = useState(() => {
@@ -703,6 +705,14 @@ const App: React.FC = () => {
 
   // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode) {
+    // Interview Confirmation Page
+    if (window.location.pathname === '/confirm-interview') {
+      return (
+        <ToastProvider>
+          <InterviewConfirmationPage />
+        </ToastProvider>
+      );
+    }
     if (isBackgroundCheckCallback) {
       return (
         <ToastProvider>
@@ -895,6 +905,8 @@ const App: React.FC = () => {
           onViewCandidate={setViewingCandidateId}
           onUpgradeClick={() => setActiveTab('settings')}
         />;
+      case 'wawancara':
+        return <InterviewSchedulePage companyId={currentCompany!.id} />;
       case 'documentation':
         return <Documentation />;
       case 'credit-management':

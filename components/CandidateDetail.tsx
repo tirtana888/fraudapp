@@ -631,7 +631,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             interviewDate: formattedDate,
             interviewTime: interviewTime,
             interviewLocation: locationText,
-            interviewType: interviewType
+            interviewType: interviewType,
+            sessionId: sessionId
           }
         };
 

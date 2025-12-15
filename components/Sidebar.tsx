@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen, ChevronLeft, Workflow, CreditCard } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, ShieldAlert, Moon, Sun, X, Shield, Link as LinkIcon, Mail, Briefcase, Users, ChevronDown, ChevronRight, Zap, UserPlus, ClipboardCheck, BookOpen, ChevronLeft, Workflow, CreditCard, Calendar } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -205,6 +205,26 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, companyName,
             {isCollapsed && (
               <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
                 {linkMenuItem.label}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Wawancara */}
+        <div className="mt-2">
+          <button
+            onClick={() => setActiveTab('wawancara')}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-2.5 rounded-lg transition-all duration-200 font-medium group relative ${activeTab === 'wawancara'
+              ? 'bg-brand-blue/15 text-brand-orange shadow-sm dark:bg-brand-orange/20 dark:text-brand-orange'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            title={isCollapsed ? 'Wawancara' : ''}
+          >
+            <Calendar size={18} className={activeTab === 'wawancara' ? 'text-brand-orange' : 'text-gray-400 dark:text-slate-500'} />
+            {!isCollapsed && <span className="text-sm">Wawancara</span>}
+            {isCollapsed && (
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                Wawancara
               </span>
             )}
           </button>

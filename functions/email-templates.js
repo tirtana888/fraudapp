@@ -213,6 +213,7 @@ module.exports = {
         };
     },
 
+
     hireEmail: (candidateName, companyName, role = "", startDate = "", startTime = "", contactPerson = "", contactPhone = "", additionalInfo = "") => {
         const content = `
             <h2 style="margin-top: 0; color: ${BRAND_COLORS.primary}; font-size: 24px;">Selamat Bergabung! 🎉</h2>
@@ -247,6 +248,113 @@ module.exports = {
             html: createEmailLayout(`Welcome Aboard!`, content)
         };
     },
+
+    interviewInvitation: (candidateName, candidateEmail, companyName, role = "", interviewDate = "", interviewTime = "", interviewLocation = "", interviewType = "online", sessionId = "") => {
+        const roleText = role ? ` untuk posisi <strong>${role}</strong>` : '';
+
+        // Create confirmation URL
+        const confirmationUrl = `https://hiregood.one/confirm-interview?session=${sessionId}&email=${encodeURIComponent(candidateEmail)}&status=confirmed`;
+
+        // Location icon and text based on type
+        const locationIcon = interviewType === 'online' ? '🌐' : '📍';
+        const locationLabel = interviewType === 'online' ? 'Link Meeting' : 'Lokasi';
+
+        const content = `
+            <h2 style="margin: 0 0 16px 0; color: #111827; font-size: 26px; font-weight: 700; line-height: 1.3;">Undangan Wawancara 🤝</h2>
+            <p style="font-size: 15px; line-height: 1.7; color: #4B5563; margin: 0 0 12px 0;">Halo <strong style="color: #111827;">${candidateName}</strong>,</p>
+            
+            <p style="font-size: 15px; line-height: 1.7; color: #4B5563; margin: 0 0 24px 0;">
+                Selamat! Kami dengan senang hati mengundang Anda untuk mengikuti tahap wawancara${roleText} di <strong style="color: #111827;">${companyName}</strong>.
+            </p>
+
+            <!-- Interview Details Card -->
+            <div style="background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius: 12px; padding: 24px; margin: 0 0 24px 0;">
+                <h3 style="color: white; margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">📅 Detail Wawancara</h3>
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td style="padding: 8px 0; color: rgba(255,255,255,0.9); font-size: 14px; vertical-align: top; width: 100px;">
+                            <strong>📅 Tanggal:</strong>
+                        </td>
+                        <td style="padding: 8px 0; color: white; font-size: 15px; font-weight: 600;">
+                            ${interviewDate}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: rgba(255,255,255,0.9); font-size: 14px; vertical-align: top;">
+                            <strong>⏰ Waktu:</strong>
+                        </td>
+                        <td style="padding: 8px 0; color: white; font-size: 15px; font-weight: 600;">
+                            ${interviewTime} WIB
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: rgba(255,255,255,0.9); font-size: 14px; vertical-align: top;">
+                            <strong>${locationIcon} ${locationLabel}:</strong>
+                        </td>
+                        <td style="padding: 8px 0; color: white; font-size: 15px; font-weight: 600; word-break: break-word;">
+                            ${interviewLocation}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: rgba(255,255,255,0.9); font-size: 14px; vertical-align: top;">
+                            <strong>👤 Pewawancara:</strong>
+                        </td>
+                        <td style="padding: 8px 0; color: white; font-size: 15px; font-weight: 600;">
+                            Tim HR ${companyName}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Confirmation Button -->
+            <div style="text-align: center; margin: 30px 0;">
+                <p style="font-size: 16px; font-weight: 600; color: #111827; margin: 0 0 16px 0;">Konfirmasi Kehadiran Anda:</p>
+                <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                    <tr>
+                        <td align="center" bgcolor="#10B981" style="border-radius: 8px;">
+                            <a href="${confirmationUrl}" target="_blank" style="display: block; padding: 16px 40px; font-family: inherit; font-size: 16px; color: #ffffff; text-decoration: none; font-weight: 600; border-radius: 8px; background-color: #10B981;">
+                                ✅ Ya, Saya Hadir
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Preparation Tips -->
+            <div style="background-color: #F3F4F6; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <h4 style="color: #111827; margin: 0 0 12px 0; font-size: 16px; font-weight: 700;">💡 Persiapan Wawancara:</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #4B5563; font-size: 14px; line-height: 1.8;">
+                    <li>Pelajari profil perusahaan dan posisi yang dilamar</li>
+                    <li>Siapkan pertanyaan untuk pewawancara</li>
+                    <li>Pastikan koneksi internet stabil (untuk wawancara online)</li>
+                    <li>Berpakaian profesional dan rapi</li>
+                    <li>Datang 10 menit lebih awal</li>
+                </ul>
+            </div>
+
+            <!-- Tips for Success -->
+            <div style="background-color: #DBEAFE; border-left: 4px solid #3B82F6; padding: 18px; margin: 0 0 24px 0; border-radius: 8px;">
+                <p style="margin: 0; color: #1E40AF; font-size: 14px; line-height: 1.7;">
+                    <strong style="font-weight: 600;">🎯 Tips Sukses:</strong> Tunjukkan antusiasme Anda, jawab pertanyaan dengan jujur dan percaya diri, serta jangan ragu untuk bertanya jika ada yang kurang jelas.
+                </p>
+            </div>
+
+            <p style="font-size: 15px; line-height: 1.7; color: #4B5563; margin: 24px 0 0 0;">
+                Kami sangat menantikan kesempatan untuk bertemu dengan Anda!
+            </p>
+
+            <p style="font-size: 14px; color: #6B7280; margin: 24px 0 0 0; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+                Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.
+            </p>
+        `;
+
+        return {
+            from: EMAIL_SENDERS.interview,
+            subject: `Undangan Wawancara - ${companyName}`,
+            html: createEmailLayout(`Interview Invitation - ${companyName}`, content)
+        };
+    },
+
 
     candidateWelcomeEmail: (candidateName, candidateEmail, companyName, role = "", workflowSteps = [], currentStep = "") => {
         const roleText = role ? ` untuk posisi <strong>${role}</strong>` : '';
