@@ -104,12 +104,55 @@ const backgroundCheckEmailTemplate = (candidateName, companyName, verificationLi
 
 // ==========================================
 // 1. DIDIT WEBHOOK RECEIVER (Fast Response)
+// Handles both POST (server webhook) and GET (browser redirect)
 // ==========================================
 exports.diditWebhook = onRequest({
     region: "europe-west1",
     cors: true,
-    secrets: [diditWebhookSecret]
+    secrets: [diditWebhookSecret, diditApiKey]
 }, async (req, res) => {
+    // Handle GET requests (browser redirect after KYC completion)
+    if (req.method === 'GET') {
+        const { verificationSessionId, status } = req.query;
+
+        if (!verificationSessionId) {
+            logger.warn('[DIDIT-WEBHOOK] GET request without verificationSessionId');
+            return res.redirect('https://hiregood.one?kyc=error');
+        }
+
+        logger.info('[DIDIT-WEBHOOK] Browser redirect received', {
+            verificationSessionId,
+            status
+        });
+
+        // Redirect user immediately, then process in background
+        // This provides better UX - user sees success page faster
+        const redirectUrl = status === 'Approved'
+            ? 'https://hiregood.one?kyc=success'
+            : status === 'Declined'
+                ? 'https://hiregood.one?kyc=declined'
+                : 'https://hiregood.one?kyc=pending';
+
+        // Queue for background processing via API fetch
+        try {
+            await db.collection(WEBHOOK_QUEUE_COLLECTION).add({
+                type: 'browser_redirect',
+                verificationSessionId: verificationSessionId,
+                statusFromRedirect: status,
+                receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processed: false,
+                signatureValid: true, // Browser redirect is trusted
+                needsFetch: true
+            });
+            logger.info('[DIDIT-WEBHOOK] Browser redirect queued for API fetch');
+        } catch (error) {
+            logger.error('[DIDIT-WEBHOOK] Failed to queue browser redirect:', error);
+        }
+
+        return res.redirect(redirectUrl);
+    }
+
+    // Handle POST requests (server webhook)
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
@@ -257,19 +300,79 @@ const downloadImageAsBase64 = async (imageUrl) => {
 // ==========================================
 exports.processDiditWebhook = onDocumentCreated({
     region: "europe-west1",
-    secrets: [diditWebhookSecret],
+    secrets: [diditWebhookSecret, diditApiKey],
     document: `${WEBHOOK_QUEUE_COLLECTION}/{docId}`
 }, async (event) => {
     const snapshot = event.data;
     if (!snapshot) return;
 
     const data = snapshot.data();
-    const { rawBody } = data;
-
-    logger.info(`[PROCESS-WEBHOOK] Processing: ${event.params.docId}`);
+    logger.info(`[PROCESS-WEBHOOK] Processing: ${event.params.docId}`, { type: data.type || 'webhook' });
 
     try {
-        const webhookData = JSON.parse(rawBody);
+        let webhookData;
+
+        // Handle browser redirect - need to fetch session from Didit API
+        if (data.needsFetch && data.verificationSessionId) {
+            logger.info(`[PROCESS-WEBHOOK] Fetching session from Didit API: ${data.verificationSessionId}`);
+
+            const apiKey = diditApiKey.value();
+            const sessionResponse = await new Promise((resolve, reject) => {
+                const options = {
+                    hostname: 'verification.didit.me',
+                    path: `/v2/session/${data.verificationSessionId}`,
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                const req = https.request(options, (res) => {
+                    let responseData = '';
+                    res.on('data', chunk => responseData += chunk);
+                    res.on('end', () => {
+                        if (res.statusCode === 200) {
+                            resolve(JSON.parse(responseData));
+                        } else {
+                            reject(new Error(`Didit API returned ${res.statusCode}: ${responseData}`));
+                        }
+                    });
+                });
+                req.on('error', reject);
+                req.end();
+            });
+
+            logger.info('[PROCESS-WEBHOOK] Fetched session from API', {
+                status: sessionResponse.status,
+                vendor_data: sessionResponse.vendor_data
+            });
+
+            // Transform API response to webhook format
+            webhookData = {
+                session_id: sessionResponse.session_id || data.verificationSessionId,
+                status: sessionResponse.status,
+                webhook_type: 'status.updated',
+                vendor_data: sessionResponse.vendor_data,
+                decision: sessionResponse.decision || sessionResponse,
+                created_at: sessionResponse.created_at,
+                timestamp: Date.now() / 1000,
+                session_url: sessionResponse.session_url
+            };
+        } else if (data.rawBody) {
+            // Standard webhook processing
+            webhookData = JSON.parse(data.rawBody);
+        } else {
+            logger.warn('[PROCESS-WEBHOOK] No rawBody or needsFetch data');
+            await snapshot.ref.update({
+                processed: true,
+                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processingStatus: 'skipped',
+                reason: 'No data to process'
+            });
+            return;
+        }
+
         const {
             session_id: diditSessionId,
             status,
