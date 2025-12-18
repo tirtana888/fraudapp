@@ -67,12 +67,11 @@ exports.createXenditInvoice = onCall({
             description = `Upgrade to ${tier} Tier - ${companyName}`;
         }
 
-        // Get API Key (Secret or Fallback for Local Dev)
+        // Get API Key from Secret
         let apiKey = xenditApiKey.value();
         if (!apiKey || apiKey === '') {
-            logger.warn('[XENDIT] Secret/Env not found, using fallback for local dev');
-            // Fallback for local testing only
-            apiKey = 'xnd_production_dIN7dRfeoCqQx0YL5q49OOs68KNeqGgyMRl9oOQX4kAoWsfMY3nqT058TcPl';
+            logger.error('[XENDIT] API Key secret not configured');
+            throw new HttpsError('failed-precondition', 'Xendit API Key not configured. Please set XENDIT_API_KEY secret.');
         }
 
         // Create invoice via Xendit API
