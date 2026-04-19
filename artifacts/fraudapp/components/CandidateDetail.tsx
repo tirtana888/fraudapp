@@ -13,6 +13,7 @@ import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
 import ExtensionScreeningCard from './candidate-detail/ExtensionScreeningCard';
+import PipelineStepper from './candidate-detail/PipelineStepper';
 import RiskDonut from './candidate-detail/RiskDonut';
 import PsychometricRadar from './candidate-detail/PsychometricRadar';
 import ContactGlassVault from './candidate-detail/ContactGlassVault';
@@ -1008,6 +1009,18 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
   const statusBadge = getStatusBadge();
 
+  const isWorkflowMode = !!workflowData;
+  const pipelineTimeline = (candidate.timeline || []) as Array<{ stage: string; status: 'completed' | 'current' | 'pending'; date?: string; note?: string; }>;
+  const assessmentTimelineEntry = pipelineTimeline.find(t => t.stage === 'integrity_assessment');
+  const isPipelineAssessmentCompleted =
+    assessmentTimelineEntry?.status === 'completed' ||
+    candidate.status === 'completed' ||
+    candidate.recruitmentStage === 'assessment_completed' ||
+    candidate.recruitmentStage === 'interview' ||
+    candidate.recruitmentStage === 'bc_check' ||
+    candidate.recruitmentStage === 'hired' ||
+    candidate.recruitmentStage === 'approved';
+
   return (
     <div className="min-h-screen bg-slate-50">
       {showBgCheckModal && (
@@ -1515,134 +1528,21 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                   {statusBadge.label}
                 </span>
               )}
-              {candidate.recruitmentStage !== 'rejected' && candidate.recruitmentStage !== 'approved' && candidate.recruitmentStage !== 'hired' && (() => {
-                // If workflow exists, use workflow steps as stage buttons
-                console.log('[BUTTONS] Rendering buttons. workflowData:', workflowData ? 'EXISTS' : 'NULL', 'recruitmentStage:', candidate.recruitmentStage);
-
-                if (workflowData) {
-                  console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: WorkflowStep) => s.name).join(', '));
-                  const workflowTimeline = candidate.timeline?.filter(( t: TimelineItem) =>
-                    workflowData.steps.some((s: WorkflowStep) => s.id === t.stage)
-                  ) || [];
-                  console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map(( t: TimelineItem) => `${t.stage}:${t.status}`).join(', '));
-
-                  const currentStepIndex = workflowTimeline.findIndex(( t: TimelineItem) => t.status === 'current');
-                  const currentStep = workflowTimeline[currentStepIndex];
-                  const nextStep = workflowTimeline[currentStepIndex + 1];
-
-                  // Check if assessment is completed
-                  const assessmentStep = workflowTimeline.find(( t: TimelineItem) => t.stage === 'integrity_assessment');
-                  const isAssessmentCompleted = assessmentStep?.status === 'completed';
-                  const isCurrentStepAssessment = currentStep?.stage === 'integrity_assessment';
-
-                  return (
-                    <div className="flex items-center gap-2">
-                      {/* Workflow Steps Section */}
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                        <Activity size={14} className="text-purple-600" />
-                        <div className="flex items-center gap-1.5">
-                          {/* Current Workflow Step Button */}
-                          {currentStep && (
-                            <>
-                              {isCurrentStepAssessment ? (
-                                // Assessment button - Always disabled (kandidat gets email automatically)
-                                <button
-                                  disabled={true}
-                                  title="Kandidat sudah mendapat email untuk assessment"
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium cursor-not-allowed"
-                                >
-                                  <Mail size={12} />
-                                  {workflowData.steps.find((s: WorkflowStep) => s.id === currentStep.stage)?.name || 'Assessment'}
-                                  <span className="text-[10px] ml-1">(Email terkirim)</span>
-                                </button>
-                              ) : (
-                                // Other steps - Clickable
-                                <button
-                                  onClick={() => handleCompleteWorkflowStep(currentStep.stage, currentStepIndex)}
-                                  disabled={isUpdating}
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <CheckCircle2 size={12} />
-                                  {workflowData.steps.find((s: WorkflowStep) => s.id === currentStep.stage)?.name || 'Next'}
-                                </button>
-                              )}
-                            </>
-                          )}
-
-                          {/* Next Step Preview - Only show if assessment is completed OR not needed */}
-                          {nextStep && (isAssessmentCompleted || currentStepIndex > 0) && (
-                            <button
-                              disabled={true}
-                              title="Selesaikan tahap sebelumnya"
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium opacity-60 cursor-not-allowed"
-                            >
-                              <Clock size={12} />
-                              {workflowData.steps.find((s: WorkflowStep) => s.id === nextStep.stage)?.name || 'Next'}
-                            </button>
-                          )}
-
-                          {/* Show waiting message if assessment not complete */}
-                          {!isAssessmentCompleted && isCurrentStepAssessment && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 italic ml-2">
-                              Menunggu kandidat menyelesaikan assessment...
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Separator */}
-                      <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-
-                      {/* Decision Buttons */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setShowHireModal(true)}
-                          disabled={isUpdating || !isAssessmentCompleted}
-                          title={!isAssessmentCompleted ? "Assessment harus selesai terlebih dahulu" : "Rekrut kandidat"}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        >
-                          <CheckCircle2 size={14} />
-                          Rekrut
-                        </button>
-
-                        <button
-                          onClick={() => setShowRejectModal(true)}
-                          disabled={isUpdating}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        >
-                          <XCircle size={14} />
-                          Tolak
-                        </button>
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // No workflow - Show minimal buttons (Hire & Reject only)
-                  return (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setShowHireModal(true)}
-                        disabled={isUpdating}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                      >
-                        <CheckCircle2 size={14} />
-                        Rekrut
-                      </button>
-
-                      <button
-                        onClick={() => setShowRejectModal(true)}
-                        disabled={isUpdating}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                      >
-                        <XCircle size={14} />
-                        Tolak
-                      </button>
-                    </div>
-                  );
-                }
-              })()}
             </div>
           </div>
+
+          <PipelineStepper
+            workflowData={workflowData}
+            timeline={pipelineTimeline}
+            currentStage={candidate.recruitmentStage || 'screening'}
+            isWorkflowMode={isWorkflowMode}
+            onStepAction={(stageId, stepIdx) => handleCompleteWorkflowStep(stageId, stepIdx)}
+            onHire={() => setShowHireModal(true)}
+            onReject={() => setShowRejectModal(true)}
+            isUpdating={isUpdating}
+            isAssessmentCompleted={isPipelineAssessmentCompleted}
+            candidateStatus={candidate.status}
+          />
 
           <div className="flex items-center gap-1 mt-4 border-b border-gray-200 overflow-x-auto">
             <button
