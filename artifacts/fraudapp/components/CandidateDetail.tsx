@@ -1537,6 +1537,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             currentStage={candidate.recruitmentStage || 'screening'}
             isWorkflowMode={isWorkflowMode}
             onStepAction={(stageId, stepIdx) => handleCompleteWorkflowStep(stageId, stepIdx)}
+            onStatusUpdate={(stage) => handleStatusUpdate(stage)}
             onHire={() => setShowHireModal(true)}
             onReject={() => setShowRejectModal(true)}
             isUpdating={isUpdating}
