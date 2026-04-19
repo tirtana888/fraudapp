@@ -12,6 +12,7 @@ import { deductCredit } from '../services/creditManagement';
 import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
+import ExtensionScreeningCard from './candidate-detail/ExtensionScreeningCard';
 import RiskDonut from './candidate-detail/RiskDonut';
 import PsychometricRadar from './candidate-detail/PsychometricRadar';
 import ContactGlassVault from './candidate-detail/ContactGlassVault';
@@ -2373,6 +2374,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
         {activeTab === 'background' && candidate.status === 'completed' && (
           <>
+            <ExtensionScreeningCard
+              sessionId={sessionId}
+              candidateName={candidate.candidate?.name || ''}
+              candidateEmail={candidate.candidate?.email || ''}
+              candidatePhone={candidate.whatsapp}
+              companyName={company.name}
+              gamblingAnalysis={candidate.gamblingAnalysis}
+              proctoringData={candidate.proctoringData}
+            />
+
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6 mb-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">

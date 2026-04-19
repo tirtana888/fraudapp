@@ -94,6 +94,8 @@ export interface InterviewSession {
   unlockedByCompanyId?: string;
   workflowId?: string;
   riskScore?: number;
+  gamblingAnalysis?: GamblingAnalysis;
+  proctoringData?: ProctoringData;
 }
 
 // ========== KYC / Background Check Types ==========
@@ -156,6 +158,50 @@ export interface IPData {
   osVersion?: string;
   deviceType?: string;
   userAgent?: string;
+}
+
+export interface GamblingFlaggedSite {
+  domain: string;
+  visitCount: number;
+  lastVisit: string;
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  matchType: 'domain' | 'keyword';
+}
+
+export interface GamblingAnalysis {
+  overallRisk: 'HIGH' | 'MEDIUM' | 'LOW';
+  riskScore: number;
+  totalHistoryAnalyzed: number;
+  flaggedSitesCount: number;
+  flaggedSites: GamblingFlaggedSite[];
+  timePatterns: {
+    lateNightAccess: number;
+    weekendAccess: number;
+    frequentAccess: number;
+  };
+  suspiciousPatterns: string[];
+  historyTooLow: boolean;
+  completedAt: string;
+}
+
+export interface ProctoringEvent {
+  type: 'tab_switch' | 'window_blur' | 'copy_paste' | 'devtools_open' | 'gambling_site_visit' | 'ai_tool_visit';
+  timestamp: string;
+  details: string;
+  severity: 'critical' | 'warning' | 'info';
+}
+
+export interface ProctoringData {
+  totalEvents: number;
+  events: ProctoringEvent[];
+  tabSwitchCount: number;
+  windowBlurCount: number;
+  suspiciousActivityScore: number;
+  sessionDuration: number;
+  isFlagged: boolean;
+  startedAt: string;
+  completedAt: string;
+  submittedAt: string;
 }
 
 export interface BackgroundCheckData {
