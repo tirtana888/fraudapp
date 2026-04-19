@@ -530,6 +530,15 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     category: 'verification'
   },
   {
+    id: 'gambling_screening',
+    name: 'Test Judol (Browser History)',
+    description: 'Screening riwayat browser kandidat untuk mendeteksi aktivitas judi online via Chrome Extension',
+    credits: 50,
+    isMandatory: false,
+    icon: 'Globe',
+    category: 'verification'
+  },
+  {
     id: 'document_forgery',
     name: 'Document Forgery Detection',
     description: 'AI detection untuk mendeteksi pemalsuan dokumen',

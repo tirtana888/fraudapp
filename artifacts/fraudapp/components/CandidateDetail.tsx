@@ -72,7 +72,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
   const toast = useToast();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background' | 'activity'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'integrity' | 'interview' | 'background' | 'browser_history' | 'activity'>('overview');
+  const [gamblingEmailSent, setGamblingEmailSent] = useState(false);
+  const [isSendingGamblingEmail, setIsSendingGamblingEmail] = useState(false);
   const [isContactUnlocked, setIsContactUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -92,6 +94,58 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
   const [sendRejectionEmail, setSendRejectionEmail] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [workflowData, setWorkflowData] = useState<Workflow | null>(null);
+
+  // Determine if workflow includes gambling_screening step
+  const hasGamblingStep = workflowData?.steps?.some(s => s.id === 'gambling_screening' && s.isEnabled) || false;
+
+  // Auto-trigger: send token email when gambling_screening step becomes active
+  useEffect(() => {
+    if (!candidate || !hasGamblingStep || gamblingEmailSent || isSendingGamblingEmail) return;
+    // Check if gambling_screening is the current active step in the timeline
+    const gamblingTimeline = candidate.timeline?.find(t => t.stage === 'gambling_screening');
+    if (!gamblingTimeline || gamblingTimeline.status !== 'current') return;
+    // Already have gambling data — no need to send email
+    if (candidate.gamblingAnalysis) return;
+
+    const sendTokenEmail = async () => {
+      try {
+        setIsSendingGamblingEmail(true);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) return;
+
+        const resp = await fetch('/api/extension/send-token-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            candidateEmail: candidate.candidate?.email || '',
+            candidateName: candidate.candidate?.name || '',
+            companyName: company.name,
+          }),
+        });
+
+        const json = await resp.json();
+        if (json.success) {
+          setGamblingEmailSent(true);
+          if (json.emailSent) {
+            toast.success('Email screening browser history terkirim ke kandidat!');
+          } else {
+            toast.info('Token screening dibuat, tapi email belum terkirim (Resend tidak dikonfigurasi)');
+          }
+        }
+      } catch (err) {
+        console.error('[GAMBLING] Failed to send token email:', err);
+      } finally {
+        setIsSendingGamblingEmail(false);
+      }
+    };
+
+    sendTokenEmail();
+  }, [candidate?.timeline, hasGamblingStep, gamblingEmailSent, isSendingGamblingEmail]);
 
   useEffect(() => {
     loadCandidateData();
@@ -1591,6 +1645,25 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             >
               Pemeriksaan Latar Belakang
             </button>
+            {hasGamblingStep && (
+              <button
+                onClick={() => setActiveTab('browser_history')}
+                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'browser_history'
+                  ? 'text-[#D95D00] border-b-2 border-[#D95D00]'
+                  : 'text-gray-600 hover:text-gray-800'
+                  }`}
+              >
+                <Globe size={14} />
+                Browser History
+                {candidate.gamblingAnalysis && (
+                  <span className={`ml-1 w-2 h-2 rounded-full inline-block ${
+                    candidate.gamblingAnalysis.overallRisk === 'HIGH' ? 'bg-red-500'
+                    : candidate.gamblingAnalysis.overallRisk === 'MEDIUM' ? 'bg-yellow-500'
+                    : 'bg-green-500'
+                  }`} />
+                )}
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('activity')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'activity'
@@ -3076,6 +3149,38 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               </div>
             </div>
           </>
+        )}
+
+        {/* ========== Browser History Tab (Gambling Screening) ========== */}
+        {activeTab === 'browser_history' && hasGamblingStep && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            {/* Auto-trigger status banner */}
+            {isSendingGamblingEmail && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-blue-700">Mengirim email screening ke kandidat...</p>
+              </div>
+            )}
+            {gamblingEmailSent && !candidate.gamblingAnalysis && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center gap-3">
+                <Mail size={18} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-semibold text-indigo-800">Email Screening Terkirim</p>
+                  <p className="text-xs text-indigo-600">Menunggu kandidat menyelesaikan screening browser history via Chrome Extension...</p>
+                </div>
+              </div>
+            )}
+
+            <ExtensionScreeningCard
+              sessionId={sessionId}
+              candidateName={candidate.candidate?.name || ''}
+              candidateEmail={candidate.candidate?.email || ''}
+              candidatePhone={candidate.whatsapp}
+              companyName={company.name}
+              gamblingAnalysis={candidate.gamblingAnalysis}
+              proctoringData={candidate.proctoringData}
+            />
+          </div>
         )}
 
         {/* Liveness section removed */}
