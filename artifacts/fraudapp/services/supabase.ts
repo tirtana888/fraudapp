@@ -981,7 +981,10 @@ export const createInterviewSessionFromApplication = async (
 
 export const createWorkflow = async (workflowData: Omit<Workflow, 'id'>): Promise<string> => {
   const now = new Date().toISOString();
-  const payload = toSnakeCaseRow({ ...workflowData, createdAt: now, updatedAt: now });
+  // Strip client-only / derived fields that don't exist on _workflows
+  // (totalCredits is computed on the fly from steps[].credits).
+  const { totalCredits: _tc, id: _id, ...persisted } = workflowData as Record<string, unknown>;
+  const payload = toSnakeCaseRow({ ...persisted, createdAt: now, updatedAt: now });
   const { data, error } = await supabase
     .from('_workflows')
     .insert(payload)
@@ -1008,7 +1011,9 @@ export const getWorkflowsByCompany = async (companyId: string): Promise<Workflow
 };
 
 export const updateWorkflow = async (workflowId: string, updates: Partial<Workflow>): Promise<void> => {
-  const payload = toSnakeCaseRow({ ...updates, updatedAt: new Date().toISOString() });
+  // Strip client-only / derived fields that don't exist on _workflows.
+  const { totalCredits: _tc, id: _id, ...persisted } = updates as Record<string, unknown>;
+  const payload = toSnakeCaseRow({ ...persisted, updatedAt: new Date().toISOString() });
   const { error } = await supabase
     .from('_workflows')
     .update(payload)
