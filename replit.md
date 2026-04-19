@@ -11,10 +11,37 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: PostgreSQL + Drizzle ORM (API server); Supabase (FraudGuard app)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+
+## FraudGuard App (artifacts/fraudapp)
+
+- **Frontend**: React + Vite
+- **Backend/DB**: Supabase (project: behtywhlundlfxkdesux)
+- **Schema**: `artifacts/fraudapp/supabase-schema.sql` — applied to Supabase
+- **Tables**: 14 base tables + `extension_tokens` (run `scripts/extension-tokens-migration.sql`)
+  - `_users`, `_companies`, `_jobs`, `_applications`, `_interview_sessions`, `_assessment_invites`, `_workflows`, `_notifications`, `_credit_transactions`, `_system_config`, `_audit_logs`, `_pricing_config`, `_promo_codes`, `_payment_transactions`, `extension_tokens`
+- **Views**: camelCase views sit on top of each base table for TypeScript compatibility
+- **Storage buckets**: `company-assets` (public), `candidate-documents` (private)
+- **RLS**: Enabled on all tables (Task #5). `extension_tokens` policies also in migration SQL.
+- **Secrets required**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`
+
+## API Server (artifacts/api-server)
+
+- **Routes**: `/api/healthz`, `/api/send-email` (JWT-auth), `/api/send-email-public` (session-verified), `/api/extension/*` (token/JWT-auth)
+- **Email**: Resend SDK — templates: `assessment_invite`, `candidate_welcome`, `assessment_complete`, `hire_notification`, `rejection_notification`
+- **Extension API**: `generate-token` (JWT), `validate-token` (public), `submit-gambling` (token), `submit-proctoring` (token)
+- **Secrets required**: `RESEND_API_KEY`, `SESSION_SECRET`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+## Chrome Extension (fraudguard-extension/)
+
+- **Location**: `fraudguard-extension/` at workspace root (load unpacked in Chrome)
+- **Features**: Gambling history scanner (30 days, 50+ domains, Indonesian sites), Interview proctoring (tab switches, copy-paste, devtools, AI tools)
+- **Flow**: HR generates token in dashboard → candidate installs extension, enters token → results appear in candidate's Background Check tab
+- **API base**: auto-detected from page origin via content-script → works on both Replit dev domain and production
+- **DB**: Requires `extension_tokens` table + `gambling_analysis`/`proctoring_data` JSONB columns on `interview_sessions` (see migration SQL)
 
 ## Key Commands
 
