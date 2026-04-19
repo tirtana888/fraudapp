@@ -130,6 +130,10 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onSwitchToLogi
         }, 100);
       }
     } catch (err: any) {
+      // Suppress the OAuth redirect sentinel — browser is navigating away
+      if (err?.message === 'google_oauth_redirect') {
+        return;
+      }
       console.error('[SIGNUP] ❌ Google Sign-Up error:', err);
       setError(err.message || "Gagal mendaftar dengan Google.");
       setIsGoogleLoading(false);

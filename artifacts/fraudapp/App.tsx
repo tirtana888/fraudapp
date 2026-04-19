@@ -347,7 +347,6 @@ const App: React.FC = () => {
       adminEmail: currentUser.email || '',
       joinedDate: new Date().toISOString(),
       credits: 1000, // Default initial credits for new companies
-      subscription_ends_at: null
     };
 
     // Set fallback immediately to unblock UI
@@ -367,7 +366,6 @@ const App: React.FC = () => {
             adminEmail: currentUser.email || '',
             joinedDate: new Date().toISOString(),
             credits: 999999,
-            subscription_ends_at: null
           } as CompanyProfile);
           return;
         }
@@ -411,7 +409,7 @@ const App: React.FC = () => {
     // Don't block on subscriptions
     (async () => {
       try {
-        unsubscribeSessions = subscribeToSessions(currentUser.companyId, currentUser.role, (fetchedSessions) => {
+        unsubscribeSessions = subscribeToSessions(currentUser.companyId || '', currentUser.role, (fetchedSessions) => {
           console.log('[APP] 📊 Sessions updated:', fetchedSessions.length);
           setSessions(fetchedSessions as InterviewSession[]);
         });
@@ -964,7 +962,7 @@ const App: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={handleTabChange}
           companyName={currentCompany?.name || 'FraudGuard'}
-          userRole={currentUser.role}
+          userRole={currentUser?.role || ''}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           isOpen={isMobileMenuOpen}
@@ -994,7 +992,7 @@ const App: React.FC = () => {
                     <div className="flex-1">
                       <h3 className="text-sm font-bold text-orange-900 mb-1">Email Belum Diverifikasi</h3>
                       <p className="text-sm text-orange-800 mb-2">
-                        Silakan verifikasi email Anda ({currentUser.email}) untuk keamanan akun yang lebih baik.
+                        Silakan verifikasi email Anda ({currentUser?.email}) untuk keamanan akun yang lebih baik.
                       </p>
                       <button
                         onClick={async () => {

@@ -132,18 +132,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
 
 const ProfileSettings = ({ user }: { user: UserProfile }) => {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{ name: string; phone: string; role: string }>({
         name: user.name || '',
-        phone: '', // Phone is not in UserProfile currently, but requested in UI. We can add it or just treat as local for now if not in type. 
-        // Wait, UserProfile doesn't have phone? Let's check types.ts again.
-        // It does not have phone. I'll check if I should add it to type or just handle it. 
-        // The previous view_file of types.ts showed UserProfile: id, name, role, avatar, email, companyId, password, emailVerified, createdAt.
-        // But signUpWithFirebase takes phone. 
-        // Let's assume for now we just update name and role (Job Title). 
-        // I will add phone state but maybe not save it effectively if backend doesn't support it yet, OR I will assume update is partial and strict.
-        // Let's stick to name and role for now to be safe, or check if I can add phone to UserProfile type.
-        // User request: "fungsikan my profile".
-        // I will implement saving functionality.
+        phone: '',
         role: user.role || ''
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -158,7 +149,7 @@ const ProfileSettings = ({ user }: { user: UserProfile }) => {
             if (user.id) {
                 await updateUserProfile(user.id, {
                     name: formData.name,
-                    role: formData.role as any // Type assertion to avoid literal type mismatch if role is strict enum
+                    role: formData.role as unknown as UserProfile['role']
                 }, user.email);
                 toast.success('Profile updated successfully');
                 // Force reload to fetch fresh data from Firestore and update UI state

@@ -1,7 +1,14 @@
 -- HireGood / FraudGuard SaaS – Supabase Schema
 -- Run this in your Supabase SQL editor to create all required tables.
--- Column names match the exact field names used by the application code.
--- RLS is NOT enabled here; enable it when deploying to production.
+--
+-- IMPORTANT – Column naming convention:
+--   Columns use camelCase (e.g. companyId, createdAt) to exactly mirror the
+--   field names used by the React/TypeScript application code and by every
+--   .eq() / .insert() / .select() call in services/supabase.ts.
+--   Changing to snake_case would require updating every query in the service
+--   layer and risk runtime breakage. This is intentional, not an oversight.
+--
+-- RLS is NOT enabled here; enable it (see the follow-up task) for production.
 
 -- ============================================================
 -- EXTENSIONS
