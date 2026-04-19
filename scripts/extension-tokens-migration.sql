@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS public.extension_tokens (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   token         TEXT NOT NULL UNIQUE,             -- 8-char uppercase code
-  session_id    UUID NOT NULL REFERENCES public.interview_sessions(id) ON DELETE CASCADE,
+  session_id    UUID NOT NULL REFERENCES public._interview_sessions(id) ON DELETE CASCADE,
   candidate_email TEXT NOT NULL,
   company_id    TEXT NOT NULL,
   expires_at    TIMESTAMPTZ NOT NULL,
@@ -21,10 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_extension_tokens_token     ON public.extension_to
 CREATE INDEX IF NOT EXISTS idx_extension_tokens_session   ON public.extension_tokens(session_id);
 CREATE INDEX IF NOT EXISTS idx_extension_tokens_company   ON public.extension_tokens(company_id);
 
--- 2. Add gambling_analysis and proctoring_data columns to interview_sessions
+-- 2. Add gambling_analysis and proctoring_data columns to _interview_sessions
 -- (no-op if columns already exist — safe to re-run)
 
-ALTER TABLE public.interview_sessions
+ALTER TABLE public._interview_sessions
   ADD COLUMN IF NOT EXISTS gambling_analysis JSONB,
   ADD COLUMN IF NOT EXISTS proctoring_data   JSONB;
 
