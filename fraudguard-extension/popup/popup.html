@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FraudGuard Screening</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Header ── -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🛡️</span>
+        <div>
+          <h1>FraudGuard</h1>
+          <span class="subtitle">Browser Screening</span>
+        </div>
+      </div>
+      <span class="version">v1.0</span>
+    </header>
+
+    <!-- ── Step 1: Token Input ── -->
+    <section id="step-token" class="step active">
+      <div class="card">
+        <h2>🔑 Masukkan Token</h2>
+        <p class="desc">Masukkan token yang diberikan oleh HR / perusahaan Anda.</p>
+        <input type="text" id="token-input" placeholder="contoh: a1b2c3d4-e5f6-7890..." maxlength="64" autocomplete="off">
+        <button id="btn-validate" class="btn btn-primary">Validasi Token</button>
+        <div id="token-error" class="error hidden"></div>
+      </div>
+    </section>
+
+    <!-- ── Step 2: Consent ── -->
+    <section id="step-consent" class="step hidden">
+      <div class="card">
+        <h2>📋 Persetujuan Analisis</h2>
+        <div class="consent-box">
+          <p><strong>Dengan melanjutkan, Anda menyetujui:</strong></p>
+          <ul>
+            <li>Extension akan menganalisis <strong>riwayat browser 30 hari terakhir</strong> Anda.</li>
+            <li>Hanya <strong>nama domain dan jumlah kunjungan</strong> yang dikirim — bukan isi halaman.</li>
+            <li>Data digunakan <strong>hanya untuk screening karyawan</strong> oleh perusahaan yang meminta.</li>
+            <li>Data di<strong>enkripsi (AES-256)</strong> sebelum dikirim dan <strong>dihapus dalam 30 hari</strong>.</li>
+            <li>Anda berhak <strong>menolak</strong>, namun hal ini dapat memengaruhi proses rekrutmen.</li>
+          </ul>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="consent-check">
+          <span>Saya telah membaca dan menyetujui ketentuan di atas</span>
+        </label>
+        <button id="btn-consent" class="btn btn-primary" disabled>Setuju & Lanjutkan</button>
+      </div>
+    </section>
+
+    <!-- ── Step 3: Analysis ── -->
+    <section id="step-analysis" class="step hidden">
+      <div class="card">
+        <h2>🔍 Menganalisis Browser History...</h2>
+        <div class="loader-container">
+          <div class="loader"></div>
+          <p id="analysis-status" class="status-text">Memindai riwayat browser...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Step 4: Results ── -->
+    <section id="step-results" class="step hidden">
+      <div class="card">
+        <h2>📊 Hasil Analisis</h2>
+
+        <div id="risk-badge" class="risk-badge risk-low">
+          <span class="risk-label">Risk Level</span>
+          <span id="risk-level" class="risk-value">LOW</span>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-value" id="stat-score">0</span>
+            <span class="stat-label">Risk Score</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Total Dianalisis</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-flagged">0</span>
+            <span class="stat-label">Situs Ditandai</span>
+          </div>
+        </div>
+
+        <!-- Time Patterns -->
+        <div class="section-mini">
+          <h3>⏰ Pola Waktu</h3>
+          <div class="pattern-row">
+            <span>Akses Larut Malam</span>
+            <span id="pat-night" class="badge">0</span>
+          </div>
+          <div class="pattern-row">
+            <span>Akses Akhir Pekan</span>
+            <span id="pat-weekend" class="badge">0</span>
+          </div>
+          <div class="pattern-row">
+            <span>Akses Sangat Sering</span>
+            <span id="pat-frequent" class="badge">0</span>
+          </div>
+        </div>
+
+        <!-- Flagged Sites -->
+        <div class="section-mini">
+          <h3>🚩 Situs yang Ditandai</h3>
+          <div id="flagged-list" class="flagged-list">
+            <p class="empty-text">Tidak ada situs yang ditandai</p>
+          </div>
+        </div>
+
+        <!-- Suspicious Patterns -->
+        <div id="suspicious-section" class="section-mini hidden">
+          <h3>⚠️ Pola Mencurigakan</h3>
+          <ul id="suspicious-list" class="suspicious-list"></ul>
+        </div>
+
+        <div class="result-actions">
+          <p class="success-msg" id="submit-status">✅ Laporan telah dikirim ke perusahaan.</p>
+          <button id="btn-clear" class="btn btn-secondary">Hapus Data & Tutup</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Proctoring Indicator ── -->
+    <div id="proctor-bar" class="proctor-bar hidden">
+      <span class="proctor-dot"></span>
+      <span>Proctoring aktif — <span id="proctor-events">0</span> events</span>
+    </div>
+
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

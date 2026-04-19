@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "FraudGuard Screening",
+  "description": "Browser history gambling detector & interview proctoring for FraudGuard SaaS recruitment platform.",
+  "version": "1.1.0",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    },
+    "default_title": "FraudGuard Screening"
+  },
+  "permissions": [
+    "history",
+    "tabs",
+    "activeTab",
+    "storage",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://*.hiregood.one/*",
+    "https://*.replit.app/*",
+    "https://*.replit.dev/*",
+    "http://localhost:*/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.hiregood.one/*",
+        "https://*.replit.app/*",
+        "https://*.replit.dev/*",
+        "http://localhost:*/*"
+      ],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
