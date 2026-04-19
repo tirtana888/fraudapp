@@ -1803,6 +1803,19 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {activeTab === 'overview' && (
+          <div className="mb-6">
+            <ExtensionScreeningCard 
+              sessionId={sessionId}
+              candidateName={candidate?.candidate?.name || 'Kandidat'}
+              candidateEmail={candidate?.candidate?.email || ''}
+              companyName={company?.name || 'Perusahaan'}
+              gamblingAnalysis={candidate?.gamblingAnalysis}
+              proctoringData={candidate?.proctoringData}
+            />
+          </div>
+        )}
+
         {activeTab === 'overview' && candidate.status !== 'completed' && (
           <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center animate-in fade-in slide-in-from-bottom-4">
             <Clock size={48} className="text-yellow-600 mx-auto mb-4" />
@@ -1813,15 +1826,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
         {activeTab === 'overview' && candidate.status === 'completed' && (
           <>
-            <ExtensionScreeningCard 
-              sessionId={sessionId}
-              candidateName={candidate?.candidate?.name || 'Kandidat'}
-              candidateEmail={candidate?.candidate?.email || ''}
-              companyName={company?.name || 'Perusahaan'}
-              gamblingAnalysis={candidate?.gamblingAnalysis}
-              proctoringData={candidate?.proctoringData}
-            />
-
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
