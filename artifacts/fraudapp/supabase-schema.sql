@@ -554,6 +554,192 @@ end;
 $$;
 
 -- ============================================================
+-- SELF-SERVICE COMPANY PROVISIONING RPC
+-- Called by signUpWithFirebase and the first-time OAuth flow to
+-- atomically create a company + user profile in one trusted call.
+--
+-- SECURITY DEFINER means this function runs with the owner's
+-- (postgres) privileges, bypassing RLS on _companies and _users.
+-- This is intentional: it is the trusted server-side path that
+-- keeps tenant identity out of user-controlled INSERT payloads.
+--
+-- After RLS is enabled (apply-rls.mjs), client-side direct
+-- INSERT on _companies is restricted to admins, and _users
+-- INSERT requires company_id IS NULL.  Only this function may
+-- create a company-linked profile on behalf of a new user.
+-- ============================================================
+create or replace function provision_company(
+  p_company_name text,
+  p_user_name    text,
+  p_user_email   text,
+  p_user_phone   text    default null,
+  p_user_avatar  text    default null
+) returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_company_id uuid;
+  v_user_id    uuid := auth.uid();
+  v_now        timestamptz := now();
+begin
+  if v_user_id is null then
+    raise exception 'provision_company: caller is not authenticated';
+  end if;
+
+  -- Guard: reject if the caller already belongs to a company (prevents tenant hopping).
+  if exists (select 1 from _users where id = v_user_id and company_id is not null) then
+    raise exception 'provision_company: caller already belongs to a company';
+  end if;
+
+  -- Create company record
+  insert into _companies (
+    name, admin_email, tier, status, credits, verification_credits,
+    users_count, joined_date, created_at, updated_at
+  ) values (
+    p_company_name, p_user_email, 'Freemium', 'Active', 1000, 100,
+    1, v_now, v_now, v_now
+  )
+  returning id into v_company_id;
+
+  -- Create user profile linked to the new company
+  insert into _users (
+    id, email, name, role, company_id, phone, avatar,
+    email_verified, created_at, updated_at
+  ) values (
+    v_user_id, p_user_email, p_user_name, 'Company Admin', v_company_id,
+    p_user_phone, p_user_avatar, false, v_now, v_now
+  )
+  on conflict (id) do update
+    set company_id = v_company_id,
+        name       = excluded.name,
+        phone      = excluded.phone,
+        avatar     = excluded.avatar,
+        updated_at = v_now;
+
+  return jsonb_build_object(
+    'companyId', v_company_id::text,
+    'userId',    v_user_id::text
+  );
+end;
+$$;
+
+-- Grant execute to authenticated role (anon key + JWT users)
+grant execute on function provision_company(text, text, text, text, text) to authenticated;
+
+-- ============================================================
+-- PUBLIC CANDIDATE RPCs (SECURITY DEFINER)
+--
+-- These three functions power the unauthenticated candidate
+-- assessment flow (PublicAssessment.tsx).  Making them
+-- SECURITY DEFINER lets them bypass RLS and look up exactly
+-- the one row keyed by the opaque access_code token, without
+-- granting anonymous callers any enumeration ability.
+--
+-- Grants are given to the 'anon' role so unauthenticated
+-- (non-JWT) callers can invoke them via the Supabase REST API.
+-- ============================================================
+
+-- Returns minimal company branding info for the public assessment page.
+-- adminEmail and other internal fields are intentionally excluded to avoid
+-- leaking PII to unauthenticated callers.
+create or replace function get_company_for_public(p_company_id text)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_row _companies%rowtype;
+begin
+  select * into v_row
+  from _companies
+  where id = p_company_id::uuid;
+
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'id',        v_row.id,
+    'name',      v_row.name,
+    'tier',      v_row.tier,
+    'status',    v_row.status,
+    'createdAt', v_row.created_at
+  );
+end;
+$$;
+
+grant execute on function get_company_for_public(text) to anon, authenticated;
+
+-- Returns a single assessment invite looked up by its opaque access code.
+-- Returns explicit camelCase keys matching the AssessmentInvite TypeScript type
+-- so the result can be cast directly without snake_case→camelCase mapping.
+-- The caller must already possess the code; they cannot enumerate other rows.
+create or replace function verify_access_code(p_code text)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_row _assessment_invites%rowtype;
+begin
+  select * into v_row
+  from _assessment_invites
+  where access_code = p_code;
+
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'id',                v_row.id::text,
+    'companyId',         v_row.company_id::text,
+    'accessCode',        v_row.access_code,
+    'name',              v_row.name,
+    'email',             v_row.email,
+    'role',              v_row.role,
+    'status',            v_row.status,
+    'sessionId',         v_row.session_id::text,
+    'jobId',             v_row.job_id::text,
+    'applicationId',     v_row.application_id::text,
+    'candidateName',     v_row.candidate_name,
+    'candidateEmail',    v_row.candidate_email,
+    'candidateWhatsapp', v_row.candidate_whatsapp,
+    'assessmentConfig',  v_row.assessment_config,
+    'inviteLink',        v_row.invite_link,
+    'usedAt',            v_row.used_at::text,
+    'createdAt',         v_row.created_at::text,
+    'updatedAt',         v_row.updated_at::text
+  );
+end;
+$$;
+
+grant execute on function verify_access_code(text) to anon, authenticated;
+
+-- Marks a specific invite (identified by opaque access code) as used.
+-- Only status and session_id are updated; all other fields are immutable.
+create or replace function mark_access_code_used(
+  p_code       text,
+  p_status     text,
+  p_session_id text  default null
+) returns void
+language plpgsql
+security definer
+as $$
+begin
+  update _assessment_invites
+  set    status     = p_status,
+         -- session_id is uuid; cast the text argument explicitly.
+         -- coalesce keeps the existing value when p_session_id is null.
+         session_id = coalesce(p_session_id::uuid, session_id),
+         updated_at = now()
+  where  access_code = p_code;
+end;
+$$;
+
+grant execute on function mark_access_code_used(text, text, text) to anon, authenticated;
+
+-- ============================================================
 -- STORAGE BUCKETS
 -- Create these in the Supabase dashboard > Storage tab, or
 -- run with the service-role key via CLI.
@@ -564,8 +750,17 @@ $$;
 -- ============================================================
 -- NOTE ON ROW LEVEL SECURITY
 -- RLS is intentionally NOT enabled in this schema file so the
--- app functions correctly with the anon key during development.
--- For production, enable RLS on the BASE TABLES (_companies,
--- _jobs, etc.) and add policies based on company_id ownership
--- and user roles. The views inherit the base-table RLS.
+-- app can be seeded and tested during development without auth
+-- constraints. For production, apply RLS using the companion
+-- script after this schema has been applied:
+--
+--   node artifacts/fraudapp/scripts/apply-schema.mjs
+--   node artifacts/fraudapp/scripts/apply-rls.mjs
+--
+-- The RLS file (supabase-rls-policies.sql) enables RLS on all
+-- base tables and creates policies so that:
+--   - Company users can only access their own company's rows.
+--   - System Admin users retain full access to all rows.
+--   - The service-role key bypasses all RLS (server-side only).
+-- The camelCase views inherit RLS from their underlying tables.
 -- ============================================================

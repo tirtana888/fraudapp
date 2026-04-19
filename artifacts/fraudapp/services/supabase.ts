@@ -232,14 +232,17 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
         .eq('email', email);
 
       if (emailError) {
-        // Upsert
+        // Upsert fallback: create a minimal profile when the user row does not
+        // exist yet.  Admin profiles (role = 'System Admin') must be created
+        // via a privileged backend path using the service-role key; they cannot
+        // be created through this client-side path because RLS blocks it.
         const newProfile: UserProfile = {
           id: userId,
           email: email,
-          name: updates.name || 'User',
-          role: updates.role || 'System Admin',
           createdAt: new Date().toISOString(),
-          ...updates
+          ...updates,
+          name: updates.name || 'User',
+          role: updates.role || 'Company Admin',
         };
         const { error: insertError } = await supabase.from(COLLECTIONS.USERS).insert(newProfile);
         if (insertError) throw insertError;
@@ -255,17 +258,26 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
 // ==========================================
 
 export const getCompanyById = async (companyId: string): Promise<CompanyProfile | null> => {
+  // Authenticated callers: direct table query returns the full CompanyProfile.
+  // This is the primary path used by the authenticated app (App.tsx, dashboards).
   const { data, error } = await supabase
     .from(COLLECTIONS.COMPANIES)
     .select('*')
     .eq('id', companyId)
     .single();
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    console.error('[COMPANY] Error fetching company:', error);
-    return null;
+  if (!error && data) return data as CompanyProfile;
+
+  // Unauthenticated callers (e.g., public assessment page): the direct query
+  // will fail with an RLS error.  Fall back to the get_company_for_public
+  // SECURITY DEFINER RPC which returns only public-safe branding fields.
+  if (error?.code === 'PGRST301' || error?.message?.includes('permission denied') || !data) {
+    const { data: rpcData } = await supabase.rpc('get_company_for_public', { p_company_id: companyId });
+    if (!rpcData) return null;
+    return rpcData as CompanyProfile;
   }
-  return data as CompanyProfile;
+
+  console.error('[COMPANY] Error fetching company:', error);
+  return null;
 };
 
 export const createCompany = async (companyData: Omit<CompanyProfile, 'id'>): Promise<string> => {
@@ -945,34 +957,33 @@ export const observeAuthState = (callback: (user: UserProfile | null) => void): 
           return;
         }
 
-        // First-time Google OAuth login — provision user + company records
-        const now = new Date().toISOString();
+        // First-time Google OAuth login — provision user + company via trusted RPC.
+        // provision_company() is SECURITY DEFINER and atomically creates both
+        // records, preventing arbitrary company_id injection from the client.
         const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
-        const companyData = {
-          name: `${fullName}'s Company`,
-          tier: 'Freemium',
-          status: 'Active',
-          adminEmail: supaUser.email,
-          joinedDate: now,
-          usersCount: 1,
-          credits: 1000,
-          verification_credits: 100,
-          createdAt: now,
-        };
-        const { data: newCompany } = await supabase.from(COLLECTIONS.COMPANIES).insert(companyData).select('id').single();
-        const companyId = newCompany?.id || `temp-${supaUser.id}`;
+        const avatar: string = supaUser.user_metadata?.avatar_url
+          || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
 
+        const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
+          p_company_name: `${fullName}'s Company`,
+          p_user_name:    fullName,
+          p_user_email:   supaUser.email || '',
+          p_user_phone:   null,
+          p_user_avatar:  avatar,
+        });
+        if (rpError) throw rpError;
+
+        const companyId: string = (rpResult as { companyId: string })?.companyId || `temp-${supaUser.id}`;
         const newProfile: UserProfile = {
           id: supaUser.id,
           email: supaUser.email || '',
           name: fullName,
           role: 'Company Admin',
-          avatar: supaUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,
+          avatar,
           companyId,
           emailVerified: !!supaUser.email_confirmed_at,
-          createdAt: now,
+          createdAt: new Date().toISOString(),
         };
-        await supabase.from(COLLECTIONS.USERS).insert(newProfile);
         callback(newProfile);
       } catch (err) {
         console.error('[AUTH] observeAuthState error:', err);
@@ -1004,22 +1015,20 @@ export const signUpWithFirebase = async (userData: {
   if (error) throw error;
   const userId = data.user!.id;
 
-  const now = new Date().toISOString();
-  const companyData = {
-    name: userData.companyName,
-    tier: 'Freemium',
-    status: 'Active',
-    adminEmail: userData.email,
-    joinedDate: now,
-    usersCount: 1,
-    credits: 1000,
-    verification_credits: 100,
-    createdAt: now,
-  };
-  const { data: company } = await supabase.from(COLLECTIONS.COMPANIES).insert(companyData).select('id').single();
-  const companyId = company?.id || `temp-${userId}`;
+  // provision_company() is a SECURITY DEFINER RPC that atomically creates the
+  // company and user profile in one trusted call.  This prevents arbitrary
+  // company_id injection via direct client-side INSERT.
+  const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
+    p_company_name: userData.companyName,
+    p_user_name:    userData.fullName,
+    p_user_email:   userData.email,
+    p_user_phone:   userData.phone,
+    p_user_avatar:  `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
+  });
+  if (rpError) throw rpError;
 
-  const userProfile: UserProfile = {
+  const companyId: string = (rpResult as { companyId: string })?.companyId || `temp-${userId}`;
+  return {
     id: userId,
     name: userData.fullName,
     email: userData.email,
@@ -1027,12 +1036,8 @@ export const signUpWithFirebase = async (userData: {
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
     companyId,
     emailVerified: false,
-    createdAt: now,
+    createdAt: new Date().toISOString(),
   };
-
-  // Insert to DB with extra phone field not in UserProfile type
-  await supabase.from(COLLECTIONS.USERS).insert({ ...userProfile, phone: userData.phone });
-  return userProfile;
 };
 
 export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | null> => {
@@ -1071,12 +1076,11 @@ export const sendAssessmentCompleteEmail = async (
 };
 
 export const verifyAccessCode = async (code: string): Promise<AssessmentInvite | null> => {
-  const { data, error } = await supabase
-    .from(COLLECTIONS.INVITES)
-    .select('*')
-    .eq('access_code', code)
-    .single();
-  if (error) return null;
+  // Use the verify_access_code SECURITY DEFINER RPC so unauthenticated
+  // candidates can look up their invite without a blanket anonymous SELECT
+  // policy on _assessment_invites.
+  const { data, error } = await supabase.rpc('verify_access_code', { p_code: code });
+  if (error || !data) return null;
   return data as AssessmentInvite;
 };
 
@@ -1085,7 +1089,12 @@ export const markAccessCodeUsed = async (
   status: AssessmentInvite['status'],
   sessionId?: string
 ): Promise<void> => {
-  const updates: Partial<AssessmentInvite> & { updatedAt: string } = { status, updatedAt: new Date().toISOString() };
-  if (sessionId) updates.sessionId = sessionId;
-  await supabase.from(COLLECTIONS.INVITES).update(updates).eq('access_code', code);
+  // Use the mark_access_code_used SECURITY DEFINER RPC so unauthenticated
+  // candidates can update their specific invite without a blanket anonymous
+  // UPDATE policy on _assessment_invites.
+  await supabase.rpc('mark_access_code_used', {
+    p_code:       code,
+    p_status:     status,
+    p_session_id: sessionId ?? null,
+  });
 };

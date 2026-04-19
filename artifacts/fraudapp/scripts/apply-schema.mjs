@@ -94,3 +94,6 @@ console.log(`  Buckets     (${buckets.length}): ${buckets.map(b => `${b.id}(${b.
 console.log('');
 console.log('=== Done ===');
 console.log('');
+console.log('Next step for production: apply Row Level Security policies:');
+console.log('  node artifacts/fraudapp/scripts/apply-rls.mjs');
+console.log('');
