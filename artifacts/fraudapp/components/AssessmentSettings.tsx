@@ -5,7 +5,7 @@ import {
   Code, Share2, Eye, Layout, ChevronRight, PlayCircle
 } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { updateCompany, uploadCompanyLogo, deleteCompanyLogo } from '../services/firebase';
+import { updateCompany, uploadCompanyLogo, deleteCompanyLogo } from '../services/supabase';
 import { PLAN_LIMITS } from '../constants/plans';
 import { useToast } from './Toast';
 import { motion, AnimatePresence } from 'framer-motion';

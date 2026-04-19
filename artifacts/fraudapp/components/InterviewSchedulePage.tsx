@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Globe, CheckCircle2, Clock3, Mail, User, Filter, Copy, Loader2 } from 'lucide-react';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../services/firebase';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface ScheduledInterview {
@@ -36,41 +35,26 @@ const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId
 
         setIsLoading(true);
 
-        // Real-time listener for interviews
-        const q = query(
-            collection(db, COLLECTIONS.SESSIONS),
-            where('companyId', '==', companyId),
-            where('interviewSchedule', '!=', null)
-        );
+        const loadInterviews = async () => {
+            const { data: sessionsData } = await supabase
+                .from(COLLECTIONS.SESSIONS)
+                .select('*')
+                .eq('companyId', companyId)
+                .not('interviewSchedule', 'is', null);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
             const interviewData: ScheduledInterview[] = [];
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+            (sessionsData || []).forEach((data: any) => {
                 if (data.interviewSchedule) {
-                    // Handle scheduledAt - could be Timestamp or ISO string
-                    let scheduledAtDate = new Date();
-                    if (data.interviewSchedule.scheduledAt) {
-                        if (typeof data.interviewSchedule.scheduledAt.toDate === 'function') {
-                            scheduledAtDate = data.interviewSchedule.scheduledAt.toDate();
-                        } else if (typeof data.interviewSchedule.scheduledAt === 'string') {
-                            scheduledAtDate = new Date(data.interviewSchedule.scheduledAt);
-                        }
-                    }
-
-                    // Handle confirmedAt - could be Timestamp or ISO string
-                    let confirmedAtDate = undefined;
-                    if (data.interviewSchedule.confirmedAt) {
-                        if (typeof data.interviewSchedule.confirmedAt.toDate === 'function') {
-                            confirmedAtDate = data.interviewSchedule.confirmedAt.toDate();
-                        } else if (typeof data.interviewSchedule.confirmedAt === 'string') {
-                            confirmedAtDate = new Date(data.interviewSchedule.confirmedAt);
-                        }
-                    }
+                    const scheduledAtDate = data.interviewSchedule.scheduledAt
+                        ? new Date(data.interviewSchedule.scheduledAt)
+                        : new Date();
+                    const confirmedAtDate = data.interviewSchedule.confirmedAt
+                        ? new Date(data.interviewSchedule.confirmedAt)
+                        : undefined;
 
                     interviewData.push({
-                        sessionId: doc.id,
+                        sessionId: data.id,
                         candidateName: data.candidate?.name || 'Unknown',
                         candidateEmail: data.candidate?.email || '',
                         jobTitle: data.jobTitle || data.candidate?.role || 'Position not specified',
@@ -95,13 +79,16 @@ const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId
 
             setInterviews(interviewData);
             setIsLoading(false);
-        }, (error) => {
-            console.error('Error fetching interviews:', error);
-            toast.error('Gagal memuat jadwal wawancara');
-            setIsLoading(false);
-        });
+        };
 
-        return () => unsubscribe();
+        loadInterviews();
+
+        const channel = supabase
+            .channel('interviews-' + companyId)
+            .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => loadInterviews())
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [companyId]);
 
     useEffect(() => {

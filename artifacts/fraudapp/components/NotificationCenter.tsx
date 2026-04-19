@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, Clock } from 'lucide-react';
-import { collection, query, where, onSnapshot, updateDoc, doc, orderBy, limit } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../services/firebase';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { Notification } from '../types';
 
 interface NotificationCenterProps {
@@ -21,36 +20,32 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ companyId, onNa
 
         console.log('[NOTIF-CENTER] Setting up listener for company:', companyId);
 
-        const q = query(
-            collection(db, COLLECTIONS.NOTIFICATIONS),
-            where('companyId', '==', companyId),
-            orderBy('createdAt', 'desc'),
-            limit(20)
-        );
+        const loadNotifs = async () => {
+            const { data } = await supabase
+                .from(COLLECTIONS.NOTIFICATIONS)
+                .select('*')
+                .eq('companyId', companyId)
+                .order('createdAt', { ascending: false })
+                .limit(20);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const notifs: Notification[] = [];
-            let unread = 0;
-
-            snapshot.forEach((docSnap) => {
-                const data = { id: docSnap.id, ...docSnap.data() } as Notification;
-                notifs.push(data);
-                if (!data.read) unread++;
-            });
-
+            const notifs = (data || []) as Notification[];
+            let unread = notifs.filter(n => !n.read).length;
             setNotifications(notifs);
             setUnreadCount(unread);
-
-            // Play sound for NEW unread notifications (not on initial load)
             if (unread > prevUnreadCount && prevUnreadCount > 0) {
-                console.log('[NOTIF-CENTER] New notification detected, playing sound');
                 playNotificationSound();
             }
-
             setPrevUnreadCount(unread);
-        });
+        };
 
-        return () => unsubscribe();
+        loadNotifs();
+
+        const channel = supabase
+            .channel('notifs-' + companyId)
+            .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.NOTIFICATIONS, filter: `companyId=eq.${companyId}` }, () => loadNotifs())
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [companyId]);
 
     const playNotificationSound = () => {
@@ -79,9 +74,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ companyId, onNa
 
     const markAsRead = async (notificationId: string) => {
         try {
-            await updateDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notificationId), {
-                read: true
-            });
+            await supabase.from(COLLECTIONS.NOTIFICATIONS).update({ read: true }).eq('id', notificationId);
         } catch (error) {
             console.error('[NOTIF-CENTER] Error marking as read:', error);
         }

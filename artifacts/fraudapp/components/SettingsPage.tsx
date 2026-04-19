@@ -22,7 +22,7 @@ import {
     CheckCircle
 } from 'lucide-react';
 import { UserProfile, CompanyProfile } from '../types';
-import { updateCompany, updateUserProfile } from '../services/firebase';
+import { updateCompany, updateUserProfile } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface SettingsPageProps {

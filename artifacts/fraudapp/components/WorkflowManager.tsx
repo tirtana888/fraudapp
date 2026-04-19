@@ -5,8 +5,7 @@ import {
   GripVertical, Layout, Box, Coins, Clock
 } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES, WorkflowTemplate } from '../types';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../services/firebase';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { useToast } from './Toast';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -57,16 +56,12 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
   const loadWorkflows = async () => {
     try {
       setLoading(true);
-      const q = query(
-        collection(db, COLLECTIONS.WORKFLOWS),
-        where('companyId', '==', companyId)
-      );
-      const snapshot = await getDocs(q);
-      const workflowsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Workflow[];
-      setWorkflows(workflowsData);
+      const { data, error } = await supabase
+        .from(COLLECTIONS.WORKFLOWS)
+        .select('*')
+        .eq('companyId', companyId);
+      if (error) throw error;
+      setWorkflows((data || []) as Workflow[]);
     } catch (error) {
       console.error('[WORKFLOW] Error loading workflows:', error);
     } finally {
@@ -156,17 +151,11 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       };
 
       if (editingWorkflow) {
-        // Update existing workflow
-        const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, editingWorkflow.id!);
-        await updateDoc(workflowRef, workflowData);
+        await supabase.from(COLLECTIONS.WORKFLOWS).update(workflowData).eq('id', editingWorkflow.id!);
         console.log('[WORKFLOW] Updated workflow:', editingWorkflow.id);
         toast.success('Workflow berhasil diupdate!');
       } else {
-        // Create new workflow
-        await addDoc(collection(db, COLLECTIONS.WORKFLOWS), {
-          ...workflowData,
-          createdAt: new Date().toISOString()
-        });
+        await supabase.from(COLLECTIONS.WORKFLOWS).insert({ ...workflowData, createdAt: new Date().toISOString() });
         console.log('[WORKFLOW] Created new workflow');
         toast.success('Workflow berhasil dibuat!');
       }
@@ -186,7 +175,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     if (!confirm('Apakah Anda yakin ingin menghapus workflow ini?')) return;
 
     try {
-      await deleteDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
+      await supabase.from(COLLECTIONS.WORKFLOWS).delete().eq('id', workflowId);
       console.log('[WORKFLOW] Deleted workflow:', workflowId);
       loadWorkflows();
       toast.success('Workflow berhasil dihapus');

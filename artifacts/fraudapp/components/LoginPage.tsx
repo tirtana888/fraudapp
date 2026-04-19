@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2, RefreshCw, ArrowLeft } from 'lucide-react';
 import { UserProfile } from '../types';
-import { loginWithFirebase, sendPasswordReset, resendVerificationEmail, signInWithGoogle } from '../services/firebase';
+import { loginWithFirebase, sendPasswordReset, resendVerificationEmail, signInWithGoogle } from '../services/supabase';
 import AuthLayout from './layouts/AuthLayout';
 import Input from './ui/Input';
 import Button from './ui/Button';

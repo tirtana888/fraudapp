@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown, Upload, MoreVertical, Trash2, RefreshCw } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, deleteCandidateInvite } from '../services/firebase';
+import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, deleteCandidateInvite } from '../services/supabase';
 import { CompanyProfile, AssessmentInvite } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, MessageSquare, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { InterviewSession, Candidate, AssessmentItem, SJTItem } from '../types';
-import { updateSessionInDB, getCompanyById } from '../services/firebase';
+import { updateSessionInDB, getCompanyById } from '../services/supabase';
 import { analyzeFraudRisk } from '../services/genai';
 import ReportView from './ReportView';
 import { useToast } from './Toast';

@@ -1,14 +1,4 @@
-/**
- * REVENUE SERVICE
- * Handles all revenue and financial analytics queries
- */
-
-import { db } from './firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-
-// ==========================================
-// INTERFACES
-// ==========================================
+import { supabase } from './supabase';
 
 export interface RevenueAnalytics {
     totalRevenue: number;
@@ -53,318 +43,162 @@ export interface PaymentMetrics {
     successRate: number;
 }
 
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
+const getStartOfMonth = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
+const getStartOfDay = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const getStartOfLastMonth = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() - 1, 1); };
+const getEndOfLastMonth = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59); };
 
-const getStartOfMonth = (): Date => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-};
-
-const getStartOfDay = (): Date => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-const getStartOfLastMonth = (): Date => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() - 1, 1);
-};
-
-const getEndOfLastMonth = (): Date => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-};
-
-// ==========================================
-// REVENUE ANALYTICS
-// ==========================================
-
-/**
- * Get comprehensive revenue analytics
- */
 export const getRevenueAnalytics = async (): Promise<RevenueAnalytics> => {
     try {
-        const paymentsRef = collection(db, 'payment-transactions');
+        const { data: payments } = await supabase
+            .from('payment_transactions')
+            .select('*')
+            .eq('status', 'success');
 
-        // Get all successful payments
-        const allPaymentsQuery = query(
-            paymentsRef,
-            where('status', '==', 'success')
-        );
-        const allPaymentsSnapshot = await getDocs(allPaymentsQuery);
+        let totalRevenue = 0, monthlyRevenue = 0, dailyRevenue = 0, lastMonthRevenue = 0;
+        const startOfMonth = getStartOfMonth(), startOfDay = getStartOfDay();
+        const startOfLastMonth = getStartOfLastMonth(), endOfLastMonth = getEndOfLastMonth();
 
-        let totalRevenue = 0;
-        let monthlyRevenue = 0;
-        let dailyRevenue = 0;
-        let lastMonthRevenue = 0;
-
-        const startOfMonth = getStartOfMonth();
-        const startOfDay = getStartOfDay();
-        const startOfLastMonth = getStartOfLastMonth();
-        const endOfLastMonth = getEndOfLastMonth();
-
-        allPaymentsSnapshot.forEach(doc => {
-            const data = doc.data();
-            const amount = data.amount || 0;
-            const timestamp = data.timestamp?.toDate() || new Date(0);
-
+        (payments || []).forEach((p: any) => {
+            const amount = p.amount || 0;
+            const ts = new Date(p.timestamp || p.created_at || 0);
             totalRevenue += amount;
-
-            if (timestamp >= startOfMonth) {
-                monthlyRevenue += amount;
-            }
-
-            if (timestamp >= startOfDay) {
-                dailyRevenue += amount;
-            }
-
-            if (timestamp >= startOfLastMonth && timestamp <= endOfLastMonth) {
-                lastMonthRevenue += amount;
-            }
+            if (ts >= startOfMonth) monthlyRevenue += amount;
+            if (ts >= startOfDay) dailyRevenue += amount;
+            if (ts >= startOfLastMonth && ts <= endOfLastMonth) lastMonthRevenue += amount;
         });
 
-        // Calculate MRR from active subscriptions
-        const companiesRef = collection(db, 'companies');
-        const activeCompaniesQuery = query(
-            companiesRef,
-            where('status', '==', 'Active')
-        );
-        const companiesSnapshot = await getDocs(activeCompaniesQuery);
+        const { data: activeCompanies } = await supabase
+            .from('companies')
+            .select('tier')
+            .eq('status', 'Active');
 
         let mrr = 0;
-        companiesSnapshot.forEach(doc => {
-            const data = doc.data();
-            const tierMRR = {
-                'Freemium': 0,
-                'Basic': 100000,
-                'Premium': 500000,
-                'Enterprise': 2000000
-            };
-            mrr += tierMRR[data.tier as keyof typeof tierMRR] || 0;
+        (activeCompanies || []).forEach((c: any) => {
+            const tierMRR: Record<string, number> = { Freemium: 0, Basic: 100000, Premium: 500000, Enterprise: 2000000 };
+            mrr += tierMRR[c.tier] || 0;
         });
 
-        const arr = mrr * 12;
         const revenueGrowth = lastMonthRevenue > 0
-            ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
-            : 0;
+            ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
-        return {
-            totalRevenue,
-            monthlyRevenue,
-            dailyRevenue,
-            mrr,
-            arr,
-            revenueGrowth
-        };
+        return { totalRevenue, monthlyRevenue, dailyRevenue, mrr, arr: mrr * 12, revenueGrowth };
     } catch (error) {
         console.error('Error getting revenue analytics:', error);
-        return {
-            totalRevenue: 0,
-            monthlyRevenue: 0,
-            dailyRevenue: 0,
-            mrr: 0,
-            arr: 0,
-            revenueGrowth: 0
-        };
+        return { totalRevenue: 0, monthlyRevenue: 0, dailyRevenue: 0, mrr: 0, arr: 0, revenueGrowth: 0 };
     }
 };
 
-// ==========================================
-// REVENUE BY TIER
-// ==========================================
-
 export const getRevenueByTier = async (): Promise<TierRevenue[]> => {
     try {
-        const companiesRef = collection(db, 'companies');
-        const companiesSnapshot = await getDocs(companiesRef);
+        const [{ data: companies }, { data: payments }] = await Promise.all([
+            supabase.from('companies').select('id, tier'),
+            supabase.from('payment_transactions').select('companyId, amount').eq('status', 'success'),
+        ]);
 
-        const tierData: { [key: string]: { revenue: number; count: number } } = {
-            'Freemium': { revenue: 0, count: 0 },
-            'Basic': { revenue: 0, count: 0 },
-            'Premium': { revenue: 0, count: 0 },
-            'Enterprise': { revenue: 0, count: 0 }
+        const tierData: Record<string, { revenue: number; count: number }> = {
+            Freemium: { revenue: 0, count: 0 },
+            Basic: { revenue: 0, count: 0 },
+            Premium: { revenue: 0, count: 0 },
+            Enterprise: { revenue: 0, count: 0 },
         };
 
+        const companyPayments: Record<string, number> = {};
         let totalRevenue = 0;
-
-        const paymentsRef = collection(db, 'payment-transactions');
-        const paymentsQuery = query(paymentsRef, where('status', '==', 'success'));
-        const paymentsSnapshot = await getDocs(paymentsQuery);
-
-        const companyPayments: { [key: string]: number } = {};
-        paymentsSnapshot.forEach(doc => {
-            const data = doc.data();
-            const companyId = data.companyId;
-            const amount = data.amount || 0;
-            companyPayments[companyId] = (companyPayments[companyId] || 0) + amount;
-            totalRevenue += amount;
+        (payments || []).forEach((p: any) => {
+            companyPayments[p.companyId] = (companyPayments[p.companyId] || 0) + (p.amount || 0);
+            totalRevenue += p.amount || 0;
         });
 
-        companiesSnapshot.forEach(doc => {
-            const data = doc.data();
-            const tier = data.tier || 'Freemium';
-            const companyRevenue = companyPayments[doc.id] || 0;
+        const companyTierMap: Record<string, string> = {};
+        (companies || []).forEach((c: any) => { companyTierMap[c.id] = c.tier || 'Freemium'; });
 
-            if (tierData[tier]) {
-                tierData[tier].revenue += companyRevenue;
-                tierData[tier].count += 1;
-            }
+        Object.entries(companyPayments).forEach(([cid, revenue]) => {
+            const tier = companyTierMap[cid] || 'Freemium';
+            if (tierData[tier]) { tierData[tier].revenue += revenue; tierData[tier].count++; }
         });
 
-        const result: TierRevenue[] = Object.entries(tierData).map(([tier, data]) => ({
-            tier,
-            revenue: data.revenue,
-            count: data.count,
-            percentage: totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0
-        }));
-
-        return result.sort((a, b) => b.revenue - a.revenue);
+        return Object.entries(tierData).map(([tier, d]) => ({
+            tier, revenue: d.revenue, count: d.count,
+            percentage: totalRevenue > 0 ? (d.revenue / totalRevenue) * 100 : 0
+        })).sort((a, b) => b.revenue - a.revenue);
     } catch (error) {
         console.error('Error getting revenue by tier:', error);
         return [];
     }
 };
 
-// ==========================================
-// PAYMENT TRANSACTIONS
-// ==========================================
-
 export const getPaymentTransactions = async (limitCount: number = 20): Promise<PaymentTransaction[]> => {
     try {
-        const paymentsRef = collection(db, 'payment-transactions');
-        const paymentsQuery = query(
-            paymentsRef,
-            orderBy('timestamp', 'desc'),
-            limit(limitCount)
-        );
-        const paymentsSnapshot = await getDocs(paymentsQuery);
+        const [{ data: payments }, { data: companies }] = await Promise.all([
+            supabase.from('payment_transactions').select('*').order('timestamp', { ascending: false }).limit(limitCount),
+            supabase.from('companies').select('id, name'),
+        ]);
 
-        const companiesRef = collection(db, 'companies');
-        const companiesSnapshot = await getDocs(companiesRef);
-        const companyNames: { [key: string]: string } = {};
-        companiesSnapshot.forEach(doc => {
-            companyNames[doc.id] = doc.data().name || 'Unknown Company';
-        });
+        const companyNames: Record<string, string> = {};
+        (companies || []).forEach((c: any) => { companyNames[c.id] = c.name || 'Unknown'; });
 
-        const transactions: PaymentTransaction[] = [];
-        paymentsSnapshot.forEach(doc => {
-            const data = doc.data();
-            transactions.push({
-                id: doc.id,
-                companyId: data.companyId || '',
-                companyName: companyNames[data.companyId] || 'Unknown',
-                amount: data.amount || 0,
-                status: data.status || 'pending',
-                method: data.method || 'xendit',
-                timestamp: data.timestamp?.toDate() || new Date(),
-                invoiceId: data.invoiceId
-            });
-        });
-
-        return transactions;
+        return (payments || []).map((p: any) => ({
+            id: p.id,
+            companyId: p.companyId || '',
+            companyName: companyNames[p.companyId] || 'Unknown',
+            amount: p.amount || 0,
+            status: p.status || 'pending',
+            method: p.method || 'xendit',
+            timestamp: new Date(p.timestamp || p.created_at || Date.now()),
+            invoiceId: p.invoiceId,
+        }));
     } catch (error) {
         console.error('Error getting payment transactions:', error);
         return [];
     }
 };
 
-// ==========================================
-// CREDIT USAGE STATS
-// ==========================================
-
 export const getCreditUsageStats = async (): Promise<CreditUsageStats> => {
     try {
-        const companiesRef = collection(db, 'companies');
-        const companiesSnapshot = await getDocs(companiesRef);
+        const { data: companies } = await supabase.from('companies').select('credits, creditsUsed');
+        let totalCreditsSold = 0, totalCreditsConsumed = 0, totalCreditsRemaining = 0, companyCount = 0;
 
-        let totalCreditsSold = 0;
-        let totalCreditsConsumed = 0;
-        let totalCreditsRemaining = 0;
-        let companyCount = 0;
-
-        companiesSnapshot.forEach(doc => {
-            const data = doc.data();
-            const credits = data.credits || 0;
-            const creditsUsed = data.creditsUsed || 0;
-
+        (companies || []).forEach((c: any) => {
+            const credits = c.credits || 0;
+            const used = c.creditsUsed || 0;
             totalCreditsRemaining += credits;
-            totalCreditsConsumed += creditsUsed;
-            totalCreditsSold += credits + creditsUsed;
-            companyCount += 1;
+            totalCreditsConsumed += used;
+            totalCreditsSold += credits + used;
+            companyCount++;
         });
-
-        const averageCreditsPerCompany = companyCount > 0 ? totalCreditsSold / companyCount : 0;
-        const creditBurnRate = totalCreditsConsumed > 0 ? Math.round(totalCreditsConsumed / 30) : 0;
 
         return {
             totalCreditsSold,
             totalCreditsConsumed,
             totalCreditsRemaining,
-            averageCreditsPerCompany: Math.round(averageCreditsPerCompany),
-            creditBurnRate
+            averageCreditsPerCompany: companyCount > 0 ? Math.round(totalCreditsSold / companyCount) : 0,
+            creditBurnRate: totalCreditsConsumed > 0 ? Math.round(totalCreditsConsumed / 30) : 0,
         };
     } catch (error) {
         console.error('Error getting credit usage stats:', error);
-        return {
-            totalCreditsSold: 0,
-            totalCreditsConsumed: 0,
-            totalCreditsRemaining: 0,
-            averageCreditsPerCompany: 0,
-            creditBurnRate: 0
-        };
+        return { totalCreditsSold: 0, totalCreditsConsumed: 0, totalCreditsRemaining: 0, averageCreditsPerCompany: 0, creditBurnRate: 0 };
     }
 };
 
-// ==========================================
-// PAYMENT METRICS
-// ==========================================
-
 export const getPaymentMetrics = async (): Promise<PaymentMetrics> => {
     try {
-        const paymentsRef = collection(db, 'payment-transactions');
-        const paymentsSnapshot = await getDocs(paymentsRef);
+        const { data: payments } = await supabase.from('payment_transactions').select('status');
+        let totalPayments = 0, successfulPayments = 0, failedPayments = 0, pendingPayments = 0;
 
-        let totalPayments = 0;
-        let successfulPayments = 0;
-        let failedPayments = 0;
-        let pendingPayments = 0;
-
-        paymentsSnapshot.forEach(doc => {
-            const data = doc.data();
-            const status = data.status || 'pending';
-
-            totalPayments += 1;
-
-            if (status === 'success') {
-                successfulPayments += 1;
-            } else if (status === 'failed') {
-                failedPayments += 1;
-            } else {
-                pendingPayments += 1;
-            }
+        (payments || []).forEach((p: any) => {
+            totalPayments++;
+            if (p.status === 'success') successfulPayments++;
+            else if (p.status === 'failed') failedPayments++;
+            else pendingPayments++;
         });
 
-        const successRate = totalPayments > 0
-            ? Math.round((successfulPayments / totalPayments) * 100)
-            : 0;
-
         return {
-            totalPayments,
-            successfulPayments,
-            failedPayments,
-            pendingPayments,
-            successRate
+            totalPayments, successfulPayments, failedPayments, pendingPayments,
+            successRate: totalPayments > 0 ? Math.round((successfulPayments / totalPayments) * 100) : 0
         };
     } catch (error) {
         console.error('Error getting payment metrics:', error);
-        return {
-            totalPayments: 0,
-            successfulPayments: 0,
-            failedPayments: 0,
-            pendingPayments: 0,
-            successRate: 0
-        };
+        return { totalPayments: 0, successfulPayments: 0, failedPayments: 0, pendingPayments: 0, successRate: 0 };
     }
 };

@@ -1,9 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy, Bot } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, db, COLLECTIONS, functions } from '../services/firebase';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, supabase, COLLECTIONS } from '../services/supabase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -138,17 +136,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
           // Update stage to 'integrity_assessment' via Cloud Function (non-blocking)
           // This uses Admin SDK so no permission issues from public page
-          if (invite.applicationId && functions) {
-            const updateStage = httpsCallable(functions, 'updateCandidateStage');
-            updateStage({
-              applicationId: invite.applicationId,
-              stage: 'integrity_assessment',
-              note: 'Integrity Assessment - Kandidat memasukkan kode'
-            }).then(() => {
-              console.log('[PUBLIC-ASSESSMENT] ✅ Stage updated to integrity_assessment via Cloud Function');
-            }).catch((error: any) => {
-              console.error('[PUBLIC-ASSESSMENT] Error updating stage via Cloud Function:', error);
-            });
+          if (invite.applicationId) {
+            console.warn('[PUBLIC-ASSESSMENT] Cloud Function stub - updateCandidateStage not called');
           }
         }
 
@@ -225,21 +214,19 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     if (inviteData?.jobId) {
       sessionData.jobId = inviteData.jobId;
 
-      // Fetch job data to get workflowId
       try {
-        const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, inviteData.jobId));
-        if (jobDoc.exists()) {
-          const jobData = jobDoc.data();
+        const { data: jobDataRow } = await supabase.from(COLLECTIONS.JOBS).select('*').eq('id', inviteData.jobId).single();
+        if (jobDataRow) {
+          const jobData = jobDataRow as any;
           const workflowId = jobData.workflowId;
 
           if (workflowId) {
             console.log('[PUBLIC-ASSESSMENT] Job has workflow:', workflowId);
             sessionData.workflowId = workflowId;
 
-            // Fetch workflow steps to build timeline
-            const workflowDoc = await getDoc(doc(db, COLLECTIONS.WORKFLOWS, workflowId));
-            if (workflowDoc.exists()) {
-              const workflowData = workflowDoc.data();
+            const { data: workflowRow } = await supabase.from(COLLECTIONS.WORKFLOWS).select('*').eq('id', workflowId).single();
+            if (workflowRow) {
+              const workflowData = workflowRow as any;
               const workflowSteps = workflowData.steps || [];
               console.log('[PUBLIC-ASSESSMENT] Loaded workflow with', workflowSteps.length, 'steps');
 
@@ -275,9 +262,9 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
       // Fetch application data to get cvUrl, whatsapp, and check for existing session
       try {
-        const appDoc = await getDoc(doc(db, COLLECTIONS.APPLICATIONS, inviteData.applicationId));
-        if (appDoc.exists()) {
-          const appData = appDoc.data();
+        const { data: appRow } = await supabase.from(COLLECTIONS.APPLICATIONS).select('*').eq('id', inviteData.applicationId).single();
+        if (appRow) {
+          const appData = appRow as any;
 
           // Check if session already exists for this application
           if (appData.sessionId) {
@@ -321,18 +308,18 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       await markAccessCodeUsed(inviteData.access_code, 'IN_PROGRESS', realSessionId);
     }
 
-    // Update stage from 'applied' to 'integrity_assessment' now that assessment is starting
     try {
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, realSessionId);
-      await updateDoc(sessionRef, {
+      const { data: existingSession } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', realSessionId).single();
+      const existingTimeline = (existingSession as any)?.timeline || [];
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: 'integrity_assessment',
-        timeline: arrayUnion({
+        timeline: [...existingTimeline, {
           stage: 'integrity_assessment',
           status: 'current',
           date: new Date().toISOString(),
           note: 'Integrity Assessment - Mulai mengerjakan'
-        })
-      });
+        }]
+      }).eq('id', realSessionId);
       console.log('[PUBLIC-ASSESSMENT] ✅ Stage updated to integrity_assessment');
     } catch (error) {
       console.error('[PUBLIC-ASSESSMENT] Error updating stage:', error);
@@ -463,15 +450,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-      const sessionSnap = await getDoc(sessionRef);
+      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline, workflowId').eq('id', sessionId).single();
       let existingTimeline: any[] = [];
       let workflowId: string | null = null;
 
-      if (sessionSnap.exists()) {
-        const sessionData = sessionSnap.data();
-        existingTimeline = sessionData.timeline || [];
-        workflowId = sessionData.workflowId || null;
+      if (sessionSnap) {
+        existingTimeline = (sessionSnap as any).timeline || [];
+        workflowId = (sessionSnap as any).workflowId || null;
       }
 
       const now = new Date().toISOString();

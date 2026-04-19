@@ -1,14 +1,4 @@
-/**
- * ASSESSMENT ANALYTICS SERVICE
- * Handles all assessment performance and fraud detection analytics
- */
-
-import { db } from './firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-
-// ==========================================
-// INTERFACES
-// ==========================================
+import { supabase } from './supabase';
 
 export interface AssessmentMetrics {
     totalAssessments: number;
@@ -16,7 +6,7 @@ export interface AssessmentMetrics {
     pendingAssessments: number;
     abandonedAssessments: number;
     completionRate: number;
-    averageCompletionTime: number; // in minutes
+    averageCompletionTime: number;
     activeAssessments: number;
 }
 
@@ -24,250 +14,116 @@ export interface FraudStats {
     totalFraudCases: number;
     fraudDetectionRate: number;
     averageFraudScore: number;
-    riskDistribution: {
-        low: number;
-        medium: number;
-        high: number;
-        critical: number;
-    };
+    riskDistribution: { low: number; medium: number; high: number; critical: number };
 }
 
 export interface CandidateAnalytics {
     totalCandidates: number;
     averageFraudScore: number;
     rejectionRate: number;
-    topCompanies: Array<{
-        companyId: string;
-        companyName: string;
-        assessmentCount: number;
-        averageScore: number;
-    }>;
+    topCompanies: Array<{ companyId: string; companyName: string; assessmentCount: number; averageScore: number }>;
 }
 
-// ==========================================
-// ASSESSMENT METRICS
-// ==========================================
-
-/**
- * Get comprehensive assessment performance metrics
- */
 export const getAssessmentMetrics = async (): Promise<AssessmentMetrics> => {
     try {
-        const sessionsRef = collection(db, 'interview-sessions');
-        const sessionsSnapshot = await getDocs(sessionsRef);
+        const { data, error } = await supabase.from('interview_sessions').select('*');
+        if (error) throw error;
+        const sessions = data || [];
 
-        let total = 0;
-        let completed = 0;
-        let pending = 0;
-        let abandoned = 0;
-        let active = 0;
-        let totalCompletionTime = 0;
-        let completionCount = 0;
+        let total = sessions.length;
+        let completed = 0, pending = 0, abandoned = 0, active = 0, totalCompletionTime = 0, completionCount = 0;
 
-        sessionsSnapshot.forEach(doc => {
-            const data = doc.data();
-            total++;
-
-            const status = data.status || 'PENDING';
-
+        sessions.forEach((s: any) => {
+            const status = s.status || 'PENDING';
             if (status === 'COMPLETED') {
                 completed++;
-
-                // Calculate completion time if timestamps exist
-                if (data.completedAt && data.createdAt) {
-                    const startTime = data.createdAt?.toDate?.() || new Date(data.createdAt);
-                    const endTime = data.completedAt?.toDate?.() || new Date(data.completedAt);
-                    const duration = (endTime.getTime() - startTime.getTime()) / 60000; // Convert to minutes
-
-                    if (duration > 0 && duration < 1440) { // Ignore if > 24 hours
-                        totalCompletionTime += duration;
-                        completionCount++;
-                    }
+                if (s.completedAt && s.createdAt) {
+                    const duration = (new Date(s.completedAt).getTime() - new Date(s.createdAt).getTime()) / 60000;
+                    if (duration > 0 && duration < 1440) { totalCompletionTime += duration; completionCount++; }
                 }
-            } else if (status === 'IN_PROGRESS' || status === 'ACTIVE') {
-                pending++;
-                active++;
-            } else {
-                abandoned++;
-            }
+            } else if (['IN_PROGRESS', 'ACTIVE', 'active'].includes(status)) {
+                pending++; active++;
+            } else { abandoned++; }
         });
-
-        const completionRate = total > 0 ? (completed / total) * 100 : 0;
-        const averageCompletionTime = completionCount > 0 ? totalCompletionTime / completionCount : 0;
 
         return {
             totalAssessments: total,
             completedAssessments: completed,
             pendingAssessments: pending,
             abandonedAssessments: abandoned,
-            completionRate: Math.round(completionRate * 10) / 10,
-            averageCompletionTime: Math.round(averageCompletionTime),
+            completionRate: total > 0 ? Math.round((completed / total) * 1000) / 10 : 0,
+            averageCompletionTime: completionCount > 0 ? Math.round(totalCompletionTime / completionCount) : 0,
             activeAssessments: active
         };
     } catch (error) {
         console.error('Error getting assessment metrics:', error);
-        return {
-            totalAssessments: 0,
-            completedAssessments: 0,
-            pendingAssessments: 0,
-            abandonedAssessments: 0,
-            completionRate: 0,
-            averageCompletionTime: 0,
-            activeAssessments: 0
-        };
+        return { totalAssessments: 0, completedAssessments: 0, pendingAssessments: 0, abandonedAssessments: 0, completionRate: 0, averageCompletionTime: 0, activeAssessments: 0 };
     }
 };
 
-// ==========================================
-// FRAUD DETECTION STATS
-// ==========================================
-
-/**
- * Get fraud detection statistics
- */
 export const getFraudStats = async (): Promise<FraudStats> => {
     try {
-        const sessionsRef = collection(db, 'interview-sessions');
-        const completedQuery = query(sessionsRef, where('status', '==', 'COMPLETED'));
-        const sessionsSnapshot = await getDocs(completedQuery);
+        const { data, error } = await supabase.from('interview_sessions').select('*').eq('status', 'COMPLETED');
+        if (error) throw error;
+        const sessions = data || [];
 
-        let totalFraudCases = 0;
-        let totalFraudScore = 0;
-        let scoreCount = 0;
+        let totalFraudCases = 0, totalFraudScore = 0, scoreCount = 0;
+        const riskDistribution = { low: 0, medium: 0, high: 0, critical: 0 };
 
-        const riskDistribution = {
-            low: 0,
-            medium: 0,
-            high: 0,
-            critical: 0
-        };
-
-        sessionsSnapshot.forEach(doc => {
-            const data = doc.data();
-
-            // Check fraud analysis data
-            if (data.fraudAnalysis) {
-                const riskLevel = data.fraudAnalysis.riskLevel || data.riskLevel || 'Low';
-                const scores = data.fraudAnalysis.scores;
-
-                // Calculate average fraud score
-                if (scores) {
-                    const avgScore = (
-                        (scores.pressure || 0) +
-                        (scores.opportunity || 0) +
-                        (scores.rationalization || 0)
-                    ) / 3;
-
-                    totalFraudScore += avgScore;
-                    scoreCount++;
-
-                    // Count as fraud case if score > 60
-                    if (avgScore > 60) {
-                        totalFraudCases++;
-                    }
-                }
-
-                // Risk distribution
-                const risk = riskLevel.toLowerCase();
-                if (risk.includes('low')) {
-                    riskDistribution.low++;
-                } else if (risk.includes('medium')) {
-                    riskDistribution.medium++;
-                } else if (risk.includes('high')) {
-                    riskDistribution.high++;
-                } else if (risk.includes('critical')) {
-                    riskDistribution.critical++;
-                }
+        sessions.forEach((s: any) => {
+            if (s.fraudAnalysis?.scores) {
+                const scores = s.fraudAnalysis.scores;
+                const avg = ((scores.pressure || 0) + (scores.opportunity || 0) + (scores.rationalization || 0)) / 3;
+                totalFraudScore += avg; scoreCount++;
+                if (avg > 60) totalFraudCases++;
+                const risk = (s.fraudAnalysis.riskLevel || '').toLowerCase();
+                if (risk.includes('low')) riskDistribution.low++;
+                else if (risk.includes('medium')) riskDistribution.medium++;
+                else if (risk.includes('high')) riskDistribution.high++;
+                else if (risk.includes('critical')) riskDistribution.critical++;
             }
         });
 
-        const total = sessionsSnapshot.size;
-        const fraudDetectionRate = total > 0 ? (totalFraudCases / total) * 100 : 0;
-        const averageFraudScore = scoreCount > 0 ? totalFraudScore / scoreCount : 0;
-
+        const total = sessions.length;
         return {
             totalFraudCases,
-            fraudDetectionRate: Math.round(fraudDetectionRate * 10) / 10,
-            averageFraudScore: Math.round(averageFraudScore),
+            fraudDetectionRate: total > 0 ? Math.round((totalFraudCases / total) * 1000) / 10 : 0,
+            averageFraudScore: scoreCount > 0 ? Math.round(totalFraudScore / scoreCount) : 0,
             riskDistribution
         };
     } catch (error) {
         console.error('Error getting fraud stats:', error);
-        return {
-            totalFraudCases: 0,
-            fraudDetectionRate: 0,
-            averageFraudScore: 0,
-            riskDistribution: { low: 0, medium: 0, high: 0, critical: 0 }
-        };
+        return { totalFraudCases: 0, fraudDetectionRate: 0, averageFraudScore: 0, riskDistribution: { low: 0, medium: 0, high: 0, critical: 0 } };
     }
 };
 
-// ==========================================
-// CANDIDATE ANALYTICS
-// ==========================================
-
-/**
- * Get candidate analytics and top companies
- */
 export const getCandidateAnalytics = async (): Promise<CandidateAnalytics> => {
     try {
-        const sessionsRef = collection(db, 'interview-sessions');
-        const sessionsSnapshot = await getDocs(sessionsRef);
+        const [{ data: sessions }, { data: companies }] = await Promise.all([
+            supabase.from('interview_sessions').select('*'),
+            supabase.from('companies').select('id, name'),
+        ]);
 
-        const companiesRef = collection(db, 'companies');
-        const companiesSnapshot = await getDocs(companiesRef);
+        const companyNames: Record<string, string> = {};
+        (companies || []).forEach((c: any) => { companyNames[c.id] = c.name || 'Unknown'; });
 
-        // Build company name map
-        const companyNames: { [key: string]: string } = {};
-        companiesSnapshot.forEach(doc => {
-            companyNames[doc.id] = doc.data().name || 'Unknown Company';
-        });
+        let totalCandidates = 0, totalFraudScore = 0, scoreCount = 0, rejectedCount = 0;
+        const companyStats: Record<string, { count: number; totalScore: number; scoreCount: number }> = {};
 
-        let totalCandidates = 0;
-        let totalFraudScore = 0;
-        let scoreCount = 0;
-        let rejectedCount = 0;
-
-        const companyStats: { [key: string]: { count: number; totalScore: number; scoreCount: number } } = {};
-
-        sessionsSnapshot.forEach(doc => {
-            const data = doc.data();
+        (sessions || []).forEach((s: any) => {
             totalCandidates++;
-
-            const companyId = data.companyId || 'unknown';
-
-            // Initialize company stats
-            if (!companyStats[companyId]) {
-                companyStats[companyId] = { count: 0, totalScore: 0, scoreCount: 0 };
+            const cid = s.companyId || 'unknown';
+            if (!companyStats[cid]) companyStats[cid] = { count: 0, totalScore: 0, scoreCount: 0 };
+            companyStats[cid].count++;
+            if (s.fraudAnalysis?.scores) {
+                const scores = s.fraudAnalysis.scores;
+                const avg = ((scores.pressure || 0) + (scores.opportunity || 0) + (scores.rationalization || 0)) / 3;
+                totalFraudScore += avg; scoreCount++;
+                companyStats[cid].totalScore += avg; companyStats[cid].scoreCount++;
             }
-            companyStats[companyId].count++;
-
-            // Calculate fraud score
-            if (data.fraudAnalysis?.scores) {
-                const scores = data.fraudAnalysis.scores;
-                const avgScore = (
-                    (scores.pressure || 0) +
-                    (scores.opportunity || 0) +
-                    (scores.rationalization || 0)
-                ) / 3;
-
-                totalFraudScore += avgScore;
-                scoreCount++;
-
-                companyStats[companyId].totalScore += avgScore;
-                companyStats[companyId].scoreCount++;
-            }
-
-            // Check if rejected
-            if (data.status === 'REJECTED' || data.fraudAnalysis?.riskLevel === 'High' || data.fraudAnalysis?.riskLevel === 'Critical') {
-                rejectedCount++;
-            }
+            if (s.status === 'REJECTED' || ['High', 'Critical'].includes(s.fraudAnalysis?.riskLevel)) rejectedCount++;
         });
 
-        const averageFraudScore = scoreCount > 0 ? totalFraudScore / scoreCount : 0;
-        const rejectionRate = totalCandidates > 0 ? (rejectedCount / totalCandidates) * 100 : 0;
-
-        // Get top 5 companies by assessment count
         const topCompanies = Object.entries(companyStats)
             .map(([companyId, stats]) => ({
                 companyId,
@@ -280,17 +136,12 @@ export const getCandidateAnalytics = async (): Promise<CandidateAnalytics> => {
 
         return {
             totalCandidates,
-            averageFraudScore: Math.round(averageFraudScore),
-            rejectionRate: Math.round(rejectionRate * 10) / 10,
+            averageFraudScore: scoreCount > 0 ? Math.round(totalFraudScore / scoreCount) : 0,
+            rejectionRate: totalCandidates > 0 ? Math.round((rejectedCount / totalCandidates) * 1000) / 10 : 0,
             topCompanies
         };
     } catch (error) {
         console.error('Error getting candidate analytics:', error);
-        return {
-            totalCandidates: 0,
-            averageFraudScore: 0,
-            rejectionRate: 0,
-            topCompanies: []
-        };
+        return { totalCandidates: 0, averageFraudScore: 0, rejectionRate: 0, topCompanies: [] };
     }
 };

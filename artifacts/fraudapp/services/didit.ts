@@ -1,9 +1,6 @@
-import { doc, updateDoc } from 'firebase/firestore';
-import { db, COLLECTIONS, functions } from './firebase';
-import { httpsCallable } from 'firebase/functions';
+import { supabase, COLLECTIONS } from './supabase';
 
 const DIDIT_API_BASE = import.meta.env.VITE_DIDIT_API_BASE || 'https://verification.didit.me/v2';
-const DIDIT_FLOW_ID = import.meta.env.VITE_DIDIT_FLOW_ID;
 const DIDIT_API_KEY = import.meta.env.VITE_DIDIT_API_KEY;
 
 export interface DiditVerificationSession {
@@ -27,68 +24,17 @@ export const createBackgroundCheckSession = async (
   candidateName: string,
   candidateEmail: string
 ): Promise<DiditVerificationSession> => {
-  console.log('[DIDIT] Creating background check session via Firebase Function for:', { sessionId, candidateName, candidateEmail });
-
-  try {
-    const createDiditSession = httpsCallable(functions, 'createDiditSession');
-
-    const result = await createDiditSession({
-      sessionId,
-      candidateName,
-      candidateEmail
-    });
-
-    const data = result.data as { success: boolean; sessionUrl: string; sessionId: string };
-
-    console.log('[DIDIT] Session created successfully via Firebase:', data);
-
-    const verificationSession: DiditVerificationSession = {
-      verificationSessionId: data.sessionId,
-      verification_url: data.sessionUrl,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-
-    await updateDoc(doc(db, COLLECTIONS.SESSIONS, sessionId), {
-      backgroundCheck: verificationSession,
-      backgroundCheckStatus: 'pending',
-      backgroundCheckInitiatedAt: new Date().toISOString()
-    });
-
-    console.log('[DIDIT] Session data saved to Firestore');
-
-    return verificationSession;
-  } catch (error) {
-    console.error('[DIDIT] Error creating session:', error);
-    throw error;
-  }
+  console.warn('[DIDIT] createBackgroundCheckSession: Cloud Functions removed. Cannot create Didit session server-side.');
+  throw new Error('Background check service requires Cloud Functions (not migrated).');
 };
 
 export const getVerificationSession = async (verificationSessionId: string) => {
-  console.log('[DIDIT] Fetching verification session:', verificationSessionId);
-
-  try {
-    const response = await fetch(`${DIDIT_API_BASE}/session/${verificationSessionId}`, {
-      method: 'GET',
-      headers: {
-        'accept': 'application/json',
-        'x-api-key': DIDIT_API_KEY
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[DIDIT] API Error:', response.status, errorText);
-      throw new Error(`Didit API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('[DIDIT] Session fetched successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('[DIDIT] Error fetching session:', error);
-    throw error;
-  }
+  const response = await fetch(`${DIDIT_API_BASE}/session/${verificationSessionId}`, {
+    method: 'GET',
+    headers: { 'accept': 'application/json', 'x-api-key': DIDIT_API_KEY }
+  });
+  if (!response.ok) throw new Error(`Didit API error: ${response.status}`);
+  return response.json();
 };
 
 export const handleBackgroundCheckCallback = async (
@@ -96,51 +42,34 @@ export const handleBackgroundCheckCallback = async (
   status: string,
   sessionId: string
 ) => {
-  console.log('[DIDIT] Processing callback:', { verificationSessionId, status, sessionId });
+  let actualSessionId = sessionId;
+  if (!actualSessionId) {
+    const sessionData = await getVerificationSession(verificationSessionId);
+    actualSessionId = sessionData.vendor_data;
+  }
+  if (!actualSessionId) throw new Error('Could not determine session ID from vendor_data');
 
-  try {
-    // If sessionId is empty, fetch it from Didit API
-    let actualSessionId = sessionId;
+  let mappedStatus: 'pending' | 'approved' | 'declined' | 'in_review' = 'in_review';
+  if (status.toLowerCase() === 'approved') mappedStatus = 'approved';
+  else if (status.toLowerCase() === 'declined') mappedStatus = 'declined';
 
-    if (!actualSessionId) {
-      console.log('[DIDIT] Session ID empty, fetching from Didit API...');
-      const sessionData = await getVerificationSession(verificationSessionId);
-      actualSessionId = sessionData.vendor_data;
-      console.log('[DIDIT] Retrieved session ID from API:', actualSessionId);
-    }
-
-    if (!actualSessionId) {
-      throw new Error('Could not determine session ID from vendor_data');
-    }
-
-    let mappedStatus: 'pending' | 'approved' | 'declined' | 'in_review' = 'in_review';
-
-    if (status.toLowerCase() === 'approved') {
-      mappedStatus = 'approved';
-    } else if (status.toLowerCase() === 'declined') {
-      mappedStatus = 'declined';
-    }
-
-    await updateDoc(doc(db, COLLECTIONS.SESSIONS, actualSessionId), {
-      'backgroundCheck.status': mappedStatus,
+  const { error } = await supabase
+    .from(COLLECTIONS.SESSIONS)
+    .update({
+      backgroundCheck: { status: mappedStatus },
       backgroundCheckStatus: mappedStatus,
       backgroundCheckCompletedAt: new Date().toISOString()
-    });
+    })
+    .eq('id', actualSessionId);
 
-    console.log('[DIDIT] Callback processed successfully');
-    return { success: true, status: mappedStatus };
-  } catch (error) {
-    console.error('[DIDIT] Error processing callback:', error);
-    throw error;
-  }
+  if (error) throw error;
+  return { success: true, status: mappedStatus };
 };
 
 export const openBackgroundCheckWindow = (verificationUrl: string) => {
-  const width = 800;
-  const height = 900;
+  const width = 800, height = 900;
   const left = (window.screen.width - width) / 2;
   const top = (window.screen.height - height) / 2;
-
   window.open(
     verificationUrl,
     'DiditBackgroundCheck',

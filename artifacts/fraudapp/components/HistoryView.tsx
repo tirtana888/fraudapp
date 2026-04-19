@@ -3,8 +3,7 @@ import {
   Search, FileText, Calendar, User, Briefcase, ChevronRight, Lock, Crown, Unlock,
   X, CreditCard, Loader2, TrendingUp, AlertTriangle, Clock, Filter, Eye, ArrowUpRight
 } from 'lucide-react';
-import { db, COLLECTIONS } from '../services/firebase';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { InterviewSession, AssessmentInvite, CompanyProfile, SUBSCRIPTION_PLANS, CREDIT_COSTS, Job } from '../types';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
 import { useToast } from './Toast';
@@ -61,53 +60,32 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     try {
       setIsLoading(true);
 
-      const invitesRef = collection(db, COLLECTIONS.INVITES);
-      const invitesQuery = query(invitesRef, where('companyId', '==', companyId));
-      const invitesSnapshot = await getDocs(invitesQuery);
+      const [{ data: invitesData }, { data: jobsData }, { data: sessionsData }] = await Promise.all([
+        supabase.from(COLLECTIONS.INVITES).select('*').eq('companyId', companyId),
+        supabase.from(COLLECTIONS.JOBS).select('id, title').eq('companyId', companyId),
+        supabase.from(COLLECTIONS.SESSIONS).select('*').eq('companyId', companyId).order('date', { ascending: false }),
+      ]);
 
       const sessionToAccessCode: Record<string, string> = {};
-      invitesSnapshot.forEach((doc) => {
-        const invite = doc.data() as AssessmentInvite;
-        if (invite.sessionId) {
-          sessionToAccessCode[invite.sessionId] = invite.access_code;
-        }
+      (invitesData || []).forEach((invite: any) => {
+        if (invite.sessionId) sessionToAccessCode[invite.sessionId] = invite.access_code;
       });
 
-      const jobsRef = collection(db, COLLECTIONS.JOBS);
-      const jobsQuery = query(jobsRef, where('companyId', '==', companyId));
-      const jobsSnapshot = await getDocs(jobsQuery);
       const jobsMap = new Map<string, string>();
-      jobsSnapshot.forEach(doc => {
-        const j = doc.data() as Job;
-        jobsMap.set(doc.id, j.title);
-      });
+      (jobsData || []).forEach((j: any) => { jobsMap.set(j.id, j.title); });
 
-      const sessionsRef = collection(db, COLLECTIONS.SESSIONS);
-      const sessionsQuery = query(
-        sessionsRef,
-        where('companyId', '==', companyId),
-        orderBy('date', 'desc')
-      );
-
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      const allCandidates: CandidateHistory[] = [];
-
-      sessionsSnapshot.forEach((doc) => {
-        const data = doc.data() as InterviewSession;
-
+      const allCandidates: CandidateHistory[] = (sessionsData || []).map((data: any) => {
         const riskScore = data.analysis?.scores
           ? Math.round((data.analysis.scores.pressure + data.analysis.scores.opportunity + data.analysis.scores.rationalization) / 3)
           : 50;
-
-        allCandidates.push({
+        return {
           ...data,
-          id: doc.id,
-          assessmentCode: sessionToAccessCode[doc.id] || '-',
+          assessmentCode: sessionToAccessCode[data.id] || '-',
           riskScore,
           recruitmentStage: data.recruitmentStage || 'assessment_complete',
-          appliedAt: data.date, // Use session date as apply date proxy if not available
+          appliedAt: data.date,
           jobTitle: data.jobId ? jobsMap.get(data.jobId) : undefined
-        });
+        };
       });
 
       setCandidates(allCandidates);
@@ -163,11 +141,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       );
 
       if (result.success) {
-        const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
-        await updateDoc(sessionRef, {
+        await supabase.from(COLLECTIONS.SESSIONS).update({
           unlockedAt: new Date().toISOString(),
           unlockedByCompanyId: companyId
-        });
+        }).eq('id', selectedCandidateForUnlock.id);
 
         setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
         toast.success(`Candidate unlocked! Remaining credits: ${result.remainingCredits}`);

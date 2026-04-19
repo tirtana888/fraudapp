@@ -1,22 +1,15 @@
-import { doc, updateDoc, Timestamp, arrayUnion } from 'firebase/firestore';
-import { db, COLLECTIONS } from './firebase';
+import { supabase, COLLECTIONS } from './supabase';
 
-/**
- * Recruitment Stage Type
- */
 export type RecruitmentStage =
-    | 'applied'                    // Kandidat Apply
-    | 'integrity_assessment'       // Integrity Assessment
-    | 'assessment_completed'       // Need Review
-    | 'interview'                  // Wawancara Scheduled
-    | 'background_check'           // Background Check Process
-    | 'bc_completed'               // Background Check Selesai
-    | 'hired'                      // Hire
-    | 'rejected';                  // Tolak
+    | 'applied'
+    | 'integrity_assessment'
+    | 'assessment_completed'
+    | 'interview'
+    | 'background_check'
+    | 'bc_completed'
+    | 'hired'
+    | 'rejected';
 
-/**
- * Get human-readable label for stage
- */
 export const getStageLabel = (stage: RecruitmentStage): string => {
     const labelMap: Record<RecruitmentStage, string> = {
         'applied': 'Kandidat Apply',
@@ -31,9 +24,6 @@ export const getStageLabel = (stage: RecruitmentStage): string => {
     return labelMap[stage] || stage;
 };
 
-/**
- * Update candidate's recruitment stage and add to timeline
- */
 export const updateCandidateStage = async (
     sessionId: string,
     newStage: RecruitmentStage,
@@ -42,19 +32,33 @@ export const updateCandidateStage = async (
     try {
         console.log(`[STAGE-TRACKER] Updating stage for ${sessionId} to ${newStage}`);
 
-        const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
+        // Fetch current timeline
+        const { data: session, error: fetchErr } = await supabase
+            .from(COLLECTIONS.SESSIONS)
+            .select('timeline')
+            .eq('id', sessionId)
+            .single();
 
-        await updateDoc(sessionRef, {
-            recruitmentStage: newStage,
-            timeline: arrayUnion({
-                stage: newStage,
-                status: 'completed',
-                date: new Date().toISOString(),
-                note: note || getStageLabel(newStage)
-            }),
-            updatedAt: Timestamp.now()
-        });
+        if (fetchErr) throw fetchErr;
 
+        const existingTimeline = session?.timeline || [];
+        const newEntry = {
+            stage: newStage,
+            status: 'completed',
+            date: new Date().toISOString(),
+            note: note || getStageLabel(newStage)
+        };
+
+        const { error } = await supabase
+            .from(COLLECTIONS.SESSIONS)
+            .update({
+                recruitmentStage: newStage,
+                timeline: [...existingTimeline, newEntry],
+                updatedAt: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+
+        if (error) throw error;
         console.log(`[STAGE-TRACKER] ✅ Stage updated successfully to ${newStage}`);
     } catch (error) {
         console.error(`[STAGE-TRACKER] ❌ Error updating stage:`, error);
@@ -62,9 +66,6 @@ export const updateCandidateStage = async (
     }
 };
 
-/**
- * Get stage color for UI display
- */
 export const getStageColor = (stage: RecruitmentStage): string => {
     const colorMap: Record<RecruitmentStage, string> = {
         'applied': 'blue',
@@ -79,9 +80,6 @@ export const getStageColor = (stage: RecruitmentStage): string => {
     return colorMap[stage] || 'gray';
 };
 
-/**
- * Get stage icon name for UI display
- */
 export const getStageIcon = (stage: RecruitmentStage): string => {
     const iconMap: Record<RecruitmentStage, string> = {
         'applied': 'Mail',

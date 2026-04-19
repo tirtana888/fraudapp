@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, MoreVertical, Star, ArrowUpRight, Loader2, X, CloudLightning, Pencil, Trash2, Save, Send, CreditCard, Calendar, ShieldCheck, Settings, Upload, BarChart3 } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/firebase';
+import { inviteCompanyReal, getCompanies, updateCompanySubscription, deleteCompany, resendInviteEmail } from '../services/supabase';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';

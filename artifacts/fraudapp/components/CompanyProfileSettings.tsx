@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Mail, Phone, MapPin, Save, ExternalLink } from 'lucide-react';
 import { CompanyProfile } from '../types';
-import { updateCompany, generateSlug } from '../services/firebase';
+import { updateCompany, generateSlug } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface CompanyProfileSettingsProps {

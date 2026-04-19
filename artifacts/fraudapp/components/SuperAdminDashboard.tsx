@@ -27,8 +27,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import { db, auth } from '../services/firebase';
-import { collection, doc, onSnapshot, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { supabase, auth } from '../services/supabase';
 import { CompanyProfile } from '../types';
 import {
   getCompanyUsageStats,
@@ -124,35 +123,18 @@ const SuperAdminDashboard: React.FC = () => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // Fetch ALL jobs from ALL companies
-        const jobsSnapshot = await getDocs(collection(db, 'jobs'));
-        const openJobs = jobsSnapshot.docs.filter(doc => {
-          const data = doc.data();
-          return data.status !== 'Closed';
-        });
+        const [{ data: jobsData }, { data: appSessions }, { data: allSessions }] = await Promise.all([
+          supabase.from('jobs').select('id, status'),
+          supabase.from('interview_sessions').select('id').eq('source', 'job_application'),
+          supabase.from('interview_sessions').select('id, status'),
+        ]);
+
+        const openJobs = (jobsData || []).filter((j: any) => j.status !== 'Closed');
         setJobsOpen(openJobs.length);
+        setTotalApplications((appSessions || []).length);
 
-        // Fetch ALL job applications from portal (interview_sessions with source = 'job_application')
-        const applicationsQuery = query(
-          collection(db, 'interview_sessions'),
-          where('source', '==', 'job_application')
-        );
-        const applicationsSnapshot = await getDocs(applicationsQuery);
-        setTotalApplications(applicationsSnapshot.size);
-
-        // Calculate total assessments and completed assessments from ALL companies
-        const allSessionsSnapshot = await getDocs(collection(db, 'interview_sessions'));
-        let totalAssess = allSessionsSnapshot.size;
-        let completedAssess = 0;
-
-        allSessionsSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          // Count as completed if status is 'COMPLETED'
-          if (data.status === 'COMPLETED') {
-            completedAssess++;
-          }
-        });
-
+        const totalAssess = (allSessions || []).length;
+        const completedAssess = (allSessions || []).filter((s: any) => s.status === 'COMPLETED').length;
         setTotalAssessments(totalAssess);
         setCompletedAssessments(completedAssess);
 
@@ -160,7 +142,7 @@ const SuperAdminDashboard: React.FC = () => {
           total_assessments: totalAssess,
           completed_assessments: completedAssess,
           jobs_open: openJobs.length,
-          total_applications: applicationsSnapshot.size,
+          total_applications: (appSessions || []).length,
           last_updated: new Date().toISOString()
         });
 
@@ -178,8 +160,8 @@ const SuperAdminDashboard: React.FC = () => {
   useEffect(() => {
     const fetchCompaniesCount = async () => {
       try {
-        const allCompaniesSnapshot = await getDocs(collection(db, 'companies'));
-        setTotalCompaniesCount(allCompaniesSnapshot.size);
+        const { data: allCompanies } = await supabase.from('companies').select('id');
+        setTotalCompaniesCount((allCompanies || []).length);
       } catch (error) {
         console.error('Error fetching companies count:', error);
       } finally {
@@ -284,13 +266,8 @@ const SuperAdminDashboard: React.FC = () => {
   const loadAllCompanies = async () => {
     try {
       setCompaniesLoading(true);
-      const q = query(collection(db, 'companies'), orderBy('joinedDate', 'desc'));
-      const snapshot = await getDocs(q);
-      const companiesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CompanyProfile[];
-      setAllCompanies(companiesData);
+      const { data } = await supabase.from('companies').select('*').order('joinedDate', { ascending: false });
+      setAllCompanies((data || []) as CompanyProfile[]);
     } catch (error) {
       console.error('Error loading all companies:', error);
       toast.error('Failed to load companies');

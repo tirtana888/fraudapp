@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile, AssessmentInvite } from '../types';
-import { getJobBySlug, createApplication, uploadCV, db, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug } from '../services/firebase';
-import { collection, getDocs, query, addDoc } from 'firebase/firestore';
+import { getJobBySlug, createApplication, uploadCV, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug, supabase } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface PublicJobPageProps {
@@ -51,12 +50,8 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
         }
         setJob(jobData);
       } else {
-        const jobsQuery = query(collection(db, COLLECTIONS.JOBS));
-        const jobsSnapshot = await getDocs(jobsQuery);
-        const allJobs = jobsSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Job))
-          .filter(j => j.companyId === companyData.id && j.status === 'Active');
-        setJobs(allJobs);
+        const { data: jobsData } = await supabase.from(COLLECTIONS.JOBS).select('*').eq('companyId', companyData.id).eq('status', 'Active');
+        setJobs((jobsData || []) as Job[]);
       }
     } catch (error) {
       console.error('[PUBLIC-JOB] Error loading job:', error);
@@ -175,7 +170,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
             applicationId: applicationId
           };
 
-          await addDoc(collection(db, COLLECTIONS.INVITES), inviteData);
+          await supabase.from(COLLECTIONS.INVITES).insert(inviteData);
           console.log('[PUBLIC-JOB] ✅ Invite saved to database');
 
           // Send email (same format as manual invite)

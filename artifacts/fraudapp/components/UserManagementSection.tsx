@@ -28,7 +28,7 @@ import {
     deleteBusinessUser,
     BusinessUser
 } from '../services/userManagementService';
-import { auth } from '../services/firebase';
+import { auth } from '../services/supabase';
 
 export const UserManagementSection: React.FC = () => {
     const toast = useToast();

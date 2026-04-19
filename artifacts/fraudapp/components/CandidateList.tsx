@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, ChevronRight, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { InterviewSession } from '../types';
-import { db, COLLECTIONS } from '../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { calculateAssessmentScores } from '../services/genai';
 
 interface CandidateListProps {
@@ -36,42 +35,30 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
     try {
       setIsLoading(true);
 
-      const sessionsQuery = query(
-        collection(db, COLLECTIONS.SESSIONS),
-        where('companyId', '==', companyId)
-      );
-      const sessionsSnapshot = await getDocs(sessionsQuery);
+      const { data: sessionsData, error: sessionsErr } = await supabase
+        .from(COLLECTIONS.SESSIONS)
+        .select('*')
+        .eq('companyId', companyId);
+      if (sessionsErr) throw sessionsErr;
 
       const candidatesData: CandidateWithDetails[] = await Promise.all(
-        sessionsSnapshot.docs.map(async (docSnap) => {
-          const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
-
+        (sessionsData || []).map(async (sessionData: any) => {
           let jobTitle = 'Direct Application';
           if (sessionData.jobId) {
             try {
-              const jobsQuery = query(
-                collection(db, COLLECTIONS.JOBS),
-                where('__name__', '==', sessionData.jobId)
-              );
-              const jobSnapshot = await getDocs(jobsQuery);
-              if (!jobSnapshot.empty) {
-                jobTitle = jobSnapshot.docs[0].data().title;
-              }
+              const { data: jobData } = await supabase
+                .from(COLLECTIONS.JOBS)
+                .select('title')
+                .eq('id', sessionData.jobId)
+                .single();
+              if (jobData) jobTitle = jobData.title;
             } catch (error) {
               console.error('Error fetching job:', error);
             }
           }
-
           const riskScore = calculateRiskScore(sessionData);
-
           const stage = determineStage(sessionData);
-
-          return {
-            ...sessionData,
-            jobTitle,
-            riskScore,
-            stage
-          } as CandidateWithDetails;
+          return { ...sessionData, jobTitle, riskScore, stage } as CandidateWithDetails;
         })
       );
 

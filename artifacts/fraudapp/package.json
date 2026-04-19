@@ -24,9 +24,9 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.103.3",
     "@types/papaparse": "^5.5.1",
     "clsx": "catalog:",
-    "firebase": "^10.13.0",
     "framer-motion": "catalog:",
     "leaflet": "^1.9.4",
     "lucide-react": "catalog:",

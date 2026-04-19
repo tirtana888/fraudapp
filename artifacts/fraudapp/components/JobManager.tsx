@@ -6,8 +6,7 @@ import {
   Sparkles, MapPin, Clock, Search, ShieldCheck
 } from 'lucide-react';
 import { Job, CompanyProfile, Workflow } from '../types';
-import { getJobsByCompany, createJob, updateJob, generateSlug, db, COLLECTIONS } from '../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { getJobsByCompany, createJob, updateJob, generateSlug, supabase, COLLECTIONS } from '../services/supabase';
 import { useToast } from './Toast';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -62,16 +61,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
   const loadWorkflows = async () => {
     try {
       setIsLoadingWorkflows(true);
-      const q = query(
-        collection(db, COLLECTIONS.WORKFLOWS),
-        where('companyId', '==', currentCompany.id)
-      );
-      const snapshot = await getDocs(q);
-      const workflowsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Workflow[];
-      setWorkflows(workflowsData);
+      const { data } = await supabase.from(COLLECTIONS.WORKFLOWS).select('*').eq('companyId', currentCompany.id);
+      setWorkflows((data || []) as Workflow[]);
     } catch (error) {
       console.error('[JOBS] Error loading workflows:', error);
     } finally {

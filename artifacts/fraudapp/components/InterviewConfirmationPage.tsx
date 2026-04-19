@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2, Calendar, Clock, MapPin, Globe } from 'lucide-react';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../services/firebase';
+import { supabase, COLLECTIONS } from '../services/supabase';
 
 interface InterviewConfirmationPageProps { }
 
@@ -26,17 +25,17 @@ const InterviewConfirmationPage: React.FC<InterviewConfirmationPageProps> = () =
                     return;
                 }
 
-                // Fetch session data
-                const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-                const sessionSnap = await getDoc(sessionRef);
+                const { data: sessionData, error: sessionErr } = await supabase
+                    .from(COLLECTIONS.SESSIONS)
+                    .select('*')
+                    .eq('id', sessionId)
+                    .single();
 
-                if (!sessionSnap.exists()) {
+                if (sessionErr || !sessionData) {
                     setStatus('invalid');
                     setMessage('Sesi wawancara tidak ditemukan. Link mungkin sudah tidak valid.');
                     return;
                 }
-
-                const sessionData = sessionSnap.data();
 
                 // SECURITY: Validate email matches candidate email
                 if (sessionData.candidate?.email?.toLowerCase() !== email.toLowerCase()) {
@@ -64,13 +63,16 @@ const InterviewConfirmationPage: React.FC<InterviewConfirmationPageProps> = () =
                     return;
                 }
 
-                // Update confirmation status
-                await updateDoc(sessionRef, {
-                    'interviewSchedule.confirmationStatus': 'confirmed',
-                    'interviewSchedule.confirmedAt': Timestamp.now(),
-                    'interviewSchedule.confirmationMethod': 'email_link',
+                const updatedSchedule = {
+                    ...sessionData.interviewSchedule,
+                    confirmationStatus: 'confirmed',
+                    confirmedAt: new Date().toISOString(),
+                    confirmationMethod: 'email_link',
+                };
+                await supabase.from(COLLECTIONS.SESSIONS).update({
+                    interviewSchedule: updatedSchedule,
                     updatedAt: new Date().toISOString()
-                });
+                }).eq('id', sessionId);
 
                 // Success
                 setStatus('success');

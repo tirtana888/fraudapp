@@ -24,7 +24,7 @@ import { SystemSettingsSection } from './SystemSettingsSection';
 import { WebhooksSection } from './WebhooksSection';
 import { AuditLogsSection } from './AuditLogsSection';
 import { UserManagementSection } from './UserManagementSection';
-import { auth } from '../services/firebase';
+import { auth } from '../services/supabase';
 
 interface SystemConfigPageProps {
     onBack?: () => void;
@@ -304,10 +304,11 @@ const APIKeysSection: React.FC = () => {
         if (!editingKey) return;
 
         try {
-            const { auth } = await import('../services/firebase');
             const { updateAPIKey } = await import('../services/systemConfigService');
+            const { supabase } = await import('../services/supabase');
 
-            const userEmail = auth.currentUser?.email || 'admin@fraudguard.com';
+            const { data: { user } } = await supabase.auth.getUser();
+            const userEmail = user?.email || 'admin@fraudguard.com';
 
             await updateAPIKey(editingKey.id, editingKey.key, userEmail);
 

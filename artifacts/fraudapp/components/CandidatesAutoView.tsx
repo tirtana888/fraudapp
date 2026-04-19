@@ -6,9 +6,7 @@ import {
   MoreHorizontal, ArrowRight, Search
 } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel, SUBSCRIPTION_PLANS, CompanyProfile, CREDIT_COSTS } from '../types';
-import { db, COLLECTIONS, functions } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { supabase, COLLECTIONS } from '../services/supabase';
 import { useToast } from './Toast';
 import { calculateAssessmentScores } from '../services/genai';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
@@ -71,72 +69,45 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
   useEffect(() => {
     setIsLoading(true);
 
-    // Load Jobs (One-time fetch is fine for jobs, or make real-time if needed. Keeping simple for now)
-    const fetchJobs = async () => {
-      const jobsQ = query(collection(db, COLLECTIONS.JOBS), where('companyId', '==', companyId));
-      const jobsSnap = await getDocs(jobsQ);
-      setJobs(jobsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Job)));
-    };
-    fetchJobs();
+    const fetchAll = async () => {
+      const [{ data: jobsData }, { data: companyData }, { data: sessionsData }] = await Promise.all([
+        supabase.from(COLLECTIONS.JOBS).select('*').eq('companyId', companyId),
+        supabase.from(COLLECTIONS.COMPANIES).select('tier').eq('id', companyId).single(),
+        supabase.from(COLLECTIONS.SESSIONS).select('*').eq('companyId', companyId),
+      ]);
 
-    // Load Company Tier (One-time)
-    getDoc(doc(db, COLLECTIONS.COMPANIES, companyId)).then(snap => {
-      if (snap.exists()) setCompanyTier((snap.data() as CompanyProfile).tier || 'Freemium');
-    });
+      setJobs((jobsData || []) as Job[]);
+      if (companyData) setCompanyTier((companyData as any).tier || 'Freemium');
 
-    // REAL-TIME LISTENER for Sessions
-    const sessionsQ = query(
-      collection(db, COLLECTIONS.SESSIONS),
-      where('companyId', '==', companyId)
-    );
+      const filteredSessions = (sessionsData || []).filter((d: any) => !d.inviteSource);
+      const candidatesData = filteredSessions.map((data: any) => ({
+        ...data, completedAt: data.completedAt || data.date
+      } as AutoCandidate));
 
-    const unsubscribe = onSnapshot(sessionsQ, (snapshot) => {
-      const filteredSessions = snapshot.docs.filter(doc => {
-        const d = doc.data();
-        return !d.inviteSource;
+      candidatesData.sort((a: AutoCandidate, b: AutoCandidate) => {
+        const dateA = new Date((a as any).completedAt || 0).getTime();
+        const dateB = new Date((b as any).completedAt || 0).getTime();
+        return dateB - dateA;
       });
 
-      const processData = async () => {
-        // We need jobs loaded to map titles. 
-        // If jobs fetch is slow, we might miss titles initially. 
-        // Ideally jobs should be in a context or also real-time, but for now we'll fetch/use existing state if possible.
-        // Since we can't easily access 'jobs' state inside this closure without dependency issues, 
-        // let's grab jobs simply or assume they load fast. 
-        // Better approach: just store jobId and map it in render, OR fetch jobs inside here.
-        // For stability, let's just map what we can. 
+      setApplicationRanks(calculateApplicationRanks(candidatesData));
 
-        // Re-fetch jobs to be safe or rely on outer scope if "jobs" dependency is added (but that causes re-subscription loop).
-        // Let's do a quick read or just map basic data.
-        // ACTUALLY, simpler: Just map the data we have.
+      const unlocked = new Set<string>();
+      candidatesData.forEach((c: any) => { if (c.unlockedAt) unlocked.add(c.id); });
+      setUnlockedCandidates(unlocked);
 
-        const candidatesData = filteredSessions.map(docSnap => {
-          const data = { id: docSnap.id, ...docSnap.data() } as any;
-          // Job Title lookup will be done in render or we assume jobs loaded.
-          // We can trigger a separate effect to map jobs if needed.
-          return { ...data, completedAt: data.completedAt || data.date } as AutoCandidate;
-        });
+      setCandidates(candidatesData);
+      setIsLoading(false);
+    };
 
-        // Sort
-        candidatesData.sort((a, b) => {
-          const dateA = new Date(a.completedAt || 0).getTime();
-          const dateB = new Date(b.completedAt || 0).getTime();
-          return dateB - dateA;
-        });
+    fetchAll();
 
-        setApplicationRanks(calculateApplicationRanks(candidatesData));
+    const channel = supabase
+      .channel('auto-sessions-' + companyId)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => fetchAll())
+      .subscribe();
 
-        const unlocked = new Set<string>();
-        candidatesData.forEach(c => { if ((c as any).unlockedAt) unlocked.add(c.id); });
-        setUnlockedCandidates(unlocked);
-
-        setCandidates(candidatesData);
-        setIsLoading(false);
-      };
-
-      processData();
-    });
-
-    return () => unsubscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [companyId]);
 
   // Derived state to merge Job Titles properly whenever Candidates OR Jobs change
@@ -192,9 +163,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     const res = await deductCredit(companyId, cost, 'UNLOCK_PROFILE', `Unlock ${selectedCandidateForUnlock.candidate.name}`, { sessionId: selectedCandidateForUnlock.id, candidateName: selectedCandidateForUnlock.candidate.name });
 
     if (res.success) {
-      await updateDoc(doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id), {
-        unlockedAt: new Date().toISOString(), unlockedByCompanyId: companyId
-      });
+      await supabase.from(COLLECTIONS.SESSIONS).update({ unlockedAt: new Date().toISOString(), unlockedByCompanyId: companyId }).eq('id', selectedCandidateForUnlock.id);
       setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
       toast.success('Candidate Unlocked!');
       setShowUnlockModal(false);

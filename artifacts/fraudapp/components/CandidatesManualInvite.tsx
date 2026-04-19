@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Plus, Send, Copy, Loader2, CheckCircle2, AlertCircle, X, ChevronDown, Upload, MoreVertical, Trash2, RefreshCw, Eye, User, Briefcase, AlertTriangle, MapPin } from 'lucide-react';
-import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, deleteCandidateInvite, db, COLLECTIONS } from '../services/firebase';
+import { blastAssessmentInvites, subscribeToInvites, resendCandidateInvite, deleteCandidateInvite, supabase, COLLECTIONS } from '../services/supabase';
 import { CompanyProfile, AssessmentInvite, InterviewSession, RiskLevel } from '../types';
 import { PLAN_LIMITS } from '../constants/plans';
 import BulkUploadCandidates from './BulkUploadCandidates';
 import { useToast } from './Toast';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { calculateAssessmentScores } from '../services/genai';
 import { deductCredit } from '../services/creditManagement';
 
@@ -70,9 +69,9 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
       const candidatesWithDetails: CompletedCandidate[] = await Promise.all(
         completedInvites.map(async (invite) => {
           try {
-            const sessionDoc = await getDoc(doc(db, COLLECTIONS.SESSIONS, invite.sessionId!));
-            if (sessionDoc.exists()) {
-              const sessionData = { id: sessionDoc.id, ...sessionDoc.data() } as InterviewSession;
+            const { data: sessionDoc } = await supabase.from(COLLECTIONS.SESSIONS).select('*').eq('id', invite.sessionId!).single();
+            if (sessionDoc) {
+              const sessionData = sessionDoc as unknown as InterviewSession;
 
               // 🔧 FIX: Exclude job applications (auto sourcing)
               // Only show manual invites and public link assessments

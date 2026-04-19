@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, CreditCard, Crown, Building2, Check, Loader2, ExternalLink } from 'lucide-react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../services/firebase';
+import { supabase } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface PaymentModalProps {
@@ -66,39 +65,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     const handlePurchaseCredits = async () => {
         setIsProcessing(true);
         try {
-            const createInvoice = httpsCallable(functions, 'createXenditInvoice');
-            const result = await createInvoice({
-                type: 'credit_purchase',
-                amount: selectedCredits,
-                companyId,
-                companyName,
-                companyEmail
-            });
-
-            const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
-
-            if (data.success && data.invoiceUrl) {
-                // Open Xendit payment page in new tab
-                const newWindow = window.open(data.invoiceUrl, '_blank');
-
-                // Check if popup was blocked
-                if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                    console.log('Popup blocked, redirecting using window.location');
-                    toast.success('Popup blocked. Redirecting to payment page...');
-                    // Add small delay to let toast show
-                    setTimeout(() => {
-                        window.location.href = data.invoiceUrl;
-                    }, 1000);
-                } else {
-                    toast.success('Payment page opened! Complete payment to receive credits.');
-                }
-                onClose();
-            }
+            console.warn('[PAYMENT] createXenditInvoice Cloud Function removed (stubbed). Would purchase credits:', { type: 'credit_purchase', amount: selectedCredits, companyId });
+            toast.warning('Payment via Xendit is not yet configured in this environment.');
         } catch (error: any) {
             console.error('[PAYMENT] Error:', error);
-            const errorMessage = error.message || 'Payment initiation failed';
-            toast.error(`Payment failed: ${errorMessage}`);
-            console.log(JSON.stringify(error, null, 2));
+            toast.error(`Payment failed: ${error.message || 'Payment initiation failed'}`);
         } finally {
             setIsProcessing(false);
         }
@@ -107,31 +78,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     const handleUpgradeTier = async () => {
         setIsProcessing(true);
         try {
-            const createInvoice = httpsCallable(functions, 'createXenditInvoice');
-            const result = await createInvoice({
-                type: 'subscription_upgrade',
-                tier: selectedTier,
-                companyId,
-                companyName,
-                companyEmail
-            });
-
-            const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
-
-            if (data.success && data.invoiceUrl) {
-                const newWindow = window.open(data.invoiceUrl, '_blank');
-
-                if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                    console.log('Popup blocked, redirecting using window.location');
-                    toast.success('Popup blocked. Redirecting to payment page...');
-                    setTimeout(() => {
-                        window.location.href = data.invoiceUrl;
-                    }, 1000);
-                } else {
-                    toast.success('Payment page opened! Complete payment to upgrade your tier.');
-                }
-                onClose();
-            }
+            console.warn('[PAYMENT] createXenditInvoice Cloud Function removed (stubbed). Would upgrade tier:', { type: 'subscription_upgrade', tier: selectedTier, companyId });
+            toast.warning('Tier upgrade via Xendit is not yet configured in this environment.');
         } catch (error: any) {
             console.error('[PAYMENT] Error:', error);
             toast.error(`Payment failed: ${error.message}`);

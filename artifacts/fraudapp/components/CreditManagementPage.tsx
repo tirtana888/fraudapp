@@ -19,7 +19,7 @@ import {
 import { UserProfile, CompanyProfile, CreditTransaction, SUBSCRIPTION_PLANS } from '../types';
 import { getCreditBalance, getCreditTransactions, creditsToIDR } from '../services/creditManagement';
 import { createTopUpInvoice, createPremiumSubscriptionInvoice, getTopUpPackages, formatIDR } from '../services/xenditIntegration';
-import { getCompanyById } from '../services/firebase';
+import { getCompanyById } from '../services/supabase';
 
 interface CreditManagementPageProps {
   company: CompanyProfile;

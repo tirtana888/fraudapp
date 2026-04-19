@@ -89,48 +89,8 @@ export const createTopUpInvoice = async (
       });
     }
 
-    // Import Firebase Functions
-    const { functions } = await import('../services/firebase');
-    const { httpsCallable } = await import('firebase/functions');
-
-    // Call Firebase Function
-    const createInvoice = httpsCallable(functions, 'createXenditInvoice');
-    const result = await createInvoice({
-      type: 'credit_purchase',
-      amount: credits,
-      companyId,
-      companyName,
-      companyEmail: email,
-      promoCode: promoCode || null,
-      finalAmount: finalAmount
-    });
-
-    const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
-
-    if (data.success && data.invoiceUrl) {
-      console.log('[XENDIT] Invoice created successfully:', data.invoiceId);
-
-      // Increment promo code usage if applied
-      if (validatedPromo) {
-        await incrementPromoUsage(validatedPromo.id);
-        console.log('[XENDIT] Promo code usage incremented:', promoCode);
-      }
-
-      // Save pending payment redirect to localStorage
-      localStorage.setItem('pendingPaymentRedirect', 'credits');
-      localStorage.setItem('pendingPaymentType', 'top-up');
-      console.log('[XENDIT] Saved payment redirect flag to localStorage');
-
-      return {
-        success: true,
-        invoiceUrl: data.invoiceUrl,
-        invoiceId: data.invoiceId,
-        discount,
-        finalAmount
-      };
-    } else {
-      throw new Error('Failed to create invoice');
-    }
+    console.warn('[XENDIT] createXenditInvoice Cloud Function removed (stubbed). Would create top-up invoice:', { type: 'credit_purchase', amount: credits, companyId });
+    throw new Error('Xendit payment via Cloud Functions is not available in this environment');
 
   } catch (error: any) {
     console.error('[XENDIT] Error creating top-up invoice:', error);
@@ -191,43 +151,8 @@ export const createPremiumSubscriptionInvoice = async (
       });
     }
 
-    // Import Firebase Functions
-    const { functions } = await import('../services/firebase');
-    const { httpsCallable } = await import('firebase/functions');
-
-    // Call Firebase Function
-    const createInvoice = httpsCallable(functions, 'createXenditInvoice');
-    const result = await createInvoice({
-      type: 'subscription_upgrade',
-      tier,
-      companyId,
-      companyName,
-      companyEmail: email,
-      promoCode: promoCode || null,
-      finalAmount: finalAmount
-    });
-
-    const data = result.data as { success: boolean; invoiceUrl: string; invoiceId: string };
-
-    if (data.success && data.invoiceUrl) {
-      console.log('[XENDIT] Subscription invoice created:', data.invoiceId);
-
-      // Increment promo code usage if applied
-      if (validatedPromo) {
-        await incrementPromoUsage(validatedPromo.id);
-        console.log('[XENDIT] Promo code usage incremented:', promoCode);
-      }
-
-      return {
-        success: true,
-        invoiceUrl: data.invoiceUrl,
-        invoiceId: data.invoiceId,
-        discount,
-        finalAmount
-      };
-    } else {
-      throw new Error('Failed to create invoice');
-    }
+    console.warn('[XENDIT] createXenditInvoice Cloud Function removed (stubbed). Would create subscription invoice:', { type: 'subscription_upgrade', tier, companyId });
+    throw new Error('Xendit payment via Cloud Functions is not available in this environment');
 
   } catch (error: any) {
     console.error('[XENDIT] Error creating subscription invoice:', error);

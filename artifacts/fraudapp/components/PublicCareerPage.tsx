@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { supabase } from '../services/supabase';
 import { CompanyProfile, Job } from '../types';
 import {
   Briefcase,
@@ -15,7 +14,7 @@ import {
   Linkedin
 } from 'lucide-react';
 
-import { getCompanyBySlug } from '../services/firebase';
+import { getCompanyBySlug } from '../services/supabase';
 
 interface PublicCareerPageProps {
   companySlug?: string;
@@ -55,10 +54,8 @@ const PublicCareerPage: React.FC<PublicCareerPageProps> = ({ companySlug: propCo
         if (identifier.type === 'slug') {
           companyData = await getCompanyBySlug(identifier.value);
         } else {
-          const companyDoc = await getDoc(doc(db, 'companies', identifier.value));
-          if (companyDoc.exists()) {
-            companyData = { id: companyDoc.id, ...companyDoc.data() } as CompanyProfile;
-          }
+          const { data: companyRow } = await supabase.from('companies').select('*').eq('id', identifier.value).single();
+          if (companyRow) companyData = companyRow as CompanyProfile;
         }
 
         if (!companyData) {
@@ -69,17 +66,12 @@ const PublicCareerPage: React.FC<PublicCareerPageProps> = ({ companySlug: propCo
 
         setCompany(companyData);
 
-        // Fetch jobs using the retrieved company ID
-        const jobsQuery = query(
-          collection(db, 'jobs'),
-          where('companyId', '==', companyData.id),
-          where('status', '==', 'Active')
-        );
-        const jobsSnapshot = await getDocs(jobsQuery);
-        const jobsData = jobsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Job[];
+        const { data: jobsRaw } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('companyId', companyData.id)
+          .eq('status', 'Active');
+        const jobsData = (jobsRaw || []) as Job[];
 
         jobsData.sort((a, b) => {
           const dateA = a.datePosted ? new Date(a.datePosted).getTime() : 0;

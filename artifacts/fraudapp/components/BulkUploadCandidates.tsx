@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, Download, AlertCircle, CheckCircle, X, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { blastAssessmentInvites } from '../services/firebase';
+import { blastAssessmentInvites } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface BulkUploadCandidatesProps {

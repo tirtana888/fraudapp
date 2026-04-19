@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
 import { InterviewSession, ParsedCVData, CompanyProfile, IPData } from '../types';
-import { db, COLLECTIONS, functions, parseCVWithMistral } from '../services/firebase';
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { supabase, COLLECTIONS, parseCVWithMistral } from '../services/supabase';
 import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
@@ -128,10 +126,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     loadCandidateData();
 
     // Real-time listener for CV parsing and Background Check updates
-    const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-    const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
+    const channel = supabase
+      .channel('session-detail-' + sessionId)
+      .on('postgres_changes' as any, { event: 'UPDATE', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `id=eq.${sessionId}` },
+        (payload: any) => {
+          const data = payload.new;
 
         setCandidate(prev => {
           if (!prev) return null;
@@ -199,34 +198,36 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
           return updated ? newCandidate : prev;
         });
-      }
-    });
+        }
+      )
+      .subscribe();
 
-    return () => unsubscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [sessionId]);
 
   const loadCandidateData = async () => {
     try {
       setIsLoading(true);
 
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-      const sessionSnap = await getDoc(sessionRef);
+      const { data: sessionData, error: sessionErr } = await supabase
+        .from(COLLECTIONS.SESSIONS)
+        .select('*')
+        .eq('id', sessionId)
+        .single();
 
-      if (!sessionSnap.exists()) {
+      if (sessionErr || !sessionData) {
         console.error('Session not found');
         return;
       }
 
-      const sessionData = { id: sessionSnap.id, ...sessionSnap.data() } as any;
-
       if (sessionData.companyId) {
         try {
-          const companyRef = doc(db, COLLECTIONS.COMPANIES, sessionData.companyId);
-          const companySnap = await getDoc(companyRef);
-          if (companySnap.exists()) {
-            const companyData = companySnap.data();
-            setCompanyTier(companyData.tier || 'Basic');
-          }
+          const { data: companyData } = await supabase
+            .from(COLLECTIONS.COMPANIES)
+            .select('tier')
+            .eq('id', sessionData.companyId)
+            .single();
+          if (companyData) setCompanyTier((companyData as any).tier || 'Basic');
         } catch (error) {
           console.error('Error fetching company:', error);
         }
@@ -237,28 +238,31 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       if (sessionData.jobId) {
         try {
-          const jobRef = doc(db, COLLECTIONS.JOBS, sessionData.jobId);
-          const jobSnap = await getDoc(jobRef);
-          if (jobSnap.exists()) {
-            const jobData = jobSnap.data();
-            jobTitle = jobData.title;
-            jobLocation = jobData.location;
+          const { data: jobData } = await supabase
+            .from(COLLECTIONS.JOBS)
+            .select('title, location')
+            .eq('id', sessionData.jobId)
+            .single();
+          if (jobData) {
+            jobTitle = (jobData as any).title;
+            jobLocation = (jobData as any).location;
           }
         } catch (error) {
           console.error('Error fetching job:', error);
         }
       }
 
-      // Load workflow if exists
       console.log('[CANDIDATE] Session workflowId:', sessionData.workflowId);
       if (sessionData.workflowId) {
         try {
-          const workflowRef = doc(db, COLLECTIONS.WORKFLOWS, sessionData.workflowId);
-          const workflowSnap = await getDoc(workflowRef);
-          if (workflowSnap.exists()) {
-            const loadedWorkflow = { id: workflowSnap.id, ...workflowSnap.data() } as any;
-            setWorkflowData(loadedWorkflow);
-            console.log('[CANDIDATE] ✅ Loaded workflow:', loadedWorkflow.name, 'with', loadedWorkflow.steps?.length, 'steps');
+          const { data: workflowData } = await supabase
+            .from(COLLECTIONS.WORKFLOWS)
+            .select('*')
+            .eq('id', sessionData.workflowId)
+            .single();
+          if (workflowData) {
+            setWorkflowData(workflowData);
+            console.log('[CANDIDATE] ✅ Loaded workflow:', (workflowData as any).name);
           } else {
             console.log('[CANDIDATE] ⚠️ Workflow document not found:', sessionData.workflowId);
           }
@@ -531,34 +535,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      // Update Firestore
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-      await updateDoc(sessionRef, {
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         timeline: timelineUpdate,
         recruitmentStage: nextWorkflowStep ? nextWorkflowStep.stage : stageId,
         updatedAt: now
-      });
-
-      // Send Email Notification to Candidate
-      try {
-        const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
-        const companySnap = await getDoc(companyRef);
-
-        if (companySnap.exists()) {
-          const companyData = companySnap.data();
-
-          // TODO: Call email function for workflow step completion
-          // For now, just log
-          console.log(`[WORKFLOW] Email notification: ${completedStepName} completed for ${candidate.candidate.email}`);
-          console.log(`[WORKFLOW] Company: ${companyData.name}, Next step: ${nextStepName || 'Final'}`);
-
-          // You can implement email sending here based on step type
-          // await sendEmailViaCloudFunction("workflow_step_complete", candidate.candidate.email, {...});
-        }
-      } catch (emailError) {
-        console.error('[WORKFLOW] Error sending email:', emailError);
-        // Don't fail the whole operation if email fails
-      }
+      }).eq('id', sessionId);
 
       // Reload candidate data
       await loadCandidateData();
@@ -594,15 +575,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     try {
       setIsUpdating(true);
 
-      const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
-      const companySnap = await getDoc(companyRef);
-
-      if (!companySnap.exists()) {
-        throw new Error('Company not found');
-      }
-
-      const companyData = companySnap.data();
-      const companyName = companyData.name || 'Our Company';
+      const { data: companyData } = await supabase
+        .from(COLLECTIONS.COMPANIES)
+        .select('name')
+        .eq('id', candidate.companyId)
+        .single();
+      if (!companyData) throw new Error('Company not found');
+      const companyName = (companyData as any).name || 'Our Company';
 
       const formattedDate = new Date(interviewDate).toLocaleDateString('id-ID', {
         weekday: 'long',
@@ -618,32 +597,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       // Try to send email, but don't block workflow if it fails
       try {
         console.log('[INTERVIEW] Attempting to send email invitation...');
-        const sendEmail = httpsCallable(functions, 'sendEmail');
-
-        const emailData = {
-          type: 'interview_invitation',
-          to: candidate.candidate.email,
-          data: {
-            candidateName: candidate.candidate.name,
-            candidateEmail: candidate.candidate.email,
-            companyName: companyName,
-            role: candidate.candidate.role || candidate.jobTitle || '',
-            interviewDate: formattedDate,
-            interviewTime: interviewTime,
-            interviewLocation: locationText,
-            interviewType: interviewType,
-            sessionId: sessionId
-          }
-        };
-
-        await sendEmail(emailData);
-        console.log('[INTERVIEW] ✅ Email sent successfully');
+        console.warn('[INTERVIEW] Email sending via Cloud Functions removed (stubbed)');
+        console.log('[INTERVIEW] Would send interview invitation to', candidate.candidate.email);
       } catch (emailError) {
         console.warn('[INTERVIEW] ⚠️ Email sending failed (will continue without email):', emailError);
         // Don't throw - continue with workflow update even if email fails
       }
 
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
@@ -677,9 +637,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       console.log('[INTERVIEW] ✅ Timeline updated with workflow progression');
       console.log('[INTERVIEW] Current completed, next step set to current');
 
-      // Always set to 'interview' when sending interview invitation
-      await updateDoc(sessionRef, {
-        recruitmentStage: 'interview', // Fixed: Always set to interview when scheduling interview
+      await supabase.from(COLLECTIONS.SESSIONS).update({
+        recruitmentStage: 'interview',
         timeline: updatedTimeline,
         updatedAt: now,
         interviewEmailSent: true,
@@ -692,7 +651,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           link: interviewType === 'online' ? interviewLink : null,
           scheduledAt: now
         }
-      });
+      }).eq('id', sessionId);
 
       setShowInterviewModal(false);
       setInterviewDate('');
@@ -717,13 +676,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
     if (!interviewLocation && candidate) {
       try {
-        const companyRef = doc(db, COLLECTIONS.COMPANIES, candidate.companyId);
-        const companySnap = await getDoc(companyRef);
-
-        if (companySnap.exists()) {
-          const companyData = companySnap.data();
-          const defaultLocation = companyData.address || companyData.location || '';
-          setInterviewLocation(defaultLocation);
+        const { data: companyAddr } = await supabase
+          .from(COLLECTIONS.COMPANIES)
+          .select('address, location')
+          .eq('id', candidate.companyId)
+          .single();
+        if (companyAddr) {
+          setInterviewLocation((companyAddr as any).address || (companyAddr as any).location || '');
         }
       } catch (error) {
         console.error('Error loading company address:', error);
@@ -753,13 +712,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         return;
       }
 
-      // Update workflow status directly (email sending is optional)
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
-
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map(event => ({
+        ...existingTimeline.map((event: any) => ({
           ...event,
           status: event.status === 'current' ? 'completed' as const : event.status
         })),
@@ -771,21 +727,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await updateDoc(sessionRef, {
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: 'background_check',
         timeline: updatedTimeline,
         updatedAt: now
-      });
+      }).eq('id', sessionId);
 
-      // Try to send email (optional - won't block if fails)
-      try {
-        console.log('[BACKGROUND-CHECK] Attempting to send email...');
-        const initiateBackgroundCheck = httpsCallable(functions, 'initiateBackgroundCheck');
-        await initiateBackgroundCheck({ sessionId });
-        console.log('[BACKGROUND-CHECK] ✅ Email sent successfully');
-      } catch (emailError) {
-        console.warn('[BACKGROUND-CHECK] ⚠️ Email failed (continuing without email):', emailError);
-      }
+      console.warn('[BACKGROUND-CHECK] Cloud Function stub - email not sent');
 
       toast.success(`Background Check dimulai! (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       await loadCandidateData();
@@ -807,12 +755,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       setIsUpdating(true);
       setShowHireModal(false);
 
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map(event => ({
+        ...existingTimeline.map((event: any) => ({
           ...event,
           status: event.status === 'current' ? 'completed' as const : event.status
         })),
@@ -824,7 +771,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await updateDoc(sessionRef, {
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: 'hired',
         timeline: updatedTimeline,
         hireDetails: {
@@ -833,23 +780,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           contactPerson: contactPerson,
           hiredAt: now
         }
-      });
+      }).eq('id', sessionId);
 
-      try {
-        const sendHireEmailFn = httpsCallable(functions, 'sendHireEmail');
-        await sendHireEmailFn({
-          sessionId: sessionId,
-          startDate: hireDate,
-          startTime: hireTime,
-          contactPerson: contactPerson,
-          contactPhone: '',
-          additionalInfo: ''
-        });
-        toast.success('Kandidat berhasil direkrut dan email selamat telah dikirim!');
-      } catch (emailError) {
-        console.error('Error sending hire email:', emailError);
-        toast.success('Kandidat berhasil direkrut (email gagal dikirim)');
-      }
+      console.warn('[HIRE] Cloud Function stub - hire email not sent');
+      toast.success('Kandidat berhasil direkrut!');
 
       setHireDate('');
       setHireTime('');
@@ -872,12 +806,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       setIsUpdating(true);
       setShowRejectModal(false);
 
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map(event => ({
+        ...existingTimeline.map((event: any) => ({
           ...event,
           status: event.status === 'current' ? 'completed' as const : event.status
         })),
@@ -889,30 +822,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await updateDoc(sessionRef, {
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: 'rejected',
         timeline: updatedTimeline,
         rejectionDetails: {
           sendEmail: sendRejectionEmail,
           rejectedAt: now
         }
-      });
+      }).eq('id', sessionId);
 
-      if (sendRejectionEmail) {
-        try {
-          const sendRejectionEmailFn = httpsCallable(functions, 'sendRejectionEmail');
-          await sendRejectionEmailFn({
-            sessionId: sessionId,
-            customMessage: ''
-          });
-          toast.success('Kandidat ditolak dan email penolakan telah dikirim');
-        } catch (emailError) {
-          console.error('Error sending rejection email:', emailError);
-          toast.success('Kandidat ditolak (email gagal dikirim)');
-        }
-      } else {
-        toast.success('Kandidat ditolak (tanpa email)');
-      }
+      console.warn('[REJECT] Cloud Function stub - rejection email not sent');
+      toast.success(sendRejectionEmail ? 'Kandidat ditolak (email stub)' : 'Kandidat ditolak (tanpa email)');
 
       setSendRejectionEmail(true);
       await loadCandidateData();
@@ -948,12 +868,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
     try {
       setIsUpdating(true);
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
       const now = new Date().toISOString();
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map(event => ({
+        ...existingTimeline.map((event: any) => ({
           ...event,
           status: event.status === 'current' ? 'completed' as const : event.status
         })),
@@ -965,11 +884,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await updateDoc(sessionRef, {
+      await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: newStage,
         timeline: updatedTimeline,
         updatedAt: now
-      });
+      }).eq('id', sessionId);
 
       await loadCandidateData();
 

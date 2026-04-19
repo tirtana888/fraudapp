@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock, UserPlus, Briefcase, Eye, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
-import { db, COLLECTIONS, sendIntegrityTestInvitation } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { supabase, COLLECTIONS, sendIntegrityTestInvitation } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface CandidatesReviewInviteProps {
@@ -68,21 +67,15 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
 
       // Query: Ambil kandidat dari job_application yang sudah complete test
       // Ini adalah kandidat yang tadinya pending_review, lalu diundang dan sudah complete
-      const completedQuery = query(
-        collection(db, COLLECTIONS.SESSIONS),
-        where('companyId', '==', companyId),
-        where('source', '==', 'job_application')
+      const { data: completedData } = await supabase
+        .from(COLLECTIONS.SESSIONS)
+        .select('*')
+        .eq('companyId', companyId)
+        .eq('source', 'job_application');
+
+      const completedSessions = (completedData || []).filter((data: any) =>
+        data.analysis && data.inviteSource === 'review_invite'
       );
-      
-      const completedSnapshot = await getDocs(completedQuery);
-      
-      // Filter: Ambil yang sudah ada analysis (sudah complete test) DAN tadinya dari pending_review
-      // Tandanya: ada inviteSource field atau pernah ada status pending_review
-      const completedSessions = completedSnapshot.docs.filter(doc => {
-        const data = doc.data();
-        // Hanya tampilkan yang sudah complete test (ada analysis) DAN berasal dari review invite flow
-        return data.analysis && data.inviteSource === 'review_invite';
-      });
 
       console.log('[REVIEW-INVITE] Found completed candidates from review invite flow:', completedSessions.length);
 
@@ -93,26 +86,19 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
       }
 
       const candidatesWithDetails: ApplicationWithDetails[] = await Promise.all(
-        completedSessions.map(async (docSnap) => {
-          const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
-
+        completedSessions.map(async (sessionData: any) => {
           let jobTitle = 'Unknown Position';
           let jobLocation = 'Unknown Location';
 
           if (sessionData.jobId) {
-            const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, sessionData.jobId));
-            if (jobDoc.exists()) {
-              const job = jobDoc.data();
-              jobTitle = job.title;
-              jobLocation = job.location;
+            const { data: jobData } = await supabase.from(COLLECTIONS.JOBS).select('title, location').eq('id', sessionData.jobId).single();
+            if (jobData) {
+              jobTitle = (jobData as any).title;
+              jobLocation = (jobData as any).location;
             }
           }
 
-          return {
-            ...sessionData,
-            jobTitle,
-            jobLocation
-          } as ApplicationWithDetails;
+          return { ...sessionData, jobTitle, jobLocation } as ApplicationWithDetails;
         })
       );
 
@@ -134,31 +120,17 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
       setIsLoading(true);
       console.log('[CANDIDATES-REVIEW] Loading data for company:', companyId);
 
-      const jobsQuery = query(
-        collection(db, COLLECTIONS.JOBS),
-        where('companyId', '==', companyId)
-      );
-      const jobsSnapshot = await getDocs(jobsQuery);
-      const jobsData = jobsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Job));
-      setJobs(jobsData);
-      console.log('[CANDIDATES-REVIEW] Loaded jobs:', jobsData.length);
-
-      const sessionsQuery = query(
-        collection(db, COLLECTIONS.SESSIONS),
-        where('companyId', '==', companyId),
-        where('source', '==', 'job_application'),
-        where('status', '==', 'pending_review')
-      );
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      console.log('[CANDIDATES-REVIEW] Found sessions (pending_review):', sessionsSnapshot.docs.length);
+      const [{ data: jobsData }, { data: sessionsData }] = await Promise.all([
+        supabase.from(COLLECTIONS.JOBS).select('*').eq('companyId', companyId),
+        supabase.from(COLLECTIONS.SESSIONS).select('*').eq('companyId', companyId).eq('source', 'job_application').eq('status', 'pending_review'),
+      ]);
+      setJobs((jobsData || []) as Job[]);
+      console.log('[CANDIDATES-REVIEW] Loaded jobs:', (jobsData || []).length);
+      console.log('[CANDIDATES-REVIEW] Found sessions (pending_review):', (sessionsData || []).length);
 
       const applicationsWithDetails: ApplicationWithDetails[] = await Promise.all(
-        sessionsSnapshot.docs.map(async (docSnap) => {
-          const sessionData = { id: docSnap.id, ...docSnap.data() } as any;
-          console.log('[CANDIDATES-REVIEW] Processing session:', docSnap.id, sessionData);
+        (sessionsData || []).map(async (sessionData: any) => {
+          console.log('[CANDIDATES-REVIEW] Processing session:', sessionData.id, sessionData);
 
           let jobTitle = 'Unknown Position';
           let jobLocation = 'Unknown Location';
@@ -168,20 +140,18 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
           let timeline = sessionData.timeline || [];
 
           if (sessionData.jobId) {
-            const jobDoc = await getDoc(doc(db, COLLECTIONS.JOBS, sessionData.jobId));
-            if (jobDoc.exists()) {
-              const job = jobDoc.data();
-              jobTitle = job.title;
-              jobLocation = job.location;
+            const { data: jobData } = await supabase.from(COLLECTIONS.JOBS).select('title, location').eq('id', sessionData.jobId).single();
+            if (jobData) {
+              jobTitle = (jobData as any).title;
+              jobLocation = (jobData as any).location;
             }
           }
 
           if (sessionData.applicationId) {
-            const appDoc = await getDoc(doc(db, COLLECTIONS.APPLICATIONS, sessionData.applicationId));
-            if (appDoc.exists()) {
-              const app = appDoc.data();
-              applicationStatus = app.status;
-              appliedAt = app.appliedAt || sessionData.date;
+            const { data: appData } = await supabase.from(COLLECTIONS.APPLICATIONS).select('*').eq('id', sessionData.applicationId).single();
+            if (appData) {
+              applicationStatus = (appData as any).status;
+              appliedAt = (appData as any).appliedAt || sessionData.date;
             }
           }
 
@@ -245,23 +215,20 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
         note
       };
 
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-      const sessionSnap = await getDoc(sessionRef);
-
-      if (sessionSnap.exists()) {
-        const currentTimeline = sessionSnap.data().timeline || [];
-        await updateDoc(sessionRef, {
+      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', sessionId).single();
+      if (sessionSnap) {
+        const currentTimeline = (sessionSnap as any).timeline || [];
+        await supabase.from(COLLECTIONS.SESSIONS).update({
           recruitmentStage: stage,
           timeline: [...currentTimeline, newTimelineItem]
-        });
+        }).eq('id', sessionId);
       }
 
       if (applicationId) {
-        const appRef = doc(db, COLLECTIONS.APPLICATIONS, applicationId);
-        await updateDoc(appRef, {
+        await supabase.from(COLLECTIONS.APPLICATIONS).update({
           status: stage === 'rejected' ? 'Rejected' : 'In Progress',
           lastUpdated: new Date().toISOString()
-        });
+        }).eq('id', applicationId);
       }
 
       await loadData();

@@ -30,13 +30,12 @@ import CreditManagementPage from './components/CreditManagementPage';
 import InterviewSchedulePage from './components/InterviewSchedulePage';
 import InterviewConfirmationPage from './components/InterviewConfirmationPage';
 import { InterviewSession, UserProfile, CompanyProfile, TimelineEvent, AssessmentInvite, CREDIT_COSTS } from './types';
-import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/firebase';
+import { subscribeToSessions, resetConnectionState, seedRealDatabase, getCompanyById, subscribeToInvites, observeAuthState, logoutFromFirebase } from './services/supabase';
 import { getSession, clearSession, saveSession } from './services/auth';
 import { getCreditBalance, deductCredit } from './services/creditManagement';
 import PaymentModal from './components/PaymentModal';
 import { ToastProvider, useToast } from './components/Toast';
-import { db, COLLECTIONS } from './services/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { supabase, COLLECTIONS } from './services/supabase';
 import NotificationCenter from './components/NotificationCenter';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 
@@ -1000,7 +999,7 @@ const App: React.FC = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const { resendVerificationEmail } = await import('./services/firebase');
+                            const { resendVerificationEmail } = await import('./services/supabase');
                             await resendVerificationEmail();
                             alert('Email verifikasi telah dikirim! Periksa inbox Anda.');
                           } catch (error: any) {
@@ -1068,12 +1067,10 @@ const App: React.FC = () => {
                 );
 
                 if (result.success) {
-                  // Save unlock status to Firestore
-                  const sessionRef = doc(db, COLLECTIONS.SESSIONS, selectedCandidateForUnlock.id);
-                  await updateDoc(sessionRef, {
+                  await supabase.from(COLLECTIONS.SESSIONS).update({
                     unlockedAt: new Date().toISOString(),
                     unlockedByCompanyId: currentCompany.id
-                  });
+                  }).eq('id', selectedCandidateForUnlock.id);
 
                   // Update credit balance
                   setCreditBalance(result.remainingCredits);

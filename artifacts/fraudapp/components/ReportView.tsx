@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { AlertOctagon, CheckCircle, AlertTriangle, ArrowLeft, Lock, Crown, BarChart3, Fingerprint, PenSquare, RefreshCw, FileWarning, FileText, MessageSquare } from 'lucide-react';
 import { InterviewSession, RiskLevel, CompanyProfile } from '../types';
-import { getCompanyById } from '../services/firebase';
+import { getCompanyById } from '../services/supabase';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
 
 interface ReportViewProps {

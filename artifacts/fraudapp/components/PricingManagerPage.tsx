@@ -35,7 +35,7 @@ import {
     deactivatePromoCode,
     deletePromoCode
 } from '../services/pricingService';
-import { auth } from '../services/firebase';
+import { auth } from '../services/supabase';
 
 interface PricingManagerPageProps {
     onBack?: () => void;
