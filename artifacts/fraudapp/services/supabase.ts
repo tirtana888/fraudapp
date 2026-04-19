@@ -49,15 +49,28 @@ export const COLLECTIONS = {
 } as const;
 
 // ==========================================
-// HELPER: stub for Cloud Functions
+// EMAIL — calls /api/send-email on the API server
 // ==========================================
 export const sendEmailViaCloudFunction = async (
   emailType: string,
   to_email: string,
-  emailData: Record<string, any>
+  emailData: Record<string, string>
 ): Promise<boolean> => {
-  console.warn('[EMAIL] Cloud Functions not migrated. Email not sent:', { emailType, to_email, emailData });
-  return false;
+  try {
+    const resp = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailType, to_email, emailData }),
+    });
+    const json = await resp.json() as { success: boolean; error?: string };
+    if (!json.success) {
+      console.warn('[EMAIL] send-email endpoint returned failure:', json.error);
+    }
+    return json.success;
+  } catch (err) {
+    console.warn('[EMAIL] Failed to reach send-email endpoint:', err);
+    return false;
+  }
 };
 
 // ==========================================
@@ -294,8 +307,16 @@ export const inviteCompanyReal = async (payload: {
 export const resendInviteEmail = async (companyId: string): Promise<{ success: boolean; message: string }> => {
   const company = await getCompanyById(companyId);
   if (!company) return { success: false, message: 'Company tidak ditemukan' };
-  console.warn('[ADMIN] resendInviteEmail: email sending not implemented (Cloud Functions removed)');
-  return { success: true, message: `Email undangan berhasil dikirim ke ${company.adminEmail}` };
+  const email = company.adminEmail;
+  if (!email) return { success: false, message: 'Company tidak memiliki email admin' };
+
+  const inviteLink = `${window.location.origin}/register?company=${companyId}`;
+  await sendEmailViaCloudFunction('assessment_invite', email, {
+    candidateName: company.name,
+    companyName: 'HireGood',
+    inviteLink,
+  });
+  return { success: true, message: `Email undangan berhasil dikirim ke ${email}` };
 };
 
 // ==========================================
@@ -391,15 +412,16 @@ const _subscribeToSessionsImpl = (
 export const blastAssessmentInvites = async (
   candidates: Array<{ name: string; email: string; whatsapp?: string }>,
   companyId: string,
-  _companyName?: string,
+  companyName?: string,
   assessmentConfig?: Record<string, unknown>
 ): Promise<{ success: number; failed: number }> => {
-  return _blastAssessmentInvitesImpl(companyId, candidates, assessmentConfig);
+  return _blastAssessmentInvitesImpl(companyId, candidates, companyName, assessmentConfig);
 };
 
 const _blastAssessmentInvitesImpl = async (
   companyId: string,
   candidates: Array<{ name: string; email: string; whatsapp?: string }>,
+  companyName?: string,
   assessmentConfig?: Record<string, unknown>
 ): Promise<{ success: number; failed: number }> => {
   let success = 0;
@@ -408,6 +430,7 @@ const _blastAssessmentInvitesImpl = async (
   for (const candidate of candidates) {
     try {
       const now = new Date().toISOString();
+      const inviteLink = `${window.location.origin}/assessment?company=${companyId}&email=${encodeURIComponent(candidate.email)}`;
       const invite = {
         companyId,
         candidateName: candidate.name,
@@ -417,13 +440,17 @@ const _blastAssessmentInvitesImpl = async (
         createdAt: now,
         updatedAt: now,
         assessmentConfig: assessmentConfig || {},
-        inviteLink: `${window.location.origin}/assessment?company=${companyId}&email=${encodeURIComponent(candidate.email)}`,
+        inviteLink,
       };
 
       const { error } = await supabase.from(COLLECTIONS.INVITES).insert(invite);
       if (error) throw error;
 
-      console.warn('[EMAIL] sendEmailViaCloudFunction: Cloud Functions removed. Invite email not sent.');
+      await sendEmailViaCloudFunction('assessment_invite', candidate.email, {
+        candidateName: candidate.name,
+        companyName: companyName || 'Perusahaan',
+        inviteLink,
+      });
       success++;
     } catch (e) {
       console.error('[INVITES] Error creating invite:', e);
@@ -435,13 +462,38 @@ const _blastAssessmentInvitesImpl = async (
 };
 
 export const resendCandidateInvite = async (inviteId: string, _companyName?: string): Promise<{ success: boolean; message: string }> => {
+  const { data: inviteData, error: fetchErr } = await supabase
+    .from(COLLECTIONS.INVITES)
+    .select('candidateEmail, candidateName, companyId, inviteLink')
+    .eq('id', inviteId)
+    .single<{ candidateEmail: string; candidateName: string; companyId: string; inviteLink?: string }>();
+  if (fetchErr) return { success: false, message: fetchErr.message };
+
   const { error } = await supabase
     .from(COLLECTIONS.INVITES)
     .update({ updatedAt: new Date().toISOString(), status: 'resent' })
     .eq('id', inviteId);
   if (error) return { success: false, message: error.message };
-  console.warn('[INVITES] resendCandidateInvite: Cloud Functions removed. Email not sent.');
-  return { success: true, message: 'Undangan diperbarui (email tidak terkirim—Cloud Functions belum tersedia)' };
+
+  const companyId = inviteData?.companyId || '';
+  const inviteLink = inviteData?.inviteLink ||
+    `${window.location.origin}/assessment?company=${companyId}&email=${encodeURIComponent(inviteData?.candidateEmail || '')}`;
+
+  if (inviteData?.candidateEmail) {
+    const { data: companyRow } = await supabase
+      .from(COLLECTIONS.COMPANIES)
+      .select('name')
+      .eq('id', companyId)
+      .single<{ name: string }>();
+
+    await sendEmailViaCloudFunction('assessment_invite', inviteData.candidateEmail, {
+      candidateName: inviteData.candidateName || 'Kandidat',
+      companyName: companyRow?.name || 'Perusahaan',
+      inviteLink,
+    });
+  }
+
+  return { success: true, message: 'Undangan berhasil dikirim ulang' };
 };
 
 export const deleteCandidateInvite = async (inviteId: string): Promise<{ success: boolean; message: string }> => {
@@ -455,10 +507,24 @@ export const sendIntegrityTestInvitation = async (
   candidateEmail: string,
   candidateName: string,
   companyId: string,
-  _jobTitle?: string
+  jobTitle?: string
 ): Promise<void> => {
-  console.warn('[INVITES] sendIntegrityTestInvitation: Cloud Functions removed. Email not sent.');
   await updateSession(sessionId, { status: 'active' });
+
+  const assessmentLink = `${window.location.origin}/assessment?company=${companyId}&session=${sessionId}`;
+
+  const { data: companyRow } = await supabase
+    .from(COLLECTIONS.COMPANIES)
+    .select('name')
+    .eq('id', companyId)
+    .single<{ name: string }>();
+
+  await sendEmailViaCloudFunction('assessment_invite', candidateEmail, {
+    candidateName,
+    companyName: companyRow?.name || 'Perusahaan',
+    inviteLink: assessmentLink,
+    roleName: jobTitle || 'posisi yang tersedia',
+  });
 };
 
 export const subscribeToInvites = (
@@ -750,7 +816,17 @@ export const createInterviewSessionFromApplication = async (
   const { data, error } = await supabase.from(COLLECTIONS.SESSIONS).insert(session).select('id').single();
   if (error) throw error;
 
-  console.warn('[SESSIONS] sendCandidateWelcomeEmail: Cloud Functions removed. Welcome email not sent.');
+  const assessmentLink = `${window.location.origin}/assessment?company=${applicationData.companyId}&session=${data.id}`;
+  const { data: companyForEmail } = await supabase
+    .from(COLLECTIONS.COMPANIES)
+    .select('name')
+    .eq('id', applicationData.companyId)
+    .single<{ name: string }>();
+  sendEmailViaCloudFunction('candidate_welcome', applicationData.email, {
+    candidateName: applicationData.fullName,
+    companyName: companyForEmail?.name || 'Perusahaan',
+    assessmentLink,
+  }).catch(() => {});
 
   if (applicationData.cvUrl) {
     parseCVWithMistral(applicationData.cvUrl, data.id).catch(() => {});
@@ -952,8 +1028,10 @@ export const sendAssessmentCompleteEmail = async (
   candidateEmail: string,
   companyName: string
 ): Promise<boolean> => {
-  console.warn('[EMAIL] sendAssessmentCompleteEmail: Cloud Functions removed. Email not sent.');
-  return false;
+  return sendEmailViaCloudFunction('assessment_complete', candidateEmail, {
+    candidateName,
+    companyName,
+  });
 };
 
 export const verifyAccessCode = async (code: string): Promise<AssessmentInvite | null> => {

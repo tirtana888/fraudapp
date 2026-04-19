@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
 import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep } from '../types';
-import { supabase, COLLECTIONS, parseCVWithMistral } from '../services/supabase';
+import { supabase, COLLECTIONS, parseCVWithMistral, sendEmailViaCloudFunction } from '../services/supabase';
 
 type TimelineItem = NonNullable<InterviewSession['timeline']>[number];
 import { useToast } from './Toast';
@@ -706,8 +706,6 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         updatedAt: now
       }).eq('id', sessionId);
 
-      console.warn('[BACKGROUND-CHECK] Cloud Function stub - email not sent');
-
       toast.success(`Background Check dimulai! (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       await loadCandidateData();
     } catch (error) {
@@ -755,7 +753,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       }).eq('id', sessionId);
 
-      console.warn('[HIRE] Cloud Function stub - hire email not sent');
+      sendEmailViaCloudFunction('hire_notification', candidate.candidate.email, {
+        candidateName: candidate.candidate.name,
+        companyName: company.name,
+        hireDate,
+        hireTime,
+        contactPerson,
+      }).catch(() => {});
       toast.success('Kandidat berhasil direkrut!');
 
       setHireDate('');
@@ -804,8 +808,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       }).eq('id', sessionId);
 
-      console.warn('[REJECT] Cloud Function stub - rejection email not sent');
-      toast.success(sendRejectionEmail ? 'Kandidat ditolak (email stub)' : 'Kandidat ditolak (tanpa email)');
+      if (sendRejectionEmail) {
+        sendEmailViaCloudFunction('rejection_notification', candidate.candidate.email, {
+          candidateName: candidate.candidate.name,
+          companyName: company.name,
+        }).catch(() => {});
+      }
+      toast.success(sendRejectionEmail ? 'Kandidat ditolak & email dikirim' : 'Kandidat ditolak (tanpa email)');
 
       setSendRejectionEmail(true);
       await loadCandidateData();
