@@ -4,7 +4,27 @@ import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, J
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+// Reuse a single Supabase client across HMR reloads to avoid the
+// "Multiple GoTrueClient instances detected" warning, which can lead to
+// inconsistent session persistence across page refreshes.
+const _globalAny = globalThis as unknown as { __fraudguardSupabase?: SupabaseClient };
+
+export const supabase: SupabaseClient =
+  _globalAny.__fraudguardSupabase ??
+  createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'fraudguard-auth',
+      flowType: 'pkce',
+    },
+  });
+
+if (typeof window !== 'undefined') {
+  _globalAny.__fraudguardSupabase = supabase;
+}
 
 // Re-export db alias for compatibility with files importing { db }
 export const db = supabase;
@@ -1018,68 +1038,112 @@ export const saveSessionToDB = createInterviewSession;
 // ==========================================
 
 export const observeAuthState = (callback: (user: UserProfile | null) => void): (() => void) => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session?.user) {
-      try {
-        const supaUser = session.user;
-        const { data: existingProfile } = await supabase
-          .from(COLLECTIONS.USERS)
-          .select('*')
-          .eq('id', supaUser.id)
-          .single();
+  // Helper: build a minimal profile from the auth user only — used as a safe
+  // fallback so that a transient profile-fetch error never signs the user out.
+  const minimalProfileFromAuth = (supaUser: any): UserProfile => {
+    const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
+    const avatar: string = supaUser.user_metadata?.avatar_url
+      || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+    return {
+      id: supaUser.id,
+      email: supaUser.email || '',
+      name: fullName,
+      role: 'Company Admin',
+      avatar,
+      emailVerified: !!supaUser.email_confirmed_at,
+      createdAt: supaUser.created_at || new Date().toISOString(),
+    } as UserProfile;
+  };
 
-        if (existingProfile) {
-          callback({ ...(existingProfile as UserProfile), emailVerified: !!supaUser.email_confirmed_at });
-          return;
-        }
-
-        // No profile by ID — try by email (e.g. migrated records)
-        const { data: profileByEmail } = await supabase
-          .from(COLLECTIONS.USERS)
-          .select('*')
-          .eq('email', supaUser.email)
-          .single();
-
-        if (profileByEmail) {
-          callback({ ...(profileByEmail as UserProfile), id: supaUser.id, emailVerified: !!supaUser.email_confirmed_at });
-          return;
-        }
-
-        // First-time Google OAuth login — provision user + company via trusted RPC.
-        // provision_company() is SECURITY DEFINER and atomically creates both
-        // records, preventing arbitrary company_id injection from the client.
-        const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
-        const avatar: string = supaUser.user_metadata?.avatar_url
-          || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
-
-        const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
-          p_company_name: `${fullName}'s Company`,
-          p_user_name:    fullName,
-          p_user_email:   supaUser.email || '',
-          p_user_phone:   null,
-          p_user_avatar:  avatar,
-        });
-        if (rpError) throw rpError;
-
-        const companyId: string = (rpResult as { companyId: string })?.companyId || `temp-${supaUser.id}`;
-        const newProfile: UserProfile = {
-          id: supaUser.id,
-          email: supaUser.email || '',
-          name: fullName,
-          role: 'Company Admin',
-          avatar,
-          companyId,
-          emailVerified: !!supaUser.email_confirmed_at,
-          createdAt: new Date().toISOString(),
-        };
-        callback(newProfile);
-      } catch (err) {
-        console.error('[AUTH] observeAuthState error:', err);
-        callback(null);
-      }
-    } else {
+  const handleSession = async (event: string | null, session: any) => {
+    if (!session?.user) {
+      // Only treat explicit sign-out / no-session events as logout.
       callback(null);
+      return;
     }
+
+    const supaUser = session.user;
+
+    try {
+      // Try profile by id
+      const { data: existingProfile, error: idErr } = await supabase
+        .from(COLLECTIONS.USERS)
+        .select('*')
+        .eq('id', supaUser.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        callback({ ...(existingProfile as UserProfile), emailVerified: !!supaUser.email_confirmed_at });
+        return;
+      }
+
+      // Try profile by email (migrated records)
+      const { data: profileByEmail, error: emailErr } = supaUser.email
+        ? await supabase
+            .from(COLLECTIONS.USERS)
+            .select('*')
+            .eq('email', supaUser.email)
+            .maybeSingle()
+        : { data: null, error: null };
+
+      if (profileByEmail) {
+        callback({ ...(profileByEmail as UserProfile), id: supaUser.id, emailVerified: !!supaUser.email_confirmed_at });
+        return;
+      }
+
+      // If either lookup errored (RLS / network), do NOT try to provision a
+      // new company — the user almost certainly already has one. Fall back to
+      // a minimal profile so they stay logged in.
+      if (idErr || emailErr) {
+        console.warn('[AUTH] Profile lookup failed, using minimal auth profile:', idErr || emailErr);
+        callback(minimalProfileFromAuth(supaUser));
+        return;
+      }
+
+      // Genuinely no profile rows found. Only attempt to provision on a fresh
+      // sign-in (SIGNED_IN), never on session restore (INITIAL_SESSION /
+      // TOKEN_REFRESHED), to avoid logging out existing users when a
+      // provisioning attempt would throw.
+      if (event !== 'SIGNED_IN') {
+        callback(minimalProfileFromAuth(supaUser));
+        return;
+      }
+
+      const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
+      const avatar: string = supaUser.user_metadata?.avatar_url
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+
+      const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
+        p_company_name: `${fullName}'s Company`,
+        p_user_name:    fullName,
+        p_user_email:   supaUser.email || '',
+        p_user_phone:   null,
+        p_user_avatar:  avatar,
+      });
+
+      if (rpError) {
+        // RPC failed (e.g. "caller already belongs to a company"). Don't sign
+        // them out — fall back to the minimal profile.
+        console.warn('[AUTH] provision_company failed, using minimal profile:', rpError);
+        callback(minimalProfileFromAuth(supaUser));
+        return;
+      }
+
+      const companyId: string = (rpResult as { companyId: string })?.companyId || `temp-${supaUser.id}`;
+      callback({
+        ...minimalProfileFromAuth(supaUser),
+        companyId,
+      });
+    } catch (err) {
+      // Last-resort safety net: any unexpected throw must not log the user out
+      // when we have a valid Supabase session in hand.
+      console.error('[AUTH] observeAuthState error (keeping session):', err);
+      callback(minimalProfileFromAuth(supaUser));
+    }
+  };
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    void handleSession(event, session);
   });
   return () => subscription.unsubscribe();
 };

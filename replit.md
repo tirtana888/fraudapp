@@ -52,3 +52,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Auth notes (FraudGuard)
+
+- Supabase client is configured with explicit auth options (`persistSession`, `autoRefreshToken`, `flowType: 'pkce'`, custom `storageKey: 'fraudguard-auth'`) and is cached on `globalThis` to avoid duplicate `GoTrueClient` instances during Vite HMR. See top of `artifacts/fraudapp/services/supabase.ts`.
+- `observeAuthState` never logs out an authenticated user on transient errors: profile-lookup failures fall back to a minimal profile derived from the auth user, and `provision_company` is only invoked on a fresh `SIGNED_IN` event (never on `INITIAL_SESSION` / `TOKEN_REFRESHED`), so returning users are not signed out by the RPC throwing "caller already belongs to a company".
+
+## Environment notes
+
+- `package.json` `packageManager` field must match the pnpm version available on the system (currently `pnpm@10.26.1`); a mismatch causes pnpm to repeatedly try to bootstrap the pinned version and fail with `pnpm add pnpm@<version>` errors, blocking workflow startup.
