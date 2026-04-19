@@ -19,7 +19,18 @@ supabase.auth.getSession().then(({ data }) => {
   _cachedUser = data.session?.user ? { email: data.session.user.email ?? null } : null;
 });
 export const auth = Object.assign(supabase.auth, {
-  get currentUser() { return _cachedUser; }
+  get currentUser() { return _cachedUser; },
+  // Firebase-compatible alias: auth.onAuthStateChanged(callback) => unsubscribe()
+  onAuthStateChanged(callback: (user: { email: string | null } | null) => void): () => void {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session?.user ? { email: session.user.email ?? null } : null);
+    });
+    // Fire immediately with current state
+    supabase.auth.getSession().then(({ data }) => {
+      callback(data.session?.user ? { email: data.session.user.email ?? null } : null);
+    });
+    return () => subscription.unsubscribe();
+  }
 });
 
 // Functions stub — Firebase Cloud Functions are replaced with console.warn
@@ -434,25 +445,28 @@ const _blastAssessmentInvitesImpl = async (
   return { success, failed };
 };
 
-export const resendCandidateInvite = async (inviteId: string, _companyName?: string): Promise<void> => {
+export const resendCandidateInvite = async (inviteId: string, _companyName?: string): Promise<{ success: boolean; message: string }> => {
   const { error } = await supabase
     .from(COLLECTIONS.INVITES)
     .update({ updatedAt: new Date().toISOString(), status: 'resent' })
     .eq('id', inviteId);
-  if (error) throw error;
+  if (error) return { success: false, message: error.message };
   console.warn('[INVITES] resendCandidateInvite: Cloud Functions removed. Email not sent.');
+  return { success: true, message: 'Undangan diperbarui (email tidak terkirim—Cloud Functions belum tersedia)' };
 };
 
-export const deleteCandidateInvite = async (inviteId: string): Promise<void> => {
+export const deleteCandidateInvite = async (inviteId: string): Promise<{ success: boolean; message: string }> => {
   const { error } = await supabase.from(COLLECTIONS.INVITES).delete().eq('id', inviteId);
-  if (error) throw error;
+  if (error) return { success: false, message: error.message };
+  return { success: true, message: 'Undangan berhasil dihapus' };
 };
 
 export const sendIntegrityTestInvitation = async (
   sessionId: string,
   candidateEmail: string,
   candidateName: string,
-  companyId: string
+  companyId: string,
+  _jobTitle?: string
 ): Promise<void> => {
   console.warn('[INVITES] sendIntegrityTestInvitation: Cloud Functions removed. Email not sent.');
   await updateSession(sessionId, { status: 'active' });
@@ -810,17 +824,61 @@ export const observeAuthState = (callback: (user: UserProfile | null) => void): 
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
     if (session?.user) {
       try {
-        const { data } = await supabase
+        const supaUser = session.user;
+        const { data: existingProfile } = await supabase
           .from(COLLECTIONS.USERS)
           .select('*')
-          .eq('email', session.user.email)
+          .eq('id', supaUser.id)
           .single();
-        if (data) {
-          callback({ ...data, id: session.user.id, emailVerified: !!session.user.email_confirmed_at } as UserProfile);
-        } else {
-          callback(null);
+
+        if (existingProfile) {
+          callback({ ...(existingProfile as UserProfile), emailVerified: !!supaUser.email_confirmed_at });
+          return;
         }
-      } catch {
+
+        // No profile by ID — try by email (e.g. migrated records)
+        const { data: profileByEmail } = await supabase
+          .from(COLLECTIONS.USERS)
+          .select('*')
+          .eq('email', supaUser.email)
+          .single();
+
+        if (profileByEmail) {
+          callback({ ...(profileByEmail as UserProfile), id: supaUser.id, emailVerified: !!supaUser.email_confirmed_at });
+          return;
+        }
+
+        // First-time Google OAuth login — provision user + company records
+        const now = new Date().toISOString();
+        const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
+        const companyData = {
+          name: `${fullName}'s Company`,
+          tier: 'Freemium',
+          status: 'Active',
+          adminEmail: supaUser.email,
+          joinedDate: now,
+          usersCount: 1,
+          credits: 1000,
+          verification_credits: 100,
+          createdAt: now,
+        };
+        const { data: newCompany } = await supabase.from(COLLECTIONS.COMPANIES).insert(companyData).select('id').single();
+        const companyId = newCompany?.id || `temp-${supaUser.id}`;
+
+        const newProfile: UserProfile = {
+          id: supaUser.id,
+          email: supaUser.email || '',
+          name: fullName,
+          role: 'Company Admin',
+          avatar: supaUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,
+          companyId,
+          emailVerified: !!supaUser.email_confirmed_at,
+          createdAt: now,
+        };
+        await supabase.from(COLLECTIONS.USERS).insert(newProfile);
+        callback(newProfile);
+      } catch (err) {
+        console.error('[AUTH] observeAuthState error:', err);
         callback(null);
       }
     } else {
@@ -868,7 +926,6 @@ export const signUpWithFirebase = async (userData: {
     id: userId,
     name: userData.fullName,
     email: userData.email,
-    phone: userData.phone,
     role: 'Company Admin',
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
     companyId,
@@ -876,7 +933,8 @@ export const signUpWithFirebase = async (userData: {
     createdAt: now,
   };
 
-  await supabase.from(COLLECTIONS.USERS).insert(userProfile);
+  // Insert to DB with extra phone field not in UserProfile type
+  await supabase.from(COLLECTIONS.USERS).insert({ ...userProfile, phone: userData.phone });
   return userProfile;
 };
 

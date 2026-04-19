@@ -1,8 +1,5 @@
 import { supabase, COLLECTIONS } from './supabase';
 
-const DIDIT_API_BASE = import.meta.env.VITE_DIDIT_API_BASE || 'https://verification.didit.me/v2';
-const DIDIT_API_KEY = import.meta.env.VITE_DIDIT_API_KEY;
-
 export interface DiditVerificationSession {
   verificationSessionId: string;
   verification_url: string;
@@ -20,21 +17,17 @@ export interface DiditSessionResponse {
 }
 
 export const createBackgroundCheckSession = async (
-  sessionId: string,
-  candidateName: string,
-  candidateEmail: string
+  _sessionId: string,
+  _candidateName: string,
+  _candidateEmail: string
 ): Promise<DiditVerificationSession> => {
-  console.warn('[DIDIT] createBackgroundCheckSession: Cloud Functions removed. Cannot create Didit session server-side.');
-  throw new Error('Background check service requires Cloud Functions (not migrated).');
+  console.warn('[DIDIT] createBackgroundCheckSession: Cloud Functions removed (stubbed). Background check not available.');
+  throw new Error('Background check service requires a backend function (not yet migrated).');
 };
 
-export const getVerificationSession = async (verificationSessionId: string) => {
-  const response = await fetch(`${DIDIT_API_BASE}/session/${verificationSessionId}`, {
-    method: 'GET',
-    headers: { 'accept': 'application/json', 'x-api-key': DIDIT_API_KEY }
-  });
-  if (!response.ok) throw new Error(`Didit API error: ${response.status}`);
-  return response.json();
+export const getVerificationSession = async (_verificationSessionId: string): Promise<DiditSessionResponse> => {
+  console.warn('[DIDIT] getVerificationSession: Didit API calls require a backend proxy (stubbed).');
+  throw new Error('Didit API calls must be made server-side. This function is stubbed until a backend proxy is set up.');
 };
 
 export const handleBackgroundCheckCallback = async (
@@ -44,10 +37,9 @@ export const handleBackgroundCheckCallback = async (
 ) => {
   let actualSessionId = sessionId;
   if (!actualSessionId) {
-    const sessionData = await getVerificationSession(verificationSessionId);
-    actualSessionId = sessionData.vendor_data;
+    console.warn('[DIDIT] handleBackgroundCheckCallback: cannot resolve sessionId without Didit API access (stubbed).');
+    throw new Error('Cannot resolve session from Didit callback — API is stubbed.');
   }
-  if (!actualSessionId) throw new Error('Could not determine session ID from vendor_data');
 
   let mappedStatus: 'pending' | 'approved' | 'declined' | 'in_review' = 'in_review';
   if (status.toLowerCase() === 'approved') mappedStatus = 'approved';

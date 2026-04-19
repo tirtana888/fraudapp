@@ -66,7 +66,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
         return;
       }
 
-      const candidatesWithDetails: CompletedCandidate[] = await Promise.all(
+      const candidatesWithDetails: (CompletedCandidate | null)[] = await Promise.all(
         completedInvites.map(async (invite) => {
           try {
             const { data: sessionDoc } = await supabase.from(COLLECTIONS.SESSIONS).select('*').eq('id', invite.sessionId!).single();
@@ -76,7 +76,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
               // 🔧 FIX: Exclude job applications (auto sourcing)
               // Only show manual invites and public link assessments
               if (sessionData.source === 'job_application') {
-                console.log('[MANUAL-INVITE] ⏭️ Skipping job application session:', sessionDoc.id);
+                console.log('[MANUAL-INVITE] ⏭️ Skipping job application session:', sessionData.id);
                 return null;
               }
 

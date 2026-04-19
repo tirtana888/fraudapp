@@ -1,6 +1,7 @@
 -- HireGood / FraudGuard SaaS – Supabase Schema
 -- Run this in your Supabase SQL editor to create all required tables.
--- After running, you can enable RLS and add policies as needed for production.
+-- Column names match the exact field names used by the application code.
+-- RLS is NOT enabled here; enable it when deploying to production.
 
 -- ============================================================
 -- EXTENSIONS
@@ -8,10 +9,10 @@
 create extension if not exists "uuid-ossp";
 
 -- ============================================================
--- CORE TABLES
+-- CORE TABLES (mirrors original Firestore collections)
 -- ============================================================
 
--- Users (mirrors Firebase Auth + Firestore 'users' collection)
+-- users  (Firestore: 'users')
 create table if not exists users (
   id text primary key,
   email text unique not null,
@@ -26,7 +27,7 @@ create table if not exists users (
   updatedAt text
 );
 
--- Companies (mirrors Firestore 'companies' collection)
+-- companies  (Firestore: 'companies')
 create table if not exists companies (
   id text primary key default gen_random_uuid()::text,
   name text not null,
@@ -49,7 +50,7 @@ create table if not exists companies (
   updatedAt text
 );
 
--- Jobs (mirrors Firestore 'jobs' collection)
+-- jobs  (Firestore: 'jobs')
 create table if not exists jobs (
   id text primary key default gen_random_uuid()::text,
   companyId text not null,
@@ -63,12 +64,12 @@ create table if not exists jobs (
   datePosted text,
   slug text,
   enableInstantAssessment boolean default false,
-  assessmentWorkflowId text,
+  workflowId text,
   createdAt text,
   updatedAt text
 );
 
--- Applications (mirrors Firestore 'applications' collection)
+-- applications  (Firestore: 'applications')
 create table if not exists applications (
   id text primary key default gen_random_uuid()::text,
   jobId text not null,
@@ -82,7 +83,7 @@ create table if not exists applications (
   lastUpdated text
 );
 
--- Interview Sessions (mirrors Firestore 'sessions' collection)
+-- interview_sessions  (Firestore: 'sessions')
 create table if not exists interview_sessions (
   id text primary key default gen_random_uuid()::text,
   companyId text not null,
@@ -103,11 +104,14 @@ create table if not exists interview_sessions (
   cvUrl text,
   cvParsedData jsonb,
   riskScore integer,
+  backgroundCheck jsonb,
+  backgroundCheckStatus text,
+  backgroundCheckCompletedAt text,
   createdAt text,
   updatedAt text
 );
 
--- Assessment Invites (mirrors Firestore 'assessment_invites' / 'invites' collection)
+-- assessment_invites  (Firestore: 'assessment_invites')
 create table if not exists assessment_invites (
   id text primary key default gen_random_uuid()::text,
   access_code text unique not null,
@@ -117,6 +121,7 @@ create table if not exists assessment_invites (
   companyId text not null,
   status text default 'PENDING',
   createdAt text,
+  updatedAt text,
   usedAt text,
   sessionId text,
   jobId text,
@@ -125,22 +130,21 @@ create table if not exists assessment_invites (
   candidateEmail text,
   candidateWhatsapp text,
   assessmentConfig jsonb,
-  inviteLink text,
-  updatedAt text
+  inviteLink text
 );
 
--- Workflows (mirrors Firestore 'workflows' collection)
+-- workflows  (Firestore: 'workflows')
 create table if not exists workflows (
   id text primary key default gen_random_uuid()::text,
   companyId text not null,
   name text not null,
-  stages jsonb,
+  steps jsonb,
   isActive boolean default true,
   createdAt text,
   updatedAt text
 );
 
--- Notifications (mirrors Firestore 'notifications' collection)
+-- notifications  (Firestore: 'notifications')
 create table if not exists notifications (
   id text primary key default gen_random_uuid()::text,
   userId text not null,
@@ -148,21 +152,23 @@ create table if not exists notifications (
   type text,
   title text,
   message text,
-  isRead boolean default false,
+  read boolean default false,
   data jsonb,
   createdAt text
 );
 
--- Credit Transactions (mirrors Firestore 'credit_transactions' collection)
+-- credit_transactions  (Firestore: 'credit_transactions')
 create table if not exists credit_transactions (
   id text primary key default gen_random_uuid()::text,
   companyId text not null,
-  amount integer not null,
   type text not null,
+  amount integer not null,
+  action text,
   description text,
   balanceBefore integer,
   balanceAfter integer,
-  createdAt text,
+  timestamp text,
+  metadata jsonb,
   userId text
 );
 
@@ -225,16 +231,16 @@ create table if not exists payment_transactions (
 
 -- ============================================================
 -- STORAGE BUCKETS
--- Run these separately in the Supabase dashboard Storage tab,
--- or uncomment if running via the CLI with service-role key.
+-- Create these in the Supabase dashboard > Storage tab, or
+-- uncomment and run with the service-role key via CLI.
 -- ============================================================
 -- insert into storage.buckets (id, name, public) values ('company-assets', 'company-assets', true) on conflict do nothing;
 -- insert into storage.buckets (id, name, public) values ('candidate-documents', 'candidate-documents', false) on conflict do nothing;
 
 -- ============================================================
 -- NOTE ON ROW LEVEL SECURITY
--- RLS is intentionally NOT enabled here so the app works with
--- the anon key during development.  For production, enable RLS
--- on each table and add appropriate policies that match your
--- companyId-based access rules.
+-- RLS is intentionally NOT enabled in this schema file so the
+-- app functions correctly with the anon key during development.
+-- For production deployment, enable RLS on each table and add
+-- policies based on companyId ownership and user roles.
 -- ============================================================
