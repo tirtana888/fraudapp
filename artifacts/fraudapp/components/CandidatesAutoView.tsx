@@ -104,7 +104,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
 
     const channel = supabase
       .channel('auto-sessions-' + companyId)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => fetchAll())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

@@ -42,7 +42,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ companyId, onNa
 
         const channel = supabase
             .channel('notifs-' + companyId)
-            .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.NOTIFICATIONS, filter: `companyId=eq.${companyId}` }, () => loadNotifs())
+            .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.NOTIFICATIONS, filter: `companyId=eq.${companyId}` }, () => loadNotifs())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };

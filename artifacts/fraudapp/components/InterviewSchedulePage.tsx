@@ -85,7 +85,7 @@ const InterviewSchedulePage: React.FC<InterviewSchedulePageProps> = ({ companyId
 
         const channel = supabase
             .channel('interviews-' + companyId)
-            .on('postgres_changes' as any, { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => loadInterviews())
+            .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `companyId=eq.${companyId}` }, () => loadInterviews())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };

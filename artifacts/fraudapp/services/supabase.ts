@@ -9,8 +9,18 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
 // Re-export db alias for compatibility with files importing { db }
 export const db = supabase;
 
-// Auth instance alias for compatibility
-export const auth = supabase.auth;
+// Auth shim — exposes a synchronous `currentUser` property that reads the cached Supabase session.
+// Supabase does not have a synchronous currentUser; this shim provides best-effort compatibility.
+let _cachedUser: { email: string | null } | null = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  _cachedUser = session?.user ? { email: session.user.email ?? null } : null;
+});
+supabase.auth.getSession().then(({ data }) => {
+  _cachedUser = data.session?.user ? { email: data.session.user.email ?? null } : null;
+});
+export const auth = Object.assign(supabase.auth, {
+  get currentUser() { return _cachedUser; }
+});
 
 // Functions stub — Firebase Cloud Functions are replaced with console.warn
 export const functions = null;
@@ -43,10 +53,26 @@ export const sendEmailViaCloudFunction = async (
 // AUTH FUNCTIONS
 // ==========================================
 
-export const loginWithFirebase = async (email: string, password: string) => {
+export const loginWithFirebase = async (email: string, password: string): Promise<UserProfile> => {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  return data.user;
+  const supaUser = data.user!;
+
+  // Try to load the persisted user profile; fall back to a minimal UserProfile derived from auth data
+  const { data: profileRow } = await supabase.from(COLLECTIONS.USERS).select('*').eq('id', supaUser.id).single();
+  if (profileRow) {
+    return { ...(profileRow as UserProfile), emailVerified: !!supaUser.email_confirmed_at };
+  }
+
+  // Minimal fallback profile (no matching row in users table yet)
+  return {
+    id: supaUser.id,
+    email: supaUser.email || email,
+    name: supaUser.user_metadata?.full_name || supaUser.email || email,
+    role: 'Company Admin',
+    emailVerified: !!supaUser.email_confirmed_at,
+    createdAt: supaUser.created_at,
+  } as UserProfile;
 };
 
 export const registerWithFirebase = async (email: string, password: string) => {
@@ -69,13 +95,19 @@ export const resendVerificationEmail = async () => {
   console.warn('[AUTH] Email verification resend not supported in Supabase anon flow');
 };
 
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (): Promise<UserProfile> => {
+  // Google OAuth via Supabase uses a redirect flow — we initiate the redirect here.
+  // The actual session is captured after the redirect via observeAuthState in App.tsx.
+  // We still call signInWithOAuth but the returned `data` is { provider, url } not a user.
+  // Callers that await this expect a UserProfile; we throw so they can handle the redirect.
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin }
   });
   if (error) throw error;
-  return data;
+  // Redirect is being initiated; the page will reload and observeAuthState will fire.
+  // Throwing a special sentinel lets callers (LoginPage) gracefully suppress the error UI.
+  throw Object.assign(new Error('google_oauth_redirect'), { isOAuthRedirect: true });
 };
 
 export const onAuthStateChanged = (callback: (user: any) => void): (() => void) => {
@@ -305,6 +337,16 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 
 export const subscribeToSessions = (
   companyId: string,
+  roleOrCallback: string | ((data: InterviewSession[]) => void),
+  maybeCallback?: (data: InterviewSession[]) => void
+): (() => void) => {
+  // Accept both (companyId, onUpdate) and (companyId, role, onUpdate) call signatures
+  const onUpdate = typeof roleOrCallback === 'function' ? roleOrCallback : maybeCallback!;
+  return _subscribeToSessionsImpl(companyId, onUpdate);
+};
+
+const _subscribeToSessionsImpl = (
+  companyId: string,
   onUpdate: (data: InterviewSession[]) => void
 ): (() => void) => {
   // Initial fetch
@@ -330,6 +372,32 @@ export const subscribeToSessions = (
 // ==========================================
 
 export const blastAssessmentInvites = async (
+  candidatesOrCompanyId: Array<{ name: string; email: string; whatsapp?: string }> | string,
+  companyIdOrCompanyName: string,
+  companyNameOrConfig?: string | any,
+  assessmentConfigExtra?: any
+): Promise<{ success: number; failed: number }> => {
+  // Accept both old (companyId, candidates, config) and new (candidates, companyId, companyName) call signatures
+  let companyId: string;
+  let candidates: Array<{ name: string; email: string; whatsapp?: string }>;
+  let assessmentConfig: any;
+
+  if (Array.isArray(candidatesOrCompanyId)) {
+    // New call signature: (candidates, companyId, companyName)
+    candidates = candidatesOrCompanyId;
+    companyId = companyIdOrCompanyName;
+    assessmentConfig = typeof companyNameOrConfig === 'object' ? companyNameOrConfig : assessmentConfigExtra;
+  } else {
+    // Old call signature: (companyId, candidates, config)
+    companyId = candidatesOrCompanyId;
+    candidates = companyIdOrCompanyName as unknown as Array<{ name: string; email: string; whatsapp?: string }>;
+    assessmentConfig = companyNameOrConfig;
+  }
+
+  return _blastAssessmentInvitesImpl(companyId, candidates, assessmentConfig);
+};
+
+const _blastAssessmentInvitesImpl = async (
   companyId: string,
   candidates: Array<{ name: string; email: string; whatsapp?: string }>,
   assessmentConfig?: any
@@ -366,7 +434,7 @@ export const blastAssessmentInvites = async (
   return { success, failed };
 };
 
-export const resendCandidateInvite = async (inviteId: string): Promise<void> => {
+export const resendCandidateInvite = async (inviteId: string, _companyName?: string): Promise<void> => {
   const { error } = await supabase
     .from(COLLECTIONS.INVITES)
     .update({ updatedAt: new Date().toISOString(), status: 'resent' })
@@ -387,7 +455,7 @@ export const sendIntegrityTestInvitation = async (
   companyId: string
 ): Promise<void> => {
   console.warn('[INVITES] sendIntegrityTestInvitation: Cloud Functions removed. Email not sent.');
-  await updateSession(sessionId, { status: 'invited' as any });
+  await updateSession(sessionId, { status: 'active' });
 };
 
 export const subscribeToInvites = (

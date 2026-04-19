@@ -128,8 +128,8 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     // Real-time listener for CV parsing and Background Check updates
     const channel = supabase
       .channel('session-detail-' + sessionId)
-      .on('postgres_changes' as any, { event: 'UPDATE', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `id=eq.${sessionId}` },
-        (payload: any) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: COLLECTIONS.SESSIONS, filter: `id=eq.${sessionId}` },
+        (payload) => {
           const data = payload.new;
 
         setCandidate(prev => {

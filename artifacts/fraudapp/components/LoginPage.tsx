@@ -114,17 +114,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToSignUp }) => {
 
     try {
       console.log('[LOGIN] 🔐 Attempting Google Sign-In...');
-      const user = await signInWithGoogle();
-      console.log('[LOGIN] ✅ Google Sign-In successful:', user.email);
-
+      await signInWithGoogle();
+      // Google OAuth is a redirect flow — the line above redirects the browser.
+      // We should never reach here; if we do it means the redirect failed.
       setIsGoogleLoading(false);
-
-      if (user) {
-        setTimeout(() => {
-          onLogin(user);
-        }, 100);
-      }
     } catch (err: any) {
+      if (err?.isOAuthRedirect) {
+        // Redirect is in progress; suppress the error UI — browser will navigate away.
+        return;
+      }
       console.error('[LOGIN] ❌ Google Sign-In error:', err);
       setError(err.message || "Gagal masuk dengan Google.");
       setIsGoogleLoading(false);
