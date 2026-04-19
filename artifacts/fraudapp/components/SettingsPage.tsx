@@ -149,7 +149,6 @@ const ProfileSettings = ({ user }: { user: UserProfile }) => {
             if (user.id) {
                 await updateUserProfile(user.id, {
                     name: formData.name,
-                    role: formData.role as unknown as UserProfile['role']
                 }, user.email);
                 toast.success('Profile updated successfully');
                 // Force reload to fetch fresh data from Firestore and update UI state

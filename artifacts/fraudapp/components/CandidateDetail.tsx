@@ -226,8 +226,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             .from(COLLECTIONS.COMPANIES)
             .select('tier')
             .eq('id', sessionData.companyId)
-            .single();
-          if (companyData) setCompanyTier((companyData as any).tier || 'Basic');
+            .single<{ tier: string }>();
+          if (companyData) {
+            const tier = companyData.tier;
+            setCompanyTier(tier === 'Premium' ? 'Premium' : 'Freemium');
+          }
         } catch (error) {
           console.error('Error fetching company:', error);
         }
@@ -242,10 +245,10 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             .from(COLLECTIONS.JOBS)
             .select('title, location')
             .eq('id', sessionData.jobId)
-            .single();
+            .single<{ title: string; location: string }>();
           if (jobData) {
-            jobTitle = (jobData as any).title;
-            jobLocation = (jobData as any).location;
+            jobTitle = jobData.title;
+            jobLocation = jobData.location;
           }
         } catch (error) {
           console.error('Error fetching job:', error);
@@ -262,7 +265,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
             .single();
           if (workflowData) {
             setWorkflowData(workflowData);
-            console.log('[CANDIDATE] ✅ Loaded workflow:', (workflowData as any).name);
+            console.log('[CANDIDATE] ✅ Loaded workflow:', (workflowData as { name?: string }).name);
           } else {
             console.log('[CANDIDATE] ⚠️ Workflow document not found:', sessionData.workflowId);
           }
@@ -579,9 +582,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         .from(COLLECTIONS.COMPANIES)
         .select('name')
         .eq('id', candidate.companyId)
-        .single();
+        .single<{ name: string }>();
       if (!companyData) throw new Error('Company not found');
-      const companyName = (companyData as any).name || 'Our Company';
+      const companyName = companyData.name || 'Our Company';
 
       const formattedDate = new Date(interviewDate).toLocaleDateString('id-ID', {
         weekday: 'long',
@@ -680,9 +683,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           .from(COLLECTIONS.COMPANIES)
           .select('address, location')
           .eq('id', candidate.companyId)
-          .single();
+          .single<{ address?: string; location?: string }>();
         if (companyAddr) {
-          setInterviewLocation((companyAddr as any).address || (companyAddr as any).location || '');
+          setInterviewLocation(companyAddr.address || companyAddr.location || '');
         }
       } catch (error) {
         console.error('Error loading company address:', error);

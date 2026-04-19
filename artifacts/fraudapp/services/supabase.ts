@@ -103,7 +103,10 @@ export const sendPasswordReset = async (email: string) => {
 };
 
 export const resendVerificationEmail = async () => {
-  console.warn('[AUTH] Email verification resend not supported in Supabase anon flow');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error('No authenticated user found');
+  const { error } = await supabase.auth.resend({ type: 'signup', email: user.email });
+  if (error) throw error;
 };
 
 export const signInWithGoogle = async (): Promise<UserProfile> => {
@@ -383,35 +386,18 @@ const _subscribeToSessionsImpl = (
 // ==========================================
 
 export const blastAssessmentInvites = async (
-  candidatesOrCompanyId: Array<{ name: string; email: string; whatsapp?: string }> | string,
-  companyIdOrCompanyName: string,
-  companyNameOrConfig?: string | any,
-  assessmentConfigExtra?: any
+  candidates: Array<{ name: string; email: string; whatsapp?: string }>,
+  companyId: string,
+  _companyName?: string,
+  assessmentConfig?: Record<string, unknown>
 ): Promise<{ success: number; failed: number }> => {
-  // Accept both old (companyId, candidates, config) and new (candidates, companyId, companyName) call signatures
-  let companyId: string;
-  let candidates: Array<{ name: string; email: string; whatsapp?: string }>;
-  let assessmentConfig: any;
-
-  if (Array.isArray(candidatesOrCompanyId)) {
-    // New call signature: (candidates, companyId, companyName)
-    candidates = candidatesOrCompanyId;
-    companyId = companyIdOrCompanyName;
-    assessmentConfig = typeof companyNameOrConfig === 'object' ? companyNameOrConfig : assessmentConfigExtra;
-  } else {
-    // Old call signature: (companyId, candidates, config)
-    companyId = candidatesOrCompanyId;
-    candidates = companyIdOrCompanyName as unknown as Array<{ name: string; email: string; whatsapp?: string }>;
-    assessmentConfig = companyNameOrConfig;
-  }
-
   return _blastAssessmentInvitesImpl(companyId, candidates, assessmentConfig);
 };
 
 const _blastAssessmentInvitesImpl = async (
   companyId: string,
   candidates: Array<{ name: string; email: string; whatsapp?: string }>,
-  assessmentConfig?: any
+  assessmentConfig?: Record<string, unknown>
 ): Promise<{ success: number; failed: number }> => {
   let success = 0;
   let failed = 0;

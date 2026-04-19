@@ -183,41 +183,51 @@ create table if not exists credit_transactions (
 -- SUPPLEMENTARY TABLES
 -- ============================================================
 
+-- system_config: stores arbitrary JSON blobs keyed by id (e.g. 'apiKeys', 'settings', 'webhooks')
+-- `data` column matches systemConfigService.ts getConfigDoc / upsertConfigDoc calls
 create table if not exists system_config (
   id text primary key,
-  value jsonb,
+  data jsonb,
   updatedAt text,
   updatedBy text
 );
 
+-- audit_logs: `timestamp` matches systemConfigService.ts createAuditLog / getAuditLogs calls
 create table if not exists audit_logs (
   id text primary key default gen_random_uuid()::text,
   userId text,
   userEmail text,
   action text,
+  section text,
   resource text,
   details text,
-  companyId text,
-  createdAt text
+  oldValue jsonb,
+  newValue jsonb,
+  status text,
+  errorMessage text,
+  timestamp text
 );
 
+-- pricing_config: stores arbitrary JSON blobs keyed by id (e.g. 'plans', 'creditPackages')
+-- `data` column matches pricingService.ts getConfig / upsertConfig calls
 create table if not exists pricing_config (
   id text primary key,
-  tiers jsonb,
-  creditPacks jsonb,
+  data jsonb,
   updatedAt text
 );
 
+-- promo_codes: column names match pricingService.ts (type, usageLimit, usageCount, expiryDate)
 create table if not exists promo_codes (
   id text primary key default gen_random_uuid()::text,
   code text unique not null,
-  discountType text not null,
+  type text not null,
   discountValue numeric not null,
   applicableTo text default 'both',
-  maxUses integer,
-  usedCount integer default 0,
-  expiresAt text,
+  usageLimit integer,
+  usageCount integer default 0,
+  expiryDate text,
   isActive boolean default true,
+  description text,
   createdBy text,
   createdAt text
 );
