@@ -37,7 +37,7 @@ CREATE POLICY "extension_tokens_select_company" ON public.extension_tokens
   FOR SELECT TO authenticated
   USING (
     company_id = (
-      SELECT company_id FROM public._users WHERE id = auth.uid() LIMIT 1
+      SELECT company_id::text FROM public._users WHERE id = auth.uid() LIMIT 1
     )
     OR (
       SELECT role FROM public._users WHERE id = auth.uid() LIMIT 1
@@ -48,7 +48,7 @@ CREATE POLICY "extension_tokens_insert_company" ON public.extension_tokens
   FOR INSERT TO authenticated
   WITH CHECK (
     company_id = (
-      SELECT company_id FROM public._users WHERE id = auth.uid() LIMIT 1
+      SELECT company_id::text FROM public._users WHERE id = auth.uid() LIMIT 1
     )
     OR (
       SELECT role FROM public._users WHERE id = auth.uid() LIMIT 1
