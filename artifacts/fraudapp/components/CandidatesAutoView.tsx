@@ -77,23 +77,29 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       ]);
 
       setJobs((jobsData || []) as Job[]);
-      if (companyData) setCompanyTier((companyData as any).tier || 'Freemium');
+      if (companyData) {
+        const tier = (companyData as { tier?: string }).tier;
+        if (tier === 'Premium') setCompanyTier('Premium');
+        else setCompanyTier('Freemium');
+      }
 
-      const filteredSessions = (sessionsData || []).filter((d: any) => !d.inviteSource);
-      const candidatesData = filteredSessions.map((data: any) => ({
+      const filteredSessions = (sessionsData || []).filter(
+        (d: { inviteSource?: string }) => !d.inviteSource
+      );
+      const candidatesData = filteredSessions.map((data: { completedAt?: string; date?: string }) => ({
         ...data, completedAt: data.completedAt || data.date
       } as AutoCandidate));
 
       candidatesData.sort((a: AutoCandidate, b: AutoCandidate) => {
-        const dateA = new Date((a as any).completedAt || 0).getTime();
-        const dateB = new Date((b as any).completedAt || 0).getTime();
+        const dateA = new Date(a.completedAt || 0).getTime();
+        const dateB = new Date(b.completedAt || 0).getTime();
         return dateB - dateA;
       });
 
       setApplicationRanks(calculateApplicationRanks(candidatesData));
 
       const unlocked = new Set<string>();
-      candidatesData.forEach((c: any) => { if (c.unlockedAt) unlocked.add(c.id); });
+      candidatesData.forEach((c: AutoCandidate) => { if (c.unlockedAt) unlocked.add(c.id); });
       setUnlockedCandidates(unlocked);
 
       setCandidates(candidatesData);
@@ -169,7 +175,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
       setShowUnlockModal(false);
       onViewSession(selectedCandidateForUnlock.id); // View details immediately
     } else {
-      toast.error(res.error);
+      toast.error(res.error || 'Failed to unlock candidate');
     }
     setIsUnlocking(false);
   };

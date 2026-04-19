@@ -88,6 +88,12 @@ export interface InterviewSession {
     isMandatory?: boolean;
   }>;
   backgroundCheck?: BackgroundCheckData;
+  backgroundCheckStatus?: string;
+  backgroundCheckCompletedAt?: string;
+  unlockedAt?: string;
+  unlockedByCompanyId?: string;
+  workflowId?: string;
+  riskScore?: number;
 }
 
 // ========== KYC / Background Check Types ==========

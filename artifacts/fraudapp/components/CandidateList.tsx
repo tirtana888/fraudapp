@@ -42,7 +42,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
       if (sessionsErr) throw sessionsErr;
 
       const candidatesData: CandidateWithDetails[] = await Promise.all(
-        (sessionsData || []).map(async (sessionData: any) => {
+        (sessionsData || []).map(async (sessionData: InterviewSession) => {
           let jobTitle = 'Direct Application';
           if (sessionData.jobId) {
             try {
@@ -74,7 +74,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
     }
   };
 
-  const calculateRiskScore = (session: any): number => {
+  const calculateRiskScore = (session: InterviewSession): number => {
     // Priority 1: Use analysis.scores if available
     if (session.analysis?.scores) {
       const { pressure = 0, opportunity = 0, rationalization = 0 } = session.analysis.scores;
@@ -109,7 +109,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
     return 0;
   };
 
-  const determineStage = (session: any): string => {
+  const determineStage = (session: InterviewSession): string => {
     const stageMap: { [key: string]: string } = {
       'screening': 'Screening',
       'processing': 'Screening',
@@ -132,7 +132,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ companyId, onViewCandidat
 
     if (session.status === 'completed') return 'Review';
     if (session.status === 'pending_review') return 'Pending Review';
-    if (session.status === 'in_progress') return 'In Progress';
+    if ((session.status as string) === 'in_progress') return 'In Progress';
     return 'Screening';
   };
 

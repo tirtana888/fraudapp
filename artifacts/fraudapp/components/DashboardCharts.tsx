@@ -1,4 +1,7 @@
 import React from 'react';
+import type { TooltipProps } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
+type ChartTooltipProps = TooltipProps<ValueType, NameType>;
 import {
     AreaChart,
     Area,
@@ -59,13 +62,13 @@ interface RevenueChartProps {
 export const RevenueTrendChart: React.FC<RevenueChartProps> = ({ data }) => {
     const chartData = data || generateRevenueData();
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-white dark:bg-slate-800 p-3 border border-gray-100 dark:border-slate-700 shadow-lg rounded-lg">
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{label}</p>
                     <p className="text-sm font-bold text-brand-orange">
-                        Rp {payload[0].value.toLocaleString()}
+                        Rp {(payload[0].value as number)?.toLocaleString() ?? 0}
                     </p>
                 </div>
             );
@@ -130,7 +133,7 @@ interface AssessmentVolumeChartProps {
 export const AssessmentVolumeChart: React.FC<AssessmentVolumeChartProps> = ({ data }) => {
     const chartData = data || generateAssessmentData();
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-white dark:bg-slate-800 p-3 border border-gray-100 dark:border-slate-700 shadow-lg rounded-lg">
@@ -200,7 +203,7 @@ export const TierDistributionChart: React.FC<TierDistributionChartProps> = ({ da
 
     const chartData = data || defaultData;
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-white dark:bg-slate-800 p-3 border border-gray-100 dark:border-slate-700 shadow-lg rounded-lg">
@@ -240,7 +243,7 @@ export const TierDistributionChart: React.FC<TierDistributionChartProps> = ({ da
                             verticalAlign="bottom"
                             height={36}
                             iconType="circle"
-                            formatter={(value, entry: any) => (
+                            formatter={(value) => (
                                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300 ml-1">{value}</span>
                             )}
                         />

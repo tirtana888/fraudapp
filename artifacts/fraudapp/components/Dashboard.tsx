@@ -39,7 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
       // Load previously unlocked candidates
       const unlockedIds = new Set<string>();
       sessions.forEach(s => {
-        if ((s as any).unlockedAt) {
+        if (s.unlockedAt) {
           unlockedIds.add(s.id);
         }
       });
@@ -90,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const StatCard = ({ icon: Icon, label, value, color, trend }: any) => (
+  const StatCard = ({ icon: Icon, label, value, color, trend }: { icon: React.ComponentType<{ size?: number }>; label: string; value: string | number; color: string; trend?: string }) => (
     <div className="bg-white dark:bg-brand-slate-850 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-all group relative overflow-hidden">
       <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${color.replace('bg-', 'text-')}`}>
         <Icon size={48} />
@@ -325,7 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ timelineEvents, currentCompany, o
           <div className="relative border-l-2 border-gray-100 dark:border-slate-700 ml-3 space-y-6 py-2">
             {timelineEvents.slice(0, 4).map(event => {
               const isSession = event.type === 'SESSION';
-              const data = event.data as any;
+              const data = event.data as InterviewSession & { name?: string };
               const name = data.candidate?.name || data.name || 'Unknown';
 
               return (

@@ -1,5 +1,21 @@
 import { supabase } from './supabase';
 
+interface SessionRow {
+    status?: string;
+    completedAt?: string;
+    createdAt?: string;
+    companyId?: string;
+    fraudAnalysis?: {
+        scores?: { pressure?: number; opportunity?: number; rationalization?: number };
+        riskLevel?: string;
+    };
+}
+
+interface CompanyRow {
+    id: string;
+    name?: string;
+}
+
 export interface AssessmentMetrics {
     totalAssessments: number;
     completedAssessments: number;
@@ -33,7 +49,7 @@ export const getAssessmentMetrics = async (): Promise<AssessmentMetrics> => {
         let total = sessions.length;
         let completed = 0, pending = 0, abandoned = 0, active = 0, totalCompletionTime = 0, completionCount = 0;
 
-        sessions.forEach((s: any) => {
+        sessions.forEach((s: SessionRow) => {
             const status = s.status || 'PENDING';
             if (status === 'COMPLETED') {
                 completed++;
@@ -70,7 +86,7 @@ export const getFraudStats = async (): Promise<FraudStats> => {
         let totalFraudCases = 0, totalFraudScore = 0, scoreCount = 0;
         const riskDistribution = { low: 0, medium: 0, high: 0, critical: 0 };
 
-        sessions.forEach((s: any) => {
+        sessions.forEach((s: SessionRow) => {
             if (s.fraudAnalysis?.scores) {
                 const scores = s.fraudAnalysis.scores;
                 const avg = ((scores.pressure || 0) + (scores.opportunity || 0) + (scores.rationalization || 0)) / 3;
@@ -105,12 +121,12 @@ export const getCandidateAnalytics = async (): Promise<CandidateAnalytics> => {
         ]);
 
         const companyNames: Record<string, string> = {};
-        (companies || []).forEach((c: any) => { companyNames[c.id] = c.name || 'Unknown'; });
+        (companies || []).forEach((c: CompanyRow) => { companyNames[c.id] = c.name || 'Unknown'; });
 
         let totalCandidates = 0, totalFraudScore = 0, scoreCount = 0, rejectedCount = 0;
         const companyStats: Record<string, { count: number; totalScore: number; scoreCount: number }> = {};
 
-        (sessions || []).forEach((s: any) => {
+        (sessions || []).forEach((s: SessionRow) => {
             totalCandidates++;
             const cid = s.companyId || 'unknown';
             if (!companyStats[cid]) companyStats[cid] = { count: 0, totalScore: 0, scoreCount: 0 };
@@ -121,7 +137,7 @@ export const getCandidateAnalytics = async (): Promise<CandidateAnalytics> => {
                 totalFraudScore += avg; scoreCount++;
                 companyStats[cid].totalScore += avg; companyStats[cid].scoreCount++;
             }
-            if (s.status === 'REJECTED' || ['High', 'Critical'].includes(s.fraudAnalysis?.riskLevel)) rejectedCount++;
+            if (s.status === 'REJECTED' || (s.fraudAnalysis?.riskLevel && ['High', 'Critical'].includes(s.fraudAnalysis.riskLevel))) rejectedCount++;
         });
 
         const topCompanies = Object.entries(companyStats)

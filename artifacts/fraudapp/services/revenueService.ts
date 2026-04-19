@@ -59,7 +59,8 @@ export const getRevenueAnalytics = async (): Promise<RevenueAnalytics> => {
         const startOfMonth = getStartOfMonth(), startOfDay = getStartOfDay();
         const startOfLastMonth = getStartOfLastMonth(), endOfLastMonth = getEndOfLastMonth();
 
-        (payments || []).forEach((p: any) => {
+        type PayRow = { amount?: number; timestamp?: string; created_at?: string };
+        (payments || []).forEach((p: PayRow) => {
             const amount = p.amount || 0;
             const ts = new Date(p.timestamp || p.created_at || 0);
             totalRevenue += amount;
@@ -74,9 +75,9 @@ export const getRevenueAnalytics = async (): Promise<RevenueAnalytics> => {
             .eq('status', 'Active');
 
         let mrr = 0;
-        (activeCompanies || []).forEach((c: any) => {
+        (activeCompanies || []).forEach((c: { tier?: string }) => {
             const tierMRR: Record<string, number> = { Freemium: 0, Basic: 100000, Premium: 500000, Enterprise: 2000000 };
-            mrr += tierMRR[c.tier] || 0;
+            mrr += (c.tier ? tierMRR[c.tier] : 0) || 0;
         });
 
         const revenueGrowth = lastMonthRevenue > 0
@@ -105,13 +106,14 @@ export const getRevenueByTier = async (): Promise<TierRevenue[]> => {
 
         const companyPayments: Record<string, number> = {};
         let totalRevenue = 0;
-        (payments || []).forEach((p: any) => {
-            companyPayments[p.companyId] = (companyPayments[p.companyId] || 0) + (p.amount || 0);
+        type TierPayRow = { companyId?: string; amount?: number };
+        (payments || []).forEach((p: TierPayRow) => {
+            if (p.companyId) companyPayments[p.companyId] = (companyPayments[p.companyId] || 0) + (p.amount || 0);
             totalRevenue += p.amount || 0;
         });
 
         const companyTierMap: Record<string, string> = {};
-        (companies || []).forEach((c: any) => { companyTierMap[c.id] = c.tier || 'Freemium'; });
+        (companies || []).forEach((c: { id: string; tier?: string }) => { companyTierMap[c.id] = c.tier || 'Freemium'; });
 
         Object.entries(companyPayments).forEach(([cid, revenue]) => {
             const tier = companyTierMap[cid] || 'Freemium';
@@ -136,14 +138,15 @@ export const getPaymentTransactions = async (limitCount: number = 20): Promise<P
         ]);
 
         const companyNames: Record<string, string> = {};
-        (companies || []).forEach((c: any) => { companyNames[c.id] = c.name || 'Unknown'; });
+        (companies || []).forEach((c: { id: string; name?: string }) => { companyNames[c.id] = c.name || 'Unknown'; });
 
-        return (payments || []).map((p: any) => ({
+        type FullPayRow = { id: string; companyId?: string; amount?: number; status?: string; method?: string; timestamp?: string; created_at?: string; invoiceId?: string };
+        return (payments || []).map((p: FullPayRow) => ({
             id: p.id,
             companyId: p.companyId || '',
-            companyName: companyNames[p.companyId] || 'Unknown',
+            companyName: companyNames[p.companyId || ''] || 'Unknown',
             amount: p.amount || 0,
-            status: p.status || 'pending',
+            status: (p.status || 'pending') as PaymentTransaction['status'],
             method: p.method || 'xendit',
             timestamp: new Date(p.timestamp || p.created_at || Date.now()),
             invoiceId: p.invoiceId,
@@ -159,7 +162,7 @@ export const getCreditUsageStats = async (): Promise<CreditUsageStats> => {
         const { data: companies } = await supabase.from('companies').select('credits, creditsUsed');
         let totalCreditsSold = 0, totalCreditsConsumed = 0, totalCreditsRemaining = 0, companyCount = 0;
 
-        (companies || []).forEach((c: any) => {
+        (companies || []).forEach((c: { credits?: number; creditsUsed?: number }) => {
             const credits = c.credits || 0;
             const used = c.creditsUsed || 0;
             totalCreditsRemaining += credits;
@@ -186,7 +189,7 @@ export const getPaymentMetrics = async (): Promise<PaymentMetrics> => {
         const { data: payments } = await supabase.from('payment_transactions').select('status');
         let totalPayments = 0, successfulPayments = 0, failedPayments = 0, pendingPayments = 0;
 
-        (payments || []).forEach((p: any) => {
+        (payments || []).forEach((p: { status?: string }) => {
             totalPayments++;
             if (p.status === 'success') successfulPayments++;
             else if (p.status === 'failed') failedPayments++;

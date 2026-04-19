@@ -54,9 +54,9 @@ export const deductCredit = async (
     await supabase.from(COLLECTIONS.CREDIT_TRANSACTIONS).insert(transactionData);
 
     return { success: true, remainingCredits: newBalance };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CREDIT] Deduction error:', error);
-    return { success: false, error: error.message || 'Gagal mengurangi kredit' };
+    return { success: false, error: error instanceof Error ? error.message : 'Gagal mengurangi kredit' };
   }
 };
 
@@ -99,9 +99,9 @@ export const addCredit = async (
     await supabase.from(COLLECTIONS.CREDIT_TRANSACTIONS).insert(transactionData);
 
     return { success: true, message: `${amount} credits added successfully`, newBalance };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CREDIT] Add credit error:', error);
-    return { success: false, message: error.message || 'Failed to add credits' };
+    return { success: false, message: error instanceof Error ? error.message : 'Failed to add credits' };
   }
 };
 
@@ -178,8 +178,8 @@ export const upgradeToPremium = async (
     });
 
     return { success: true, message: 'Successfully upgraded to Premium plan' };
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to upgrade plan' };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Failed to upgrade plan' };
   }
 };
 

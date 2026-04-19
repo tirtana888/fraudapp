@@ -286,8 +286,8 @@ export const inviteCompanyReal = async (payload: {
     const { data, error } = await supabase.from(COLLECTIONS.COMPANIES).insert(companyData).select('id').single();
     if (error) throw error;
     return { success: true, message: `Company "${payload.name}" berhasil dibuat dengan ID: ${data.id}` };
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Gagal membuat company' };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal membuat company' };
   }
 };
 

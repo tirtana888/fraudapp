@@ -208,7 +208,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           note: `Kandidat Apply - Menunggu memulai assessment`
         }
       ],
-      workflowId: null
+      workflowId: undefined
     };
 
     if (inviteData?.jobId) {

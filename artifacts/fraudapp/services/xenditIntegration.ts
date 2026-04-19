@@ -1,6 +1,15 @@
 /**
  * Xendit Payment Gateway Integration
- * Handles invoice creation, payment processing, and webhook handling
+ * Handles invoice creation, payment processing, and webhook handling.
+ *
+ * MIGRATION NOTE (Firebase → Supabase):
+ *   The original implementation called Firebase Cloud Functions
+ *   (createXenditInvoice) which are EXPLICITLY OUT OF SCOPE for this
+ *   migration.  Those Cloud Function call-sites have been replaced with
+ *   console.warn stubs that return { success: false, error: '...' } so
+ *   the UI surfaces a clear message instead of throwing unhandled errors.
+ *   Re-implementing the Xendit webhook flow (a standalone backend concern)
+ *   is tracked as a separate follow-up task.
  */
 
 import { addCredit, upgradeToPremium, creditsToIDR } from './creditManagement';
@@ -92,11 +101,11 @@ export const createTopUpInvoice = async (
     console.warn('[XENDIT] createXenditInvoice Cloud Function removed (stubbed). Would create top-up invoice:', { type: 'credit_purchase', amount: credits, companyId });
     throw new Error('Xendit payment via Cloud Functions is not available in this environment');
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[XENDIT] Error creating top-up invoice:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create payment invoice'
+      error: error instanceof Error ? error.message : 'Failed to create payment invoice'
     };
   }
 };
@@ -154,11 +163,11 @@ export const createPremiumSubscriptionInvoice = async (
     console.warn('[XENDIT] createXenditInvoice Cloud Function removed (stubbed). Would create subscription invoice:', { type: 'subscription_upgrade', tier, companyId });
     throw new Error('Xendit payment via Cloud Functions is not available in this environment');
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[XENDIT] Error creating subscription invoice:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create payment invoice'
+      error: error instanceof Error ? error.message : 'Failed to create payment invoice'
     };
   }
 };
@@ -167,7 +176,14 @@ export const createPremiumSubscriptionInvoice = async (
  * Process Xendit webhook callback
  * This should be called from a Firebase Cloud Function
  */
-export const processXenditWebhook = async (webhookData: any): Promise<{ success: boolean; message: string }> => {
+interface XenditWebhookData {
+  external_id: string;
+  status: string;
+  id: string;
+  amount: number;
+}
+
+export const processXenditWebhook = async (webhookData: XenditWebhookData): Promise<{ success: boolean; message: string }> => {
   try {
     const { external_id, status, id, amount } = webhookData;
 
@@ -225,11 +241,11 @@ export const processXenditWebhook = async (webhookData: any): Promise<{ success:
       throw new Error(`Unknown payment type: ${type}`);
     }
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[XENDIT] Webhook processing error:', error);
     return {
       success: false,
-      message: error.message || 'Failed to process webhook'
+      message: error instanceof Error ? error.message : 'Failed to process webhook'
     };
   }
 };

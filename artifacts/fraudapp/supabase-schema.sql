@@ -1,297 +1,541 @@
 -- HireGood / FraudGuard SaaS – Supabase Schema
 -- Run this in your Supabase SQL editor to create all required tables.
 --
--- IMPORTANT – Column naming convention:
---   Columns use camelCase (e.g. companyId, createdAt) to exactly mirror the
---   field names used by the React/TypeScript application code and by every
---   .eq() / .insert() / .select() call in services/supabase.ts.
---   Changing to snake_case would require updating every query in the service
---   layer and risk runtime breakage. This is intentional, not an oversight.
+-- ARCHITECTURE
+--   Base tables use snake_case columns with uuid PKs and timestamptz
+--   timestamps (PostgreSQL / Supabase conventions).
+--   Updatable views with camelCase column aliases sit on top of each
+--   base table so the React/TypeScript service layer can continue to
+--   use field names like companyId, createdAt, jobId etc. without
+--   touching 150+ query call-sites.
 --
--- RLS is NOT enabled here; enable it (see the follow-up task) for production.
+-- RLS is NOT enabled here; enable it (follow-up task) for production.
 
--- ============================================================
--- EXTENSIONS
--- ============================================================
 create extension if not exists "uuid-ossp";
 
 -- ============================================================
--- CORE TABLES (mirrors original Firestore collections)
+-- BASE TABLES (snake_case, Supabase conventions)
 -- ============================================================
 
--- users  (Firestore: 'users')
-create table if not exists users (
-  id text primary key,
-  email text unique not null,
-  name text,
-  role text default 'Company Admin',
-  companyId text,
-  companyName text,
-  phone text,
-  avatar text,
-  emailVerified boolean default false,
-  createdAt text,
-  updatedAt text
+create table if not exists _users (
+  id            uuid primary key default gen_random_uuid(),
+  email         text unique not null,
+  name          text,
+  role          text default 'Company Admin',
+  company_id    uuid,
+  company_name  text,
+  phone         text,
+  avatar        text,
+  email_verified boolean default false,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
 );
 
--- companies  (Firestore: 'companies')
-create table if not exists companies (
-  id text primary key default gen_random_uuid()::text,
-  name text not null,
-  email text,
-  adminEmail text,
-  companySlug text unique,
-  logoUrl text,
-  brandColor text,
-  headerTitle text,
-  welcomeMessage text,
-  website text,
+create table if not exists _companies (
+  id                       uuid primary key default gen_random_uuid(),
+  name                     text not null,
+  email                    text,
+  admin_email              text,
+  company_slug             text unique,
+  logo_url                 text,
+  brand_color              text,
+  header_title             text,
+  welcome_message          text,
+  website                  text,
+  description              text,
+  industry                 text,
+  size                     text,
+  location                 text,
+  address                  text,
+  whatsapp                 text,
+  tier                     text default 'Freemium',
+  status                   text default 'Active',
+  credits                  integer default 1000,
+  credits_used             integer default 0,
+  verification_credits     integer default 100,
+  users_count              integer default 1,
+  monthly_credits          integer,
+  subscription_start_date  text,
+  subscription_end_date    text,
+  subscription_ends_at     timestamptz,
+  custom_candidate_limit   integer,
+  notification_preferences jsonb,
+  joined_date              timestamptz default now(),
+  last_activity            timestamptz,
+  suspended_at             timestamptz,
+  suspended_by             text,
+  suspend_reason           text,
+  banned_at                timestamptz,
+  banned_by                text,
+  ban_reason               text,
+  reactivated_at           timestamptz,
+  reactivated_by           text,
+  created_at               timestamptz default now(),
+  updated_at               timestamptz default now()
+);
+
+create table if not exists _jobs (
+  id                        uuid primary key default gen_random_uuid(),
+  company_id                uuid not null,
+  title                     text not null,
+  description               text,
+  location                  text,
+  type                      text,
+  status                    text default 'Active',
+  salary                    text,
+  requirements              text[],
+  date_posted               timestamptz default now(),
+  slug                      text,
+  enable_instant_assessment boolean default false,
+  workflow_id               uuid,
+  created_at                timestamptz default now(),
+  updated_at                timestamptz default now()
+);
+
+create table if not exists _applications (
+  id                  uuid primary key default gen_random_uuid(),
+  job_id              uuid not null,
+  company_id          uuid not null,
+  candidate_name      text,
+  candidate_email     text,
+  candidate_whatsapp  text,
+  cv_url              text,
+  status              text default 'Pending',
+  applied_at          timestamptz default now(),
+  last_updated        timestamptz default now()
+);
+
+create table if not exists _interview_sessions (
+  id                           uuid primary key default gen_random_uuid(),
+  company_id                   uuid not null,
+  candidate                    jsonb,
+  analysis                     jsonb,
+  status                       text default 'pending',
+  source                       text,
+  date                         timestamptz default now(),
+  completed_at                 timestamptz,
+  unlocked_at                  timestamptz,
+  unlocked_by_company_id       uuid,
+  job_id                       uuid,
+  application_id               uuid,
+  recruitment_stage            text,
+  invite_source                text,
+  workflow_id                  uuid,
+  timeline                     jsonb,
+  transcript                   jsonb,
+  structured_assessment        jsonb,
+  sjt_results                  jsonb,
+  financial_strain_results     jsonb,
+  cv_url                       text,
+  cv_parsed_data               jsonb,
+  whatsapp                     text,
+  risk_score                   integer,
+  background_check             jsonb,
+  background_check_status      text,
+  background_check_completed_at timestamptz,
+  created_at                   timestamptz default now(),
+  updated_at                   timestamptz default now()
+);
+
+create table if not exists _assessment_invites (
+  id                  uuid primary key default gen_random_uuid(),
+  access_code         text unique not null,
+  name                text,
+  email               text,
+  role                text,
+  company_id          uuid not null,
+  status              text default 'PENDING',
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now(),
+  used_at             timestamptz,
+  session_id          uuid,
+  job_id              uuid,
+  application_id      uuid,
+  candidate_name      text,
+  candidate_email     text,
+  candidate_whatsapp  text,
+  assessment_config   jsonb,
+  invite_link         text
+);
+
+create table if not exists _workflows (
+  id          uuid primary key default gen_random_uuid(),
+  company_id  uuid not null,
+  name        text not null,
   description text,
-  industry text,
-  size text,
-  location text,
-  address text,
-  whatsapp text,
-  tier text default 'Freemium',
-  status text default 'Active',
-  credits integer default 1000,
-  creditsUsed integer default 0,
-  verification_credits integer default 100,
-  usersCount integer default 1,
-  monthlyCredits integer,
-  subscriptionStartDate text,
-  subscriptionEndDate text,
-  subscription_ends_at text,
-  custom_candidate_limit integer,
-  notificationPreferences jsonb,
-  joinedDate text,
-  lastActivity text,
-  suspendedAt text,
-  suspendedBy text,
-  suspendReason text,
-  bannedAt text,
-  bannedBy text,
-  banReason text,
-  reactivatedAt text,
-  reactivatedBy text,
-  createdAt text,
-  updatedAt text
+  steps       jsonb,
+  is_active   boolean default true,
+  is_default  boolean default false,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
 );
 
--- jobs  (Firestore: 'jobs')
-create table if not exists jobs (
-  id text primary key default gen_random_uuid()::text,
-  companyId text not null,
-  title text not null,
-  description text,
-  location text,
-  type text,
-  status text default 'Active',
-  salary text,
-  requirements text[],
-  datePosted text,
-  slug text,
-  enableInstantAssessment boolean default false,
-  workflowId text,
-  createdAt text,
-  updatedAt text
+create table if not exists _notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null,
+  company_id  uuid,
+  type        text,
+  title       text,
+  message     text,
+  read        boolean default false,
+  data        jsonb,
+  created_at  timestamptz default now()
 );
 
--- applications  (Firestore: 'applications')
-create table if not exists applications (
-  id text primary key default gen_random_uuid()::text,
-  jobId text not null,
-  companyId text not null,
-  candidateName text,
-  candidateEmail text,
-  candidateWhatsapp text,
-  cvUrl text,
-  status text default 'Pending',
-  appliedAt text,
-  lastUpdated text
+create table if not exists _credit_transactions (
+  id             uuid primary key default gen_random_uuid(),
+  company_id     uuid not null,
+  type           text not null,
+  amount         integer not null,
+  action         text,
+  description    text,
+  balance_before integer,
+  balance_after  integer,
+  timestamp      timestamptz default now(),
+  metadata       jsonb,
+  user_id        uuid
 );
 
--- interview_sessions  (Firestore: 'sessions')
-create table if not exists interview_sessions (
-  id text primary key default gen_random_uuid()::text,
-  companyId text not null,
-  candidate jsonb,
-  analysis jsonb,
-  status text default 'pending',
-  source text,
-  date text,
-  completedAt text,
-  unlockedAt text,
-  unlockedByCompanyId text,
-  jobId text,
-  applicationId text,
-  recruitmentStage text,
-  inviteSource text,
-  workflowId text,
-  timeline jsonb,
-  transcript jsonb,
-  structuredAssessment jsonb,
-  sjtResults jsonb,
-  financialStrainResults jsonb,
-  cvUrl text,
-  cvParsedData jsonb,
-  whatsapp text,
-  riskScore integer,
-  backgroundCheck jsonb,
-  backgroundCheckStatus text,
-  backgroundCheckCompletedAt text,
-  createdAt text,
-  updatedAt text
+create table if not exists _system_config (
+  id          text primary key,
+  data        jsonb,
+  updated_at  timestamptz default now(),
+  updated_by  text
 );
 
--- assessment_invites  (Firestore: 'assessment_invites')
-create table if not exists assessment_invites (
-  id text primary key default gen_random_uuid()::text,
-  access_code text unique not null,
-  name text,
-  email text,
-  role text,
-  companyId text not null,
-  status text default 'PENDING',
-  createdAt text,
-  updatedAt text,
-  usedAt text,
-  sessionId text,
-  jobId text,
-  applicationId text,
-  candidateName text,
-  candidateEmail text,
-  candidateWhatsapp text,
-  assessmentConfig jsonb,
-  inviteLink text
+create table if not exists _audit_logs (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       text,
+  user_email    text,
+  action        text,
+  section       text,
+  resource      text,
+  details       text,
+  old_value     jsonb,
+  new_value     jsonb,
+  status        text,
+  error_message text,
+  timestamp     timestamptz default now()
 );
 
--- workflows  (Firestore: 'workflows')
-create table if not exists workflows (
-  id text primary key default gen_random_uuid()::text,
-  companyId text not null,
-  name text not null,
-  description text,
-  steps jsonb,
-  isActive boolean default true,
-  isDefault boolean default false,
-  createdAt text,
-  updatedAt text
+create table if not exists _pricing_config (
+  id          text primary key,
+  data        jsonb,
+  updated_at  timestamptz default now()
 );
 
--- notifications  (Firestore: 'notifications')
-create table if not exists notifications (
-  id text primary key default gen_random_uuid()::text,
-  userId text not null,
-  companyId text,
-  type text,
-  title text,
-  message text,
-  read boolean default false,
-  data jsonb,
-  createdAt text
+create table if not exists _promo_codes (
+  id              uuid primary key default gen_random_uuid(),
+  code            text unique not null,
+  type            text not null,
+  discount_value  numeric not null,
+  applicable_to   text default 'both',
+  usage_limit     integer,
+  usage_count     integer default 0,
+  expiry_date     timestamptz,
+  is_active       boolean default true,
+  description     text,
+  created_by      text,
+  created_at      timestamptz default now()
 );
 
--- credit_transactions  (Firestore: 'credit_transactions')
-create table if not exists credit_transactions (
-  id text primary key default gen_random_uuid()::text,
-  companyId text not null,
-  type text not null,
-  amount integer not null,
-  action text,
-  description text,
-  balanceBefore integer,
-  balanceAfter integer,
-  timestamp text,
-  metadata jsonb,
-  userId text
+create table if not exists _payment_transactions (
+  id          uuid primary key default gen_random_uuid(),
+  company_id  uuid not null,
+  invoice_id  text,
+  invoice_url text,
+  type        text,
+  amount      numeric,
+  status      text default 'pending',
+  tier        text,
+  credits     integer,
+  method      text,
+  timestamp   timestamptz default now(),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
 );
 
 -- ============================================================
--- SUPPLEMENTARY TABLES
+-- CAMELCASE VIEWS
+-- The React/TypeScript service layer queries these views using
+-- camelCase field names (.eq('companyId', ...), etc.).
+-- Each view is updatable (no aggregates, no DISTINCT, single
+-- base table, no set operations) so INSERT/UPDATE/DELETE pass
+-- through to the underlying snake_case table automatically.
 -- ============================================================
 
--- system_config: stores arbitrary JSON blobs keyed by id (e.g. 'apiKeys', 'settings', 'webhooks')
--- `data` column matches systemConfigService.ts getConfigDoc / upsertConfigDoc calls
-create table if not exists system_config (
-  id text primary key,
-  data jsonb,
-  updatedAt text,
-  updatedBy text
-);
+create or replace view users as
+  select
+    id::text                  as id,
+    email,
+    name,
+    role,
+    company_id::text          as "companyId",
+    company_name              as "companyName",
+    phone,
+    avatar,
+    email_verified            as "emailVerified",
+    created_at::text          as "createdAt",
+    updated_at::text          as "updatedAt"
+  from _users;
 
--- audit_logs: `timestamp` matches systemConfigService.ts createAuditLog / getAuditLogs calls
-create table if not exists audit_logs (
-  id text primary key default gen_random_uuid()::text,
-  userId text,
-  userEmail text,
-  action text,
-  section text,
-  resource text,
-  details text,
-  oldValue jsonb,
-  newValue jsonb,
-  status text,
-  errorMessage text,
-  timestamp text
-);
+create or replace view companies as
+  select
+    id::text                       as id,
+    name,
+    email,
+    admin_email                    as "adminEmail",
+    company_slug                   as "companySlug",
+    logo_url                       as "logoUrl",
+    brand_color                    as "brandColor",
+    header_title                   as "headerTitle",
+    welcome_message                as "welcomeMessage",
+    website,
+    description,
+    industry,
+    size,
+    location,
+    address,
+    whatsapp,
+    tier,
+    status,
+    credits,
+    credits_used                   as "creditsUsed",
+    verification_credits           as "verification_credits",
+    users_count                    as "usersCount",
+    monthly_credits                as "monthlyCredits",
+    subscription_start_date        as "subscriptionStartDate",
+    subscription_end_date          as "subscriptionEndDate",
+    subscription_ends_at::text     as "subscription_ends_at",
+    custom_candidate_limit         as "custom_candidate_limit",
+    notification_preferences       as "notificationPreferences",
+    joined_date::text              as "joinedDate",
+    last_activity::text            as "lastActivity",
+    suspended_at::text             as "suspendedAt",
+    suspended_by                   as "suspendedBy",
+    suspend_reason                 as "suspendReason",
+    banned_at::text                as "bannedAt",
+    banned_by                      as "bannedBy",
+    ban_reason                     as "banReason",
+    reactivated_at::text           as "reactivatedAt",
+    reactivated_by                 as "reactivatedBy",
+    created_at::text               as "createdAt",
+    updated_at::text               as "updatedAt"
+  from _companies;
 
--- pricing_config: stores arbitrary JSON blobs keyed by id (e.g. 'plans', 'creditPackages')
--- `data` column matches pricingService.ts getConfig / upsertConfig calls
-create table if not exists pricing_config (
-  id text primary key,
-  data jsonb,
-  updatedAt text
-);
+create or replace view jobs as
+  select
+    id::text                            as id,
+    company_id::text                    as "companyId",
+    title,
+    description,
+    location,
+    type,
+    status,
+    salary,
+    requirements,
+    date_posted::text                   as "datePosted",
+    slug,
+    enable_instant_assessment           as "enableInstantAssessment",
+    workflow_id::text                   as "workflowId",
+    created_at::text                    as "createdAt",
+    updated_at::text                    as "updatedAt"
+  from _jobs;
 
--- promo_codes: column names match pricingService.ts (type, usageLimit, usageCount, expiryDate)
-create table if not exists promo_codes (
-  id text primary key default gen_random_uuid()::text,
-  code text unique not null,
-  type text not null,
-  discountValue numeric not null,
-  applicableTo text default 'both',
-  usageLimit integer,
-  usageCount integer default 0,
-  expiryDate text,
-  isActive boolean default true,
-  description text,
-  createdBy text,
-  createdAt text
-);
+create or replace view applications as
+  select
+    id::text                  as id,
+    job_id::text              as "jobId",
+    company_id::text          as "companyId",
+    candidate_name            as "candidateName",
+    candidate_email           as "candidateEmail",
+    candidate_whatsapp        as "candidateWhatsapp",
+    cv_url                    as "cvUrl",
+    status,
+    applied_at::text          as "appliedAt",
+    last_updated::text        as "lastUpdated"
+  from _applications;
 
-create table if not exists payment_transactions (
-  id text primary key default gen_random_uuid()::text,
-  companyId text not null,
-  invoiceId text,
-  invoiceUrl text,
-  type text,
-  amount numeric,
-  status text default 'pending',
-  tier text,
-  credits integer,
-  createdAt text,
-  updatedAt text
-);
+create or replace view interview_sessions as
+  select
+    id::text                                    as id,
+    company_id::text                            as "companyId",
+    candidate,
+    analysis,
+    status,
+    source,
+    date::text                                  as date,
+    completed_at::text                          as "completedAt",
+    unlocked_at::text                           as "unlockedAt",
+    unlocked_by_company_id::text                as "unlockedByCompanyId",
+    job_id::text                                as "jobId",
+    application_id::text                        as "applicationId",
+    recruitment_stage                           as "recruitmentStage",
+    invite_source                               as "inviteSource",
+    workflow_id::text                           as "workflowId",
+    timeline,
+    transcript,
+    structured_assessment                       as "structuredAssessment",
+    sjt_results                                 as "sjtResults",
+    financial_strain_results                    as "financialStrainResults",
+    cv_url                                      as "cvUrl",
+    cv_parsed_data                              as "cvParsedData",
+    whatsapp,
+    risk_score                                  as "riskScore",
+    background_check                            as "backgroundCheck",
+    background_check_status                     as "backgroundCheckStatus",
+    background_check_completed_at::text         as "backgroundCheckCompletedAt",
+    created_at::text                            as "createdAt",
+    updated_at::text                            as "updatedAt"
+  from _interview_sessions;
+
+create or replace view assessment_invites as
+  select
+    id::text                  as id,
+    access_code               as "access_code",
+    name,
+    email,
+    role,
+    company_id::text          as "companyId",
+    status,
+    created_at::text          as "createdAt",
+    updated_at::text          as "updatedAt",
+    used_at::text             as "usedAt",
+    session_id::text          as "sessionId",
+    job_id::text              as "jobId",
+    application_id::text      as "applicationId",
+    candidate_name            as "candidateName",
+    candidate_email           as "candidateEmail",
+    candidate_whatsapp        as "candidateWhatsapp",
+    assessment_config         as "assessmentConfig",
+    invite_link               as "inviteLink"
+  from _assessment_invites;
+
+create or replace view workflows as
+  select
+    id::text                as id,
+    company_id::text        as "companyId",
+    name,
+    description,
+    steps,
+    is_active               as "isActive",
+    is_default              as "isDefault",
+    created_at::text        as "createdAt",
+    updated_at::text        as "updatedAt"
+  from _workflows;
+
+create or replace view notifications as
+  select
+    id::text              as id,
+    user_id::text         as "userId",
+    company_id::text      as "companyId",
+    type,
+    title,
+    message,
+    read,
+    data,
+    created_at::text      as "createdAt"
+  from _notifications;
+
+create or replace view credit_transactions as
+  select
+    id::text              as id,
+    company_id::text      as "companyId",
+    type,
+    amount,
+    action,
+    description,
+    balance_before        as "balanceBefore",
+    balance_after         as "balanceAfter",
+    timestamp::text       as timestamp,
+    metadata,
+    user_id::text         as "userId"
+  from _credit_transactions;
+
+create or replace view system_config as
+  select
+    id,
+    data,
+    updated_at::text  as "updatedAt",
+    updated_by        as "updatedBy"
+  from _system_config;
+
+create or replace view audit_logs as
+  select
+    id::text              as id,
+    user_id               as "userId",
+    user_email            as "userEmail",
+    action,
+    section,
+    resource,
+    details,
+    old_value             as "oldValue",
+    new_value             as "newValue",
+    status,
+    error_message         as "errorMessage",
+    timestamp::text       as timestamp
+  from _audit_logs;
+
+create or replace view pricing_config as
+  select
+    id,
+    data,
+    updated_at::text  as "updatedAt"
+  from _pricing_config;
+
+create or replace view promo_codes as
+  select
+    id::text              as id,
+    code,
+    type,
+    discount_value        as "discountValue",
+    applicable_to         as "applicableTo",
+    usage_limit           as "usageLimit",
+    usage_count           as "usageCount",
+    expiry_date::text     as "expiryDate",
+    is_active             as "isActive",
+    description,
+    created_by            as "createdBy",
+    created_at::text      as "createdAt"
+  from _promo_codes;
+
+create or replace view payment_transactions as
+  select
+    id::text              as id,
+    company_id::text      as "companyId",
+    invoice_id            as "invoiceId",
+    invoice_url           as "invoiceUrl",
+    type,
+    amount,
+    status,
+    tier,
+    credits,
+    method,
+    timestamp::text       as timestamp,
+    created_at::text      as "createdAt",
+    updated_at::text      as "updatedAt"
+  from _payment_transactions;
 
 -- ============================================================
 -- ATOMIC CREDIT DEDUCTION RPC
--- Called by creditManagement.ts::deductCredit for concurrency safety.
--- Uses row-level locking (FOR UPDATE) to prevent double-spend.
+-- Called by creditManagement.ts::deductCredit for concurrency
+-- safety. Uses row-level locking (FOR UPDATE) to prevent
+-- double-spend. Operates on the base table directly.
 -- ============================================================
 create or replace function deduct_credits(
   p_company_id text,
-  p_amount integer
+  p_amount     integer
 ) returns integer
 language plpgsql
 as $$
 declare
+  v_id      uuid := p_company_id::uuid;
   v_current integer;
 begin
   select credits into v_current
-  from companies
-  where id = p_company_id
-  for update;          -- row-level lock prevents concurrent deductions
+  from _companies
+  where id = v_id
+  for update;
 
   if v_current is null then
     raise exception 'Company not found: %', p_company_id;
@@ -301,15 +545,18 @@ begin
     raise exception 'Insufficient credits: need %, have %', p_amount, v_current;
   end if;
 
-  update companies set credits = v_current - p_amount where id = p_company_id;
-  return v_current - p_amount;  -- return new balance
+  update _companies
+    set credits = v_current - p_amount
+  where id = v_id;
+
+  return v_current - p_amount;
 end;
 $$;
 
 -- ============================================================
 -- STORAGE BUCKETS
 -- Create these in the Supabase dashboard > Storage tab, or
--- uncomment and run with the service-role key via CLI.
+-- run with the service-role key via CLI.
 -- ============================================================
 -- insert into storage.buckets (id, name, public) values ('company-assets', 'company-assets', true) on conflict do nothing;
 -- insert into storage.buckets (id, name, public) values ('candidate-documents', 'candidate-documents', false) on conflict do nothing;
@@ -318,6 +565,7 @@ $$;
 -- NOTE ON ROW LEVEL SECURITY
 -- RLS is intentionally NOT enabled in this schema file so the
 -- app functions correctly with the anon key during development.
--- For production deployment, enable RLS on each table and add
--- policies based on companyId ownership and user roles.
+-- For production, enable RLS on the BASE TABLES (_companies,
+-- _jobs, etc.) and add policies based on company_id ownership
+-- and user roles. The views inherit the base-table RLS.
 -- ============================================================
