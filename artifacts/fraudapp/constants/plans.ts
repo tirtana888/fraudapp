@@ -1,0 +1,36 @@
+export interface PlanConfig {
+  maxCandidates: number;
+  max_candidates: number; // Legacy support
+  maxInterviews: number;
+  hasAdvancedAnalytics: boolean;
+  hasAPIAccess: boolean;
+  hasPrioritySupport: boolean;
+  hasCustomBranding: boolean;
+  allow_permanent_link: boolean;
+  white_label: boolean;
+}
+
+export const PLAN_LIMITS: Record<'Freemium' | 'Premium', PlanConfig> = {
+  Freemium: {
+    maxCandidates: 10,
+    max_candidates: 10,
+    maxInterviews: 50,
+    hasAdvancedAnalytics: false,
+    hasAPIAccess: false,
+    hasPrioritySupport: false,
+    hasCustomBranding: true,  // ✅ ENABLED: Freemium can customize branding
+    allow_permanent_link: false,
+    white_label: true  // ✅ ENABLED: Freemium can upload logo and customize public page
+  },
+  Premium: {
+    maxCandidates: -1, // Unlimited
+    max_candidates: -1,
+    maxInterviews: -1, // Unlimited
+    hasAdvancedAnalytics: true,
+    hasAPIAccess: true,
+    hasPrioritySupport: true,
+    hasCustomBranding: true,
+    allow_permanent_link: true,
+    white_label: true
+  }
+};
