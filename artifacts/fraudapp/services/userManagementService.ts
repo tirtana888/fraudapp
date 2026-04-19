@@ -59,12 +59,13 @@ export const getBusinessUsers = async (filters?: {
         const { data, error } = await q;
         if (error) throw error;
 
-        let users: BusinessUser[] = (data || []).map((c: any) => ({
+        type CompanyRow = { id: string; email?: string; adminEmail?: string; name?: string; tier?: string; status?: string; joinedDate?: string; lastActivity?: string };
+        let users: BusinessUser[] = (data || []).map((c: CompanyRow) => ({
             id: c.id,
             email: c.email || c.adminEmail || '',
             name: c.name || c.email?.split('@')[0] || 'Unknown',
             role: (c.tier === 'enterprise' ? 'admin' : 'user') as BusinessUser['role'],
-            status: c.status || 'active',
+            status: (c.status || 'active') as BusinessUser['status'],
             joinedDate: c.joinedDate ? new Date(c.joinedDate) : new Date(),
             lastLogin: c.lastActivity ? new Date(c.lastActivity) : undefined,
             companyId: c.id,
@@ -148,7 +149,7 @@ export const getCompanyUsageStats = async (companyId: string): Promise<CompanyUs
             supabase.from('companies').select('credits, creditsUsed, lastActivity').eq('id', companyId).single(),
             supabase.from('interview_sessions').select('status').eq('companyId', companyId),
         ]);
-        const completed = (sessions || []).filter((s: any) => s.status === 'COMPLETED').length;
+        const completed = (sessions || []).filter((s: { status: string }) => s.status === 'COMPLETED').length;
         return {
             totalAssessments: sessions?.length || 0,
             completedAssessments: completed,

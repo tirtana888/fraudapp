@@ -225,7 +225,7 @@ interface CandidateWithDate {
   id?: string;
   date?: string;
   appliedAt?: string;
-  createdAt?: any;
+  createdAt?: string | number;
 }
 
 export const calculateApplicationRanks = (candidates: CandidateWithDate[]): Map<string, number> => {

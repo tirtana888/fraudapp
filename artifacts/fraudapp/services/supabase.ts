@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, JobApplication, Workflow } from '../types';
+import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, JobApplication, Workflow, WorkflowStep } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -124,7 +124,10 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
   throw Object.assign(new Error('google_oauth_redirect'), { isOAuthRedirect: true });
 };
 
-export const onAuthStateChanged = (callback: (user: any) => void): (() => void) => {
+// Firebase-compatible auth state observer (fires with Supabase User or null)
+export const onAuthStateChanged = (
+  callback: (user: { uid?: string; email?: string | null } | null) => void
+): (() => void) => {
   const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
     callback(session?.user ?? null);
   });
@@ -247,7 +250,7 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
   return (data || []) as CompanyProfile[];
 };
 
-export const updateCompanySubscription = async (companyId: string, updates: any): Promise<void> => {
+export const updateCompanySubscription = async (companyId: string, updates: Partial<CompanyProfile>): Promise<void> => {
   const { error } = await supabase
     .from(COLLECTIONS.COMPANIES)
     .update(updates)
@@ -686,7 +689,7 @@ export const createInterviewSessionFromApplication = async (
     ? 'Kandidat akan langsung mengikuti instant assessment'
     : 'Menunggu review HR';
 
-  let workflowSteps: any[] = [];
+  let workflowSteps: WorkflowStep[] = [];
   let workflowId: string | undefined;
 
   if (applicationData.jobId) {
@@ -702,12 +705,12 @@ export const createInterviewSessionFromApplication = async (
         .from(COLLECTIONS.WORKFLOWS)
         .select('steps')
         .eq('id', workflowId)
-        .single();
+        .single<{ steps: WorkflowStep[] }>();
       if (wfDoc) workflowSteps = wfDoc.steps || [];
     }
   }
 
-  const timeline: any[] = [
+  const timeline: Array<{ stage: string; status: 'completed' | 'current' | 'pending'; date: string; note: string; credits?: number; isMandatory?: boolean }> = [
     { stage: 'applied', status: 'completed', date: now, note: 'Kandidat melamar via Job Portal' },
     { stage: 'cv_uploaded', status: 'completed', date: now, note: 'CV berhasil diunggah' },
   ];
@@ -937,7 +940,7 @@ export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | n
 
   // 3. Try by name slug
   const { data: allCompanies } = await supabase.from(COLLECTIONS.COMPANIES).select('*');
-  const match = (allCompanies || []).find((c: any) => {
+  const match = (allCompanies || []).find((c: CompanyProfile) => {
     const nameSlug = (c.name || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     return nameSlug === slug.toLowerCase();
   });
@@ -963,8 +966,12 @@ export const verifyAccessCode = async (code: string): Promise<AssessmentInvite |
   return data as AssessmentInvite;
 };
 
-export const markAccessCodeUsed = async (code: string, status: string, sessionId?: string): Promise<void> => {
-  const updates: any = { status, updatedAt: new Date().toISOString() };
+export const markAccessCodeUsed = async (
+  code: string,
+  status: AssessmentInvite['status'],
+  sessionId?: string
+): Promise<void> => {
+  const updates: Partial<AssessmentInvite> & { updatedAt: string } = { status, updatedAt: new Date().toISOString() };
   if (sessionId) updates.sessionId = sessionId;
   await supabase.from(COLLECTIONS.INVITES).update(updates).eq('access_code', code);
 };

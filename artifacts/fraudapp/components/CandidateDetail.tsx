@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
 import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep } from '../types';
 import { supabase, COLLECTIONS, parseCVWithMistral } from '../services/supabase';
+
+type TimelineItem = NonNullable<InterviewSession['timeline']>[number];
 import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
@@ -36,47 +38,14 @@ interface CandidateData extends InterviewSession {
     phone: boolean;
     documents: 'pending' | 'verified' | 'failed';
   };
-  backgroundCheck?: {
-    status?: 'pending' | 'in_progress' | 'approved' | 'declined';
-    decision?: string;
-    diditSessionId?: string;
-    verificationLink?: string;
-    createdAt?: {
-      seconds: number;
-    };
-    lastUpdated?: {
-      seconds: number;
-    };
-    // KYC data from Didit (user's backend structure)
-    idVerification?: {
-      fullName?: string;
-      documentNumber?: string;
-      documentType?: string;
-      dateOfBirth?: string;
-      placeOfBirth?: string;
-      gender?: string;
-      address?: string;
-      status?: string;
-      portraitImage?: string;
-      frontImage?: string;
-      backImage?: string;
-    };
-    faceMatch?: {
-      score?: number;
-      status?: string;
-      sourceImage?: string;
-      targetImage?: string;
-    };
-    liveness?: {
-      score?: number;
-      status?: string;
-      ageEstimation?: number;
-      referenceImage?: string;
-    };
-    warnings?: string[];
-    ipAnalysis?: IPData;
-  };
 }
+
+// Helper: parse Firebase Timestamp or ISO string to Date
+const parseTimestamp = (ts: string | { seconds: number } | undefined): Date | null => {
+  if (!ts) return null;
+  if (typeof ts === 'string') return new Date(ts);
+  return new Date(ts.seconds * 1000);
+};
 
 // Helper function to get image source - handles both URL and base64
 const getImageSrc = (imageData: string | undefined): string | undefined => {
@@ -371,12 +340,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     }
   };
 
-  const calculateRiskScore = (session: any): number => {
+  const calculateRiskScore = (session: InterviewSession): number => {
     if (!session.analysis?.scores) {
-      if (session.analysis?.riskLevel === 'CRITICAL') return 90;
-      if (session.analysis?.riskLevel === 'HIGH') return 65;
-      if (session.analysis?.riskLevel === 'MEDIUM') return 35;
-      if (session.analysis?.riskLevel === 'LOW') return 10;
+      const rl = session.analysis?.riskLevel as string | undefined;
+      if (rl === 'CRITICAL' || rl === 'Critical') return 90;
+      if (rl === 'HIGH' || rl === 'High') return 65;
+      if (rl === 'MEDIUM' || rl === 'Medium') return 35;
+      if (rl === 'LOW' || rl === 'Low') return 10;
       return 0;
     }
 
@@ -477,12 +447,12 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       // Validate sequential execution
       const currentTimeline = candidate.timeline || [];
-      const workflowSteps = currentTimeline.filter((t: any) =>
+      const workflowSteps = currentTimeline.filter(( t: TimelineItem) =>
         workflowData.steps.some((s: WorkflowStep) => s.id === t.stage)
       );
 
       // Check if this is really the current step
-      const currentStep = workflowSteps.find((t: any) => t.status === 'current');
+      const currentStep = workflowSteps.find(( t: TimelineItem) => t.status === 'current');
       if (!currentStep || currentStep.stage !== stageId) {
         toast.error('Tahapan harus diselesaikan secara berurutan!');
         setIsUpdating(false);
@@ -492,7 +462,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const now = new Date().toISOString();
 
       // Update timeline: mark current as completed, set next as current
-      const updatedTimeline = currentTimeline.map((item: any, idx: number) => {
+      const updatedTimeline = currentTimeline.map((item: TimelineItem, idx: number) => {
         if (item.stage === stageId && item.status === 'current') {
           return {
             ...item,
@@ -508,7 +478,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const nextWorkflowStep = workflowSteps[nextStepIndex];
 
       if (nextWorkflowStep) {
-        updatedTimeline.forEach((item: any, idx: number) => {
+        updatedTimeline.forEach((item: TimelineItem, idx: number) => {
           if (item.stage === nextWorkflowStep.stage && item.status === 'pending') {
             item.status = 'current';
           }
@@ -626,7 +596,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       });
 
       // Find current step index and set next step as current
-      const currentStepIndex = existingTimeline.findIndex((t: any) => t.status === 'current');
+      const currentStepIndex = existingTimeline.findIndex(( t: TimelineItem) => t.status === 'current');
       if (currentStepIndex !== -1 && currentStepIndex + 1 < updatedTimeline.length) {
         const nextStep = updatedTimeline[currentStepIndex + 1];
         updatedTimeline[currentStepIndex + 1] = {
@@ -928,7 +898,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
     if (!candidate) return null;
 
     const stage = candidate.recruitmentStage || 'screening';
-    const statusMap: { [key: string]: { label: string; color: string; icon: JSX.Element } } = {
+    const statusMap: { [key: string]: { label: string; color: string; icon: React.ReactElement } } = {
       'screening': {
         label: 'Screening 🤖',
         color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
@@ -1541,17 +1511,17 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
                 if (workflowData) {
                   console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: WorkflowStep) => s.name).join(', '));
-                  const workflowTimeline = candidate.timeline?.filter((t: any) =>
+                  const workflowTimeline = candidate.timeline?.filter(( t: TimelineItem) =>
                     workflowData.steps.some((s: WorkflowStep) => s.id === t.stage)
                   ) || [];
-                  console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map((t: any) => `${t.stage}:${t.status}`).join(', '));
+                  console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map(( t: TimelineItem) => `${t.stage}:${t.status}`).join(', '));
 
-                  const currentStepIndex = workflowTimeline.findIndex((t: any) => t.status === 'current');
+                  const currentStepIndex = workflowTimeline.findIndex(( t: TimelineItem) => t.status === 'current');
                   const currentStep = workflowTimeline[currentStepIndex];
                   const nextStep = workflowTimeline[currentStepIndex + 1];
 
                   // Check if assessment is completed
-                  const assessmentStep = workflowTimeline.find((t: any) => t.stage === 'integrity_assessment');
+                  const assessmentStep = workflowTimeline.find(( t: TimelineItem) => t.stage === 'integrity_assessment');
                   const isAssessmentCompleted = assessmentStep?.status === 'completed';
                   const isCurrentStepAssessment = currentStep?.stage === 'integrity_assessment';
 
@@ -2480,7 +2450,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     <span className="text-sm text-gray-700 dark:text-gray-300">Tanggal Verifikasi</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                       {candidate.backgroundCheck?.lastUpdated
-                        ? new Date(candidate.backgroundCheck.lastUpdated.seconds * 1000).toLocaleDateString('id-ID', {
+                        ? (parseTimestamp(candidate.backgroundCheck.lastUpdated) || new Date()).toLocaleDateString('id-ID', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric'
@@ -2567,7 +2537,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-gray-800 dark:text-white">Background Check Started</p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {new Date(candidate.backgroundCheck.createdAt.seconds * 1000).toLocaleString('id-ID', {
+                          {(parseTimestamp(candidate.backgroundCheck.createdAt) || new Date()).toLocaleString('id-ID', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -2586,7 +2556,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-gray-800 dark:text-white">Status Updated</p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {new Date(candidate.backgroundCheck.lastUpdated.seconds * 1000).toLocaleString('id-ID', {
+                          {(parseTimestamp(candidate.backgroundCheck.lastUpdated) || new Date()).toLocaleString('id-ID', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -3141,7 +3111,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                     </div>
 
                     <div className="space-y-2">
-                      {candidate.backgroundCheck.warnings.map((warning: any, index: number) => (
+                      {candidate.backgroundCheck.warnings.map((warning, index: number) => (
                         <div key={index} className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                           <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">

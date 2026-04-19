@@ -78,11 +78,14 @@ export interface InterviewSession {
   cvParsedData?: ParsedCVData;
   whatsapp?: string;
   recruitmentStage?: string;
+  inviteSource?: string;
   timeline?: Array<{
     stage: string;
     status: 'completed' | 'current' | 'pending';
     date?: string;
     note?: string;
+    credits?: number;
+    isMandatory?: boolean;
   }>;
   backgroundCheck?: BackgroundCheckData;
 }
@@ -154,14 +157,42 @@ export interface BackgroundCheckData {
   diditSessionId?: string;
   decision?: string;
   verificationLink?: string;
-  createdAt?: any;
-  lastUpdated?: any;
+  createdAt?: string | { seconds: number };
+  lastUpdated?: string | { seconds: number };
   kycData?: KYCData;
   ipAnalysis?: IPData;
+  warnings?: Array<string | { short_description?: string; long_description?: string; risk?: string }>;
   rawWebhookData?: {
     status?: string;
     webhook_type?: string;
     session_number?: string;
+  };
+  idVerification?: {
+    fullName?: string;
+    documentNumber?: string;
+    documentType?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    gender?: string;
+    address?: string;
+    status?: string;
+    portraitImage?: string;
+    frontImage?: string;
+    backImage?: string;
+    confidence?: number;
+    warnings?: string[];
+  };
+  faceMatch?: {
+    score?: number;
+    status?: string;
+    sourceImage?: string;
+    targetImage?: string;
+  };
+  liveness?: {
+    score?: number;
+    status?: string;
+    ageEstimation?: number;
+    referenceImage?: string;
   };
 }
 

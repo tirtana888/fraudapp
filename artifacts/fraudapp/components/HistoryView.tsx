@@ -26,8 +26,9 @@ interface CandidateHistory extends InterviewSession {
   assessmentCode?: string;
   riskScore?: number;
   recruitmentStage?: string;
-  appliedAt?: string; // Ensure we have a date field to use
+  appliedAt?: string;
   jobTitle?: string;
+  unlockedAt?: string;
 }
 
 const HistoryView: React.FC<HistoryViewProps> = ({
@@ -67,14 +68,14 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       ]);
 
       const sessionToAccessCode: Record<string, string> = {};
-      (invitesData || []).forEach((invite: any) => {
+      (invitesData || []).forEach((invite: AssessmentInvite) => {
         if (invite.sessionId) sessionToAccessCode[invite.sessionId] = invite.access_code;
       });
 
       const jobsMap = new Map<string, string>();
-      (jobsData || []).forEach((j: any) => { jobsMap.set(j.id, j.title); });
+      (jobsData || []).forEach((j: { id: string; title: string }) => { jobsMap.set(j.id, j.title); });
 
-      const allCandidates: CandidateHistory[] = (sessionsData || []).map((data: any) => {
+      const allCandidates: CandidateHistory[] = (sessionsData || []).map((data: InterviewSession) => {
         const riskScore = data.analysis?.scores
           ? Math.round((data.analysis.scores.pressure + data.analysis.scores.opportunity + data.analysis.scores.rationalization) / 3)
           : 50;
@@ -97,7 +98,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       // Load unlocked candidates
       const unlockedIds = new Set<string>();
       allCandidates.forEach(c => {
-        if ((c as any).unlockedAt) {
+        if (c.unlockedAt) {
           unlockedIds.add(c.id);
         }
       });
