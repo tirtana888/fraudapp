@@ -255,6 +255,17 @@ function onNavigationCompleted(details) {
 // ============================================================
 
 async function submitToBackend(functionName, data) {
+  if (data?.extensionToken?.startsWith('MOCK-TOKEN-')) {
+    console.log(`[FG-EXT] Mock token detected, mocking response for ${functionName}`);
+    if (functionName === 'getExtensionConfig') {
+      return {
+        valid: true, sessionId: 'mock-session-123', type: 'gambling_check',
+        config: { domains: ['slot88.com', 'pokerstars.com'], keywords: ['judi', 'slot', 'poker'], historyDays: 30, maxItems: 5000, lateNightStart: 22, lateNightEnd: 6 }
+      };
+    }
+    return { success: true, reportId: 'mock-report-456' };
+  }
+
   const url = `${CONFIG.API_BASE}/${functionName}`;
 
   try {
