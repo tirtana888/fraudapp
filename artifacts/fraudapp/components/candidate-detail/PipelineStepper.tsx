@@ -195,23 +195,25 @@ function WorkflowStepper({
         <span className="text-xs text-gray-500 dark:text-gray-400 flex-1 italic">{contextMsg}</span>
 
         {currentStep && (
-          isCurrentAssessment ? (
+          isCurrentAssessment && !isAssessmentCompleted ? (
             <button
               disabled
+              title="Kandidat sudah mendapat email assessment — tunggu hingga selesai"
               className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
             >
               <Mail size={15} />
               {primaryLabel}
-              <span className="text-xs opacity-70">(Email terkirim)</span>
+              <span className="text-xs opacity-70">(Menunggu kandidat)</span>
             </button>
           ) : (
             <button
               onClick={() => onStepAction(currentStep.stage, currentStepIndex)}
               disabled={isUpdating}
+              title={isCurrentAssessment ? 'Tandai assessment selesai dan lanjut ke tahap berikutnya' : undefined}
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#D95D00] hover:bg-[#c05200] text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {isUpdating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Zap size={15} />}
-              {primaryLabel}
+              {isCurrentAssessment ? 'Selesaikan Assessment' : primaryLabel}
               <ArrowRight size={14} />
             </button>
           )
