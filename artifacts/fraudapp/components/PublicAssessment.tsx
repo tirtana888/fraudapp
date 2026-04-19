@@ -501,7 +501,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
         await markAccessCodeUsed(inviteData.access_code, 'COMPLETED', sessionId);
       }
 
-      await sendAssessmentCompleteEmail(candidateName, candidateEmail, company?.name || 'Perusahaan');
+      await sendAssessmentCompleteEmail(candidateName, candidateEmail, company?.name || 'Perusahaan', sessionId);
 
       console.log('[FINISH-ASSESSMENT] ✅ All done! Transitioning to completion page...');
 

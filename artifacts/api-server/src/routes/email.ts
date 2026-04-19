@@ -225,4 +225,98 @@ router.post("/send-email", requireSupabaseAuth, async (req: Request, res: Respon
   }
 });
 
+// ─── POST /api/send-email-public ─────────────────────────────────────────────
+// For candidate-facing pages (public assessment) that have no recruiter session.
+// Restricted to: assessment_complete and candidate_welcome types only.
+// Validates that the given sessionId exists in Supabase before sending.
+
+const PUBLIC_ALLOWED_TYPES = new Set(["assessment_complete", "candidate_welcome"]);
+
+router.post("/send-email-public", async (req: Request, res: Response) => {
+  const { emailType, to_email, emailData = {}, sessionId } = req.body as {
+    emailType: string;
+    to_email: string;
+    emailData: Record<string, string>;
+    sessionId: string;
+  };
+
+  if (!to_email || !emailType || !sessionId) {
+    res.status(400).json({ success: false, error: "Missing required fields" });
+    return;
+  }
+
+  if (!PUBLIC_ALLOWED_TYPES.has(emailType)) {
+    res.status(400).json({ success: false, error: `emailType '${emailType}' not allowed on public endpoint` });
+    return;
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    res.status(503).json({ success: false, error: "Email service misconfigured" });
+    return;
+  }
+
+  // Verify sessionId exists in Supabase (prevents spam with arbitrary data)
+  const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  const supabaseKey = SERVICE_KEY || SUPABASE_ANON_KEY;
+  try {
+    const checkRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/interview_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,candidate`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    if (!checkRes.ok) {
+      res.status(401).json({ success: false, error: "Could not verify session" });
+      return;
+    }
+    const rows = await checkRes.json() as Array<{ id: string; candidate?: { email?: string } }>;
+    if (!rows.length) {
+      res.status(401).json({ success: false, error: "Session not found" });
+      return;
+    }
+    // Also verify the to_email matches the candidate email stored for that session
+    const storedEmail = rows[0].candidate?.email;
+    if (storedEmail && storedEmail !== to_email) {
+      res.status(401).json({ success: false, error: "Email mismatch for session" });
+      return;
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to verify session for public email");
+    res.status(500).json({ success: false, error: "Session verification failed" });
+    return;
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    res.status(200).json({ success: false, error: "RESEND_API_KEY not configured" });
+    return;
+  }
+
+  const templateFn = templates[emailType];
+  if (!templateFn) {
+    res.status(400).json({ success: false, error: `Unknown emailType: ${emailType}` });
+    return;
+  }
+
+  try {
+    const { subject, html } = templateFn(emailData);
+    const { data, error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [to_email],
+      subject,
+      html,
+    });
+
+    if (error) {
+      logger.error({ emailType, to_email, error }, "Resend API error (public)");
+      res.status(500).json({ success: false, error: error.message });
+      return;
+    }
+
+    logger.info({ emailType, to_email, id: data?.id }, "Email sent (public)");
+    res.json({ success: true, id: data?.id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ emailType, to_email, message }, "Failed to send email (public)");
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 export default router;

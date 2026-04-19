@@ -82,6 +82,29 @@ export const sendEmailViaCloudFunction = async (
   }
 };
 
+export const sendEmailViaPublicEndpoint = async (
+  emailType: string,
+  to_email: string,
+  emailData: Record<string, string>,
+  sessionId: string
+): Promise<boolean> => {
+  try {
+    const resp = await fetch('/api/send-email-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailType, to_email, emailData, sessionId }),
+    });
+    const json = await resp.json() as { success: boolean; error?: string };
+    if (!json.success) {
+      console.warn('[EMAIL] send-email-public returned failure:', json.error);
+    }
+    return json.success;
+  } catch (err) {
+    console.warn('[EMAIL] Failed to reach send-email-public endpoint:', err);
+    return false;
+  }
+};
+
 // ==========================================
 // AUTH FUNCTIONS
 // ==========================================
@@ -1035,8 +1058,12 @@ export const getCompanyBySlug = async (slug: string): Promise<CompanyProfile | n
 export const sendAssessmentCompleteEmail = async (
   candidateName: string,
   candidateEmail: string,
-  companyName: string
+  companyName: string,
+  sessionId?: string
 ): Promise<boolean> => {
+  if (sessionId) {
+    return sendEmailViaPublicEndpoint('assessment_complete', candidateEmail, { candidateName, companyName }, sessionId);
+  }
   return sendEmailViaCloudFunction('assessment_complete', candidateEmail, {
     candidateName,
     companyName,
