@@ -902,12 +902,17 @@ export const createInterviewSessionFromApplication = async (
 // ==========================================
 
 export const createWorkflow = async (workflowData: Omit<Workflow, 'id'>): Promise<string> => {
+  const now = new Date().toISOString();
+  const payload = toSnakeCaseRow({ ...workflowData, createdAt: now, updatedAt: now });
   const { data, error } = await supabase
-    .from(COLLECTIONS.WORKFLOWS)
-    .insert(workflowData)
+    .from('_workflows')
+    .insert(payload)
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error('[createWorkflow] Supabase error:', error);
+    throw error;
+  }
   return data.id;
 };
 
@@ -925,16 +930,23 @@ export const getWorkflowsByCompany = async (companyId: string): Promise<Workflow
 };
 
 export const updateWorkflow = async (workflowId: string, updates: Partial<Workflow>): Promise<void> => {
+  const payload = toSnakeCaseRow({ ...updates, updatedAt: new Date().toISOString() });
   const { error } = await supabase
-    .from(COLLECTIONS.WORKFLOWS)
-    .update({ ...updates, updatedAt: new Date().toISOString() })
+    .from('_workflows')
+    .update(payload)
     .eq('id', workflowId);
-  if (error) throw error;
+  if (error) {
+    console.error('[updateWorkflow] Supabase error:', error);
+    throw error;
+  }
 };
 
 export const deleteWorkflow = async (workflowId: string): Promise<void> => {
-  const { error } = await supabase.from(COLLECTIONS.WORKFLOWS).delete().eq('id', workflowId);
-  if (error) throw error;
+  const { error } = await supabase.from('_workflows').delete().eq('id', workflowId);
+  if (error) {
+    console.error('[deleteWorkflow] Supabase error:', error);
+    throw error;
+  }
 };
 
 // ==========================================
