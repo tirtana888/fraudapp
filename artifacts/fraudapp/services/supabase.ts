@@ -57,9 +57,18 @@ export const sendEmailViaCloudFunction = async (
   emailData: Record<string, string>
 ): Promise<boolean> => {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      console.warn('[EMAIL] No active session — email not sent');
+      return false;
+    }
     const resp = await fetch('/api/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({ emailType, to_email, emailData }),
     });
     const json = await resp.json() as { success: boolean; error?: string };

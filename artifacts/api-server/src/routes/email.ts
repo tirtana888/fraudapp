@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { Resend } from "resend";
 import { logger } from "../lib/logger";
 
@@ -6,6 +6,39 @@ const router: IRouter = Router();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_ADDRESS = "HireGood <noreply@hiregood.one>";
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+async function requireSupabaseAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    logger.warn("Supabase env vars not set — email endpoint blocked");
+    res.status(503).json({ success: false, error: "Email service misconfigured" });
+    return;
+  }
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  const token = authHeader.slice(7);
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+    });
+    if (!userRes.ok) {
+      res.status(401).json({ success: false, error: "Invalid or expired session" });
+      return;
+    }
+    next();
+  } catch (err) {
+    logger.error({ err }, "Failed to verify Supabase token");
+    res.status(401).json({ success: false, error: "Auth check failed" });
+  }
+}
 
 // ─── Email templates ──────────────────────────────────────────────────────────
 
@@ -143,7 +176,7 @@ const templates: Record<string, (data: Record<string, string>) => { subject: str
 
 // ─── POST /api/send-email ──────────────────────────────────────────────────────
 
-router.post("/send-email", async (req: Request, res: Response) => {
+router.post("/send-email", requireSupabaseAuth, async (req: Request, res: Response) => {
   const { emailType, to_email, emailData = {} } = req.body as {
     emailType: string;
     to_email: string;
