@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/fraudapp run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/fraudapp", "run", "build" ]
-publicDir = "artifacts/fraudapp/dist/public"
+publicDir = "artifacts/fraudapp/dist"
 serve = "static"
 
 [[services.production.rewrites]]
