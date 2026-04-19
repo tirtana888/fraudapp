@@ -36,7 +36,9 @@ export default function ExtensionScreeningCard({
         toast.success('Token berhasil dibuat! (Memotong 50 credit)');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Gagal menghasilkan token extension');
+      console.error(err);
+      toast.error('Gagal: ' + (err.message || 'Error Server') + '. Menggunakan Mock Token untuk Testing UI.');
+      setGeneratedToken('MOCK-TOKEN-' + Math.random().toString(36).substring(2, 8).toUpperCase());
     } finally {
       setIsGenerating(false);
     }
