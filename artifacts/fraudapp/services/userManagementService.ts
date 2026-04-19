@@ -94,7 +94,7 @@ export const updateUserRole = async (userId: string, newRole: 'user' | 'admin' |
     const { data: company, error: fetchErr } = await supabase.from('companies').select('tier, email').eq('id', userId).single();
     if (fetchErr || !company) throw new Error('Company not found');
     const newTier = newRole === 'admin' ? 'premium' : 'basic';
-    const { error } = await supabase.from('companies').update({ tier: newTier, updatedAt: new Date().toISOString() }).eq('id', userId);
+    const { error } = await supabase.from('_companies').update({ tier: newTier, updated_at: new Date().toISOString() }).eq('id', userId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'updated', section: 'api-keys', resource: `Company: ${company.email}`, details: `Changed tier from ${company.tier} to ${newTier}`, oldValue: company.tier, newValue: newTier, status: 'success' });
@@ -103,7 +103,7 @@ export const updateUserRole = async (userId: string, newRole: 'user' | 'admin' |
 export const suspendUser = async (userId: string, adminEmail: string, reason?: string): Promise<void> => {
     const { data: company, error: fetchErr } = await supabase.from('companies').select('email').eq('id', userId).single();
     if (fetchErr || !company) throw new Error('Company not found');
-    const { error } = await supabase.from('companies').update({ status: 'suspended', suspendedAt: new Date().toISOString(), suspendedBy: adminEmail, suspendReason: reason || 'No reason provided', updatedAt: new Date().toISOString() }).eq('id', userId);
+    const { error } = await supabase.from('_companies').update({ status: 'suspended', suspended_at: new Date().toISOString(), suspended_by: adminEmail, suspend_reason: reason || 'No reason provided', updated_at: new Date().toISOString() }).eq('id', userId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'updated', section: 'api-keys', resource: `Company: ${company.email}`, details: `Suspended company. Reason: ${reason || 'No reason'}`, status: 'success' });
@@ -112,7 +112,7 @@ export const suspendUser = async (userId: string, adminEmail: string, reason?: s
 export const banUser = async (userId: string, adminEmail: string, reason?: string): Promise<void> => {
     const { data: company, error: fetchErr } = await supabase.from('companies').select('email').eq('id', userId).single();
     if (fetchErr || !company) throw new Error('Company not found');
-    const { error } = await supabase.from('companies').update({ status: 'banned', bannedAt: new Date().toISOString(), bannedBy: adminEmail, banReason: reason || 'No reason provided', updatedAt: new Date().toISOString() }).eq('id', userId);
+    const { error } = await supabase.from('_companies').update({ status: 'banned', banned_at: new Date().toISOString(), banned_by: adminEmail, ban_reason: reason || 'No reason provided', updated_at: new Date().toISOString() }).eq('id', userId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'deleted', section: 'api-keys', resource: `Company: ${company.email}`, details: `Banned company. Reason: ${reason || 'No reason'}`, status: 'success' });
@@ -122,7 +122,7 @@ export const reactivateUser = async (userId: string, adminEmail: string): Promis
     const { data: company, error: fetchErr } = await supabase.from('companies').select('email, status').eq('id', userId).single();
     if (fetchErr || !company) throw new Error('Company not found');
     const oldStatus = company.status;
-    const { error } = await supabase.from('companies').update({ status: 'active', reactivatedAt: new Date().toISOString(), reactivatedBy: adminEmail, updatedAt: new Date().toISOString() }).eq('id', userId);
+    const { error } = await supabase.from('_companies').update({ status: 'active', reactivated_at: new Date().toISOString(), reactivated_by: adminEmail, updated_at: new Date().toISOString() }).eq('id', userId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'updated', section: 'api-keys', resource: `Company: ${company.email}`, details: `Reactivated company from ${oldStatus} status`, status: 'success' });
@@ -131,7 +131,7 @@ export const reactivateUser = async (userId: string, adminEmail: string): Promis
 export const deleteBusinessUser = async (userId: string, adminEmail: string): Promise<void> => {
     const { data: company, error: fetchErr } = await supabase.from('companies').select('email').eq('id', userId).single();
     if (fetchErr || !company) throw new Error('Company not found');
-    const { error } = await supabase.from('companies').delete().eq('id', userId);
+    const { error } = await supabase.from('_companies').delete().eq('id', userId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'deleted', section: 'api-keys', resource: `Company: ${company.email}`, details: 'Permanently deleted company account', status: 'success' });
@@ -183,7 +183,7 @@ export const getKYCAnalytics = async (companyId: string): Promise<KYCAnalytics> 
 export const updateCompanyTier = async (companyId: string, newTier: string, adminEmail: string): Promise<void> => {
     const { data: company, error: fetchErr } = await supabase.from('companies').select('tier, email').eq('id', companyId).single();
     if (fetchErr || !company) throw new Error('Company not found');
-    const { error } = await supabase.from('companies').update({ tier: newTier, updatedAt: new Date().toISOString() }).eq('id', companyId);
+    const { error } = await supabase.from('_companies').update({ tier: newTier, updated_at: new Date().toISOString() }).eq('id', companyId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'updated', section: 'api-keys', resource: `Company: ${company.email}`, details: `Changed tier from ${company.tier} to ${newTier}`, oldValue: company.tier, newValue: newTier, status: 'success' });
@@ -194,7 +194,7 @@ export const addCompanyCredits = async (companyId: string, amount: number, admin
     if (fetchErr || !company) throw new Error('Company not found');
     const currentCredits = company.credits || 0;
     const newCredits = currentCredits + amount;
-    const { error } = await supabase.from('companies').update({ credits: newCredits, updatedAt: new Date().toISOString() }).eq('id', companyId);
+    const { error } = await supabase.from('_companies').update({ credits: newCredits, updated_at: new Date().toISOString() }).eq('id', companyId);
     if (error) throw error;
     const { data: { user } } = await supabase.auth.getUser();
     await createAuditLog({ userId: user?.id || '', userEmail: adminEmail, action: 'updated', section: 'api-keys', resource: `Company: ${company.email}`, details: `Added ${amount} credits. Reason: ${reason || 'Manual adjustment'}`, oldValue: currentCredits.toString(), newValue: newCredits.toString(), status: 'success' });

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy, Bot } from 'lucide-react';
-import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, supabase, COLLECTIONS } from '../services/supabase';
+import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, supabase, COLLECTIONS, toSnakeCaseRow } from '../services/supabase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel, WorkflowStep } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
@@ -307,7 +307,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     try {
       const { data: existingSession } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', realSessionId).single<{ timeline: InterviewSession['timeline'] }>();
       const existingTimeline = existingSession?.timeline || [];
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'integrity_assessment',
         timeline: [...existingTimeline, {
           stage: 'integrity_assessment',
@@ -315,7 +315,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           date: new Date().toISOString(),
           note: 'Integrity Assessment - Mulai mengerjakan'
         }]
-      }).eq('id', realSessionId);
+      } as Record<string, unknown>)).eq('id', realSessionId);
       console.log('[PUBLIC-ASSESSMENT] ✅ Stage updated to integrity_assessment');
     } catch (error) {
       console.error('[PUBLIC-ASSESSMENT] Error updating stage:', error);

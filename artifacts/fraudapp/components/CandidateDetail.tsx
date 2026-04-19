@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
 import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep } from '../types';
-import { supabase, COLLECTIONS, parseCVWithMistral, sendEmailViaCloudFunction } from '../services/supabase';
+import { supabase, COLLECTIONS, parseCVWithMistral, sendEmailViaCloudFunction, toSnakeCaseRow } from '../services/supabase';
 
 type TimelineItem = NonNullable<InterviewSession['timeline']>[number];
 import { useToast } from './Toast';
@@ -564,11 +564,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         timeline: timelineUpdate,
         recruitmentStage: nextWorkflowStep ? nextWorkflowStep.stage : stageId,
         updatedAt: now
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       // Reload candidate data
       await loadCandidateData();
@@ -666,7 +666,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       console.log('[INTERVIEW] ✅ Timeline updated with workflow progression');
       console.log('[INTERVIEW] Current completed, next step set to current');
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'interview',
         timeline: updatedTimeline,
         updatedAt: now,
@@ -680,7 +680,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           link: interviewType === 'online' ? interviewLink : null,
           scheduledAt: now
         }
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       setShowInterviewModal(false);
       setInterviewDate('');
@@ -756,11 +756,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'background_check',
         timeline: updatedTimeline,
         updatedAt: now
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       toast.success(`Background Check dimulai! (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       await loadCandidateData();
@@ -798,7 +798,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'hired',
         timeline: updatedTimeline,
         hireDetails: {
@@ -807,7 +807,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
           contactPerson: contactPerson,
           hiredAt: now
         }
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       sendEmailViaCloudFunction('hire_notification', candidate.candidate.email, {
         candidateName: candidate.candidate.name,
@@ -855,14 +855,14 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'rejected',
         timeline: updatedTimeline,
         rejectionDetails: {
           sendEmail: sendRejectionEmail,
           rejectedAt: now
         }
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       if (sendRejectionEmail) {
         sendEmailViaCloudFunction('rejection_notification', candidate.candidate.email, {
@@ -922,11 +922,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         }
       ];
 
-      await supabase.from(COLLECTIONS.SESSIONS).update({
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: newStage,
         timeline: updatedTimeline,
         updatedAt: now
-      }).eq('id', sessionId);
+      } as Record<string, unknown>)).eq('id', sessionId);
 
       await loadCandidateData();
 

@@ -3,7 +3,7 @@ import {
   Search, FileText, Calendar, User, Briefcase, ChevronRight, Lock, Crown, Unlock,
   X, CreditCard, Loader2, TrendingUp, AlertTriangle, Clock, Filter, Eye, ArrowUpRight
 } from 'lucide-react';
-import { supabase, COLLECTIONS } from '../services/supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from '../services/supabase';
 import { InterviewSession, AssessmentInvite, CompanyProfile, SUBSCRIPTION_PLANS, CREDIT_COSTS, Job } from '../types';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
 import { useToast } from './Toast';
@@ -142,10 +142,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       );
 
       if (result.success) {
-        await supabase.from(COLLECTIONS.SESSIONS).update({
+        await supabase.from('_interview_sessions').update(toSnakeCaseRow({
           unlockedAt: new Date().toISOString(),
           unlockedByCompanyId: companyId
-        }).eq('id', selectedCandidateForUnlock.id);
+        } as Record<string, unknown>)).eq('id', selectedCandidateForUnlock.id);
 
         setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
         toast.success(`Candidate unlocked! Remaining credits: ${result.remainingCredits}`);

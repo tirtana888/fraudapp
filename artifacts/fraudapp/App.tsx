@@ -35,7 +35,7 @@ import { getSession, clearSession, saveSession } from './services/auth';
 import { getCreditBalance, deductCredit } from './services/creditManagement';
 import PaymentModal from './components/PaymentModal';
 import { ToastProvider, useToast } from './components/Toast';
-import { supabase, COLLECTIONS } from './services/supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from './services/supabase';
 import NotificationCenter from './components/NotificationCenter';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 
@@ -1065,10 +1065,10 @@ const App: React.FC = () => {
                 );
 
                 if (result.success) {
-                  await supabase.from(COLLECTIONS.SESSIONS).update({
+                  await supabase.from('_interview_sessions').update(toSnakeCaseRow({
                     unlockedAt: new Date().toISOString(),
                     unlockedByCompanyId: currentCompany.id
-                  }).eq('id', selectedCandidateForUnlock.id);
+                  } as Record<string, unknown>)).eq('id', selectedCandidateForUnlock.id);
 
                   // Update credit balance
                   setCreditBalance(result.remainingCredits);

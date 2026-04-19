@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2, Calendar, Clock, MapPin, Globe } from 'lucide-react';
-import { supabase, COLLECTIONS } from '../services/supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from '../services/supabase';
 
 interface InterviewConfirmationPageProps { }
 
@@ -69,10 +69,10 @@ const InterviewConfirmationPage: React.FC<InterviewConfirmationPageProps> = () =
                     confirmedAt: new Date().toISOString(),
                     confirmationMethod: 'email_link',
                 };
-                await supabase.from(COLLECTIONS.SESSIONS).update({
+                await supabase.from('_interview_sessions').update(toSnakeCaseRow({
                     interviewSchedule: updatedSchedule,
                     updatedAt: new Date().toISOString()
-                }).eq('id', sessionId);
+                } as Record<string, unknown>)).eq('id', sessionId);
 
                 // Success
                 setStatus('success');

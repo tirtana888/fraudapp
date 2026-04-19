@@ -74,7 +74,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ companyId, onNa
 
     const markAsRead = async (notificationId: string) => {
         try {
-            await supabase.from(COLLECTIONS.NOTIFICATIONS).update({ read: true }).eq('id', notificationId);
+            await supabase.from('_notifications').update({ read: true }).eq('id', notificationId);
         } catch (error) {
             console.error('[NOTIF-CENTER] Error marking as read:', error);
         }

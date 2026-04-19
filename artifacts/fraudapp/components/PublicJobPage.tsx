@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile, AssessmentInvite } from '../types';
-import { getJobBySlug, createApplication, uploadCV, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug, supabase } from '../services/supabase';
+import { getJobBySlug, createApplication, uploadCV, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug, supabase, toSnakeCaseRow } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface PublicJobPageProps {
@@ -170,7 +170,7 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
             applicationId: applicationId
           };
 
-          await supabase.from(COLLECTIONS.INVITES).insert(inviteData);
+          await supabase.from('_assessment_invites').insert(toSnakeCaseRow(inviteData as Record<string, unknown>));
           console.log('[PUBLIC-JOB] ✅ Invite saved to database');
 
           // Send email (same format as manual invite)

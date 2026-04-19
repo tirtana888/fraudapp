@@ -1,4 +1,4 @@
-import { supabase, COLLECTIONS } from './supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from './supabase';
 
 export interface DiditVerificationSession {
   verificationSessionId: string;
@@ -58,12 +58,12 @@ export const handleBackgroundCheckCallback = async (
   else if (status.toLowerCase() === 'declined') mappedStatus = 'declined';
 
   const { error } = await supabase
-    .from(COLLECTIONS.SESSIONS)
-    .update({
+    .from('_interview_sessions')
+    .update(toSnakeCaseRow({
       backgroundCheck: { status: mappedStatus },
       backgroundCheckStatus: mappedStatus,
       backgroundCheckCompletedAt: new Date().toISOString()
-    })
+    } as Record<string, unknown>))
     .eq('id', actualSessionId);
 
   if (error) throw error;

@@ -5,7 +5,7 @@ import {
   GripVertical, Layout, Box, Coins, Clock, Globe
 } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES, WorkflowTemplate } from '../types';
-import { supabase, COLLECTIONS } from '../services/supabase';
+import { supabase, COLLECTIONS, createWorkflow, updateWorkflow, deleteWorkflow } from '../services/supabase';
 import { useToast } from './Toast';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -165,11 +165,11 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       };
 
       if (editingWorkflow) {
-        await supabase.from(COLLECTIONS.WORKFLOWS).update(workflowData).eq('id', editingWorkflow.id!);
+        await updateWorkflow(editingWorkflow.id!, workflowData);
         console.log('[WORKFLOW] Updated workflow:', editingWorkflow.id);
         toast.success('Workflow berhasil diupdate!');
       } else {
-        await supabase.from(COLLECTIONS.WORKFLOWS).insert({ ...workflowData, createdAt: new Date().toISOString() });
+        await createWorkflow(workflowData as Parameters<typeof createWorkflow>[0]);
         console.log('[WORKFLOW] Created new workflow');
         toast.success('Workflow berhasil dibuat!');
       }
@@ -189,7 +189,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     if (!confirm('Apakah Anda yakin ingin menghapus workflow ini?')) return;
 
     try {
-      await supabase.from(COLLECTIONS.WORKFLOWS).delete().eq('id', workflowId);
+      await deleteWorkflow(workflowId);
       console.log('[WORKFLOW] Deleted workflow:', workflowId);
       loadWorkflows();
       toast.success('Workflow berhasil dihapus');

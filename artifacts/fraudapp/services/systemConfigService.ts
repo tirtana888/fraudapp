@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, toSnakeCaseRow } from './supabase';
 
 export interface APIKeyConfig {
     id: string;
@@ -189,12 +189,12 @@ const getDefaultWebhooks = (): WebhookConfig[] => [
 export const createAuditLog = async (log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> => {
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('audit_logs').insert({
+        await supabase.from('_audit_logs').insert(toSnakeCaseRow({
             ...log,
             timestamp: new Date().toISOString(),
             userId: user?.id || log.userId,
             userEmail: user?.email || log.userEmail,
-        });
+        } as Record<string, unknown>));
     } catch (error) {
         console.error('Error creating audit log:', error);
     }

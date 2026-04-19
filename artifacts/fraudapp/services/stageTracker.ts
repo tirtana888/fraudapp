@@ -50,11 +50,11 @@ export const updateCandidateStage = async (
         };
 
         const { error } = await supabase
-            .from(COLLECTIONS.SESSIONS)
+            .from('_interview_sessions')
             .update({
-                recruitmentStage: newStage,
+                recruitment_stage: newStage,
                 timeline: [...existingTimeline, newEntry],
-                updatedAt: new Date().toISOString()
+                updated_at: new Date().toISOString()
             })
             .eq('id', sessionId);
 

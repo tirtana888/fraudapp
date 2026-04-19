@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Briefcase, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock } from 'lucide-react';
 import { InterviewSession, Job } from '../types';
-import { supabase, COLLECTIONS } from '../services/supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface JobApplicationsViewProps {
@@ -120,16 +120,16 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
       const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', sessionId).single<{ timeline: InterviewSession['timeline'] }>();
       if (sessionSnap) {
         const currentTimeline = sessionSnap.timeline || [];
-        await supabase.from(COLLECTIONS.SESSIONS).update({
+        await supabase.from('_interview_sessions').update(toSnakeCaseRow({
           recruitmentStage: stage,
           timeline: [...currentTimeline, newTimelineItem]
-        }).eq('id', sessionId);
+        } as Record<string, unknown>)).eq('id', sessionId);
       }
 
       if (applicationId) {
-        await supabase.from(COLLECTIONS.APPLICATIONS).update({
+        await supabase.from('_applications').update({
           status: stage === 'rejected' ? 'Rejected' : 'In Progress',
-          lastUpdated: new Date().toISOString()
+          last_updated: new Date().toISOString()
         }).eq('id', applicationId);
       }
 

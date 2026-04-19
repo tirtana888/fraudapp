@@ -6,7 +6,7 @@ import {
   MoreHorizontal, ArrowRight, Search
 } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel, SUBSCRIPTION_PLANS, CompanyProfile, CREDIT_COSTS } from '../types';
-import { supabase, COLLECTIONS } from '../services/supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from '../services/supabase';
 import { useToast } from './Toast';
 import { calculateAssessmentScores } from '../services/genai';
 import { calculateApplicationRanks, shouldBlurByApplicationRank, deductCredit, getCreditBalance } from '../services/creditManagement';
@@ -169,7 +169,7 @@ const CandidatesAutoView: React.FC<CandidatesAutoViewProps> = ({ companyId, onVi
     const res = await deductCredit(companyId, cost, 'UNLOCK_PROFILE', `Unlock ${selectedCandidateForUnlock.candidate.name}`, { sessionId: selectedCandidateForUnlock.id, candidateName: selectedCandidateForUnlock.candidate.name });
 
     if (res.success) {
-      await supabase.from(COLLECTIONS.SESSIONS).update({ unlockedAt: new Date().toISOString(), unlockedByCompanyId: companyId }).eq('id', selectedCandidateForUnlock.id);
+      await supabase.from('_interview_sessions').update(toSnakeCaseRow({ unlockedAt: new Date().toISOString(), unlockedByCompanyId: companyId } as Record<string, unknown>)).eq('id', selectedCandidateForUnlock.id);
       setUnlockedCandidates(prev => new Set([...prev, selectedCandidateForUnlock.id]));
       toast.success('Candidate Unlocked!');
       setShowUnlockModal(false);

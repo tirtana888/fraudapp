@@ -211,8 +211,14 @@ export const getUserProfileByEmail = async (email: string): Promise<UserProfile 
   return data as UserProfile;
 };
 
+const toSnakeCaseUserRow = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const { password: _password, ...rest } = obj;
+  return toSnakeCaseRow(rest);
+};
+
 export const createUserProfile = async (profile: UserProfile): Promise<void> => {
-  const { error } = await supabase.from(COLLECTIONS.USERS).insert(profile);
+  const payload = toSnakeCaseUserRow(profile as unknown as Record<string, unknown>);
+  const { error } = await supabase.from('_users').insert(payload);
   if (error) {
     console.error('[USER] Error creating profile:', error);
     throw error;
@@ -220,15 +226,15 @@ export const createUserProfile = async (profile: UserProfile): Promise<void> => 
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>, email?: string): Promise<void> => {
-  let query = supabase.from(COLLECTIONS.USERS).update(updates).eq('id', userId);
-  const { error } = await query;
+  const payload = toSnakeCaseUserRow({ ...updates, updatedAt: new Date().toISOString() } as Record<string, unknown>);
+  const { error } = await supabase.from('_users').update(payload).eq('id', userId);
 
   if (error) {
     // Try by email as fallback
     if (email) {
       const { error: emailError } = await supabase
-        .from(COLLECTIONS.USERS)
-        .update(updates)
+        .from('_users')
+        .update(payload)
         .eq('email', email);
 
       if (emailError) {
@@ -244,7 +250,8 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
           name: updates.name || 'User',
           role: updates.role || 'Company Admin',
         };
-        const { error: insertError } = await supabase.from(COLLECTIONS.USERS).insert(newProfile);
+        const insertPayload = toSnakeCaseUserRow(newProfile as unknown as Record<string, unknown>);
+        const { error: insertError } = await supabase.from('_users').insert(insertPayload);
         if (insertError) throw insertError;
       }
     } else {
@@ -282,8 +289,8 @@ export const getCompanyById = async (companyId: string): Promise<CompanyProfile 
 
 export const createCompany = async (companyData: Omit<CompanyProfile, 'id'>): Promise<string> => {
   const { data, error } = await supabase
-    .from(COLLECTIONS.COMPANIES)
-    .insert({ ...companyData, createdAt: new Date().toISOString() })
+    .from('_companies')
+    .insert(toSnakeCaseRow({ ...companyData, createdAt: new Date().toISOString() } as Record<string, unknown>))
     .select('id')
     .single();
   if (error) throw error;
@@ -293,12 +300,48 @@ export const createCompany = async (companyData: Omit<CompanyProfile, 'id'>): Pr
 const camelToSnake = (key: string): string =>
   key.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
 
-const toSnakeCaseRow = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+export const toSnakeCaseRow = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     out[camelToSnake(k)] = v;
   }
   return out;
+};
+
+const toSnakeCaseJobRow = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const row = toSnakeCaseRow(obj);
+  if ('job_type' in row) {
+    row['type'] = row['job_type'];
+    delete row['job_type'];
+  }
+  delete row['applicants_count'];
+  return row;
+};
+
+const toSnakeCaseApplicationRow = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const {
+    fullName,
+    email,
+    whatsapp,
+    cvUrl,
+    jobId,
+    companyId,
+    appliedAt,
+    sessionId: _sessionId,
+    assessmentToken: _assessmentToken,
+    createdAt: _createdAt,
+    ...rest
+  } = obj as Record<string, unknown>;
+  return {
+    ...toSnakeCaseRow(rest as Record<string, unknown>),
+    candidate_name: fullName,
+    candidate_email: email,
+    candidate_whatsapp: whatsapp,
+    cv_url: cvUrl,
+    job_id: jobId,
+    company_id: companyId,
+    ...(appliedAt !== undefined ? { applied_at: appliedAt } : {}),
+  };
 };
 
 export const updateCompany = async (companyId: string, updates: Partial<CompanyProfile>): Promise<void> => {
@@ -334,7 +377,7 @@ export const updateCompanySubscription = async (companyId: string, updates: Part
 };
 
 export const deleteCompany = async (companyId: string): Promise<void> => {
-  const { error } = await supabase.from(COLLECTIONS.COMPANIES).delete().eq('id', companyId);
+  const { error } = await supabase.from('_companies').delete().eq('id', companyId);
   if (error) throw error;
 };
 
@@ -358,7 +401,7 @@ export const inviteCompanyReal = async (payload: {
       verification_credits: 100,
       createdAt: new Date().toISOString(),
     };
-    const { data, error } = await supabase.from(COLLECTIONS.COMPANIES).insert(companyData).select('id').single();
+    const { data, error } = await supabase.from('_companies').insert(toSnakeCaseRow(companyData as Record<string, unknown>)).select('id').single();
     if (error) throw error;
     return { success: true, message: `Company "${payload.name}" berhasil dibuat dengan ID: ${data.id}` };
   } catch (error) {
@@ -386,12 +429,16 @@ export const resendInviteEmail = async (companyId: string): Promise<{ success: b
 // ==========================================
 
 export const createInterviewSession = async (sessionData: Omit<InterviewSession, 'id'>): Promise<string> => {
+  const payload = toSnakeCaseRow(sessionData as unknown as Record<string, unknown>);
   const { data, error } = await supabase
-    .from(COLLECTIONS.SESSIONS)
-    .insert({ ...sessionData })
+    .from('_interview_sessions')
+    .insert(payload)
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error('[createInterviewSession] Supabase error:', error);
+    throw error;
+  }
   return data.id;
 };
 
@@ -423,15 +470,19 @@ export const getSessionById = async (sessionId: string): Promise<InterviewSessio
 };
 
 export const updateSession = async (sessionId: string, updates: Partial<InterviewSession>): Promise<void> => {
+  const payload = toSnakeCaseRow({ ...updates, updatedAt: new Date().toISOString() } as unknown as Record<string, unknown>);
   const { error } = await supabase
-    .from(COLLECTIONS.SESSIONS)
-    .update({ ...updates, updatedAt: new Date().toISOString() })
+    .from('_interview_sessions')
+    .update(payload)
     .eq('id', sessionId);
-  if (error) throw error;
+  if (error) {
+    console.error('[updateSession] Supabase error:', error);
+    throw error;
+  }
 };
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  const { error } = await supabase.from(COLLECTIONS.SESSIONS).delete().eq('id', sessionId);
+  const { error } = await supabase.from('_interview_sessions').delete().eq('id', sessionId);
   if (error) throw error;
 };
 
@@ -505,7 +556,7 @@ const _blastAssessmentInvitesImpl = async (
         inviteLink,
       };
 
-      const { error } = await supabase.from(COLLECTIONS.INVITES).insert(invite);
+      const { error } = await supabase.from('_assessment_invites').insert(toSnakeCaseRow(invite as Record<string, unknown>));
       if (error) throw error;
 
       await sendEmailViaCloudFunction('assessment_invite', candidate.email, {
@@ -532,8 +583,8 @@ export const resendCandidateInvite = async (inviteId: string, _companyName?: str
   if (fetchErr) return { success: false, message: fetchErr.message };
 
   const { error } = await supabase
-    .from(COLLECTIONS.INVITES)
-    .update({ updatedAt: new Date().toISOString(), status: 'resent' })
+    .from('_assessment_invites')
+    .update({ updated_at: new Date().toISOString(), status: 'resent' })
     .eq('id', inviteId);
   if (error) return { success: false, message: error.message };
 
@@ -559,7 +610,7 @@ export const resendCandidateInvite = async (inviteId: string, _companyName?: str
 };
 
 export const deleteCandidateInvite = async (inviteId: string): Promise<{ success: boolean; message: string }> => {
-  const { error } = await supabase.from(COLLECTIONS.INVITES).delete().eq('id', inviteId);
+  const { error } = await supabase.from('_assessment_invites').delete().eq('id', inviteId);
   if (error) return { success: false, message: error.message };
   return { success: true, message: 'Undangan berhasil dihapus' };
 };
@@ -705,31 +756,38 @@ export const initiateBackgroundCheck = async (candidateId: string, candidateName
 
 export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'datePosted' | 'applicantsCount'>): Promise<string> => {
   const now = new Date().toISOString();
+  const payload = toSnakeCaseJobRow({
+    ...jobData,
+    datePosted: now,
+    createdAt: now,
+    updatedAt: now,
+  } as Record<string, unknown>);
   const { data, error } = await supabase
-    .from(COLLECTIONS.JOBS)
-    .insert({
-      ...jobData,
-      datePosted: now,
-      applicantsCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    })
+    .from('_jobs')
+    .insert(payload)
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error('[createJob] Supabase error:', error);
+    throw error;
+  }
   return data.id;
 };
 
 export const updateJob = async (jobId: string, updates: Partial<Job>): Promise<void> => {
+  const payload = toSnakeCaseJobRow({ ...updates, updatedAt: new Date().toISOString() } as Record<string, unknown>);
   const { error } = await supabase
-    .from(COLLECTIONS.JOBS)
-    .update({ ...updates, updatedAt: new Date().toISOString() })
+    .from('_jobs')
+    .update(payload)
     .eq('id', jobId);
-  if (error) throw error;
+  if (error) {
+    console.error('[updateJob] Supabase error:', error);
+    throw error;
+  }
 };
 
 export const deleteJob = async (jobId: string): Promise<void> => {
-  const { error } = await supabase.from(COLLECTIONS.JOBS).delete().eq('id', jobId);
+  const { error } = await supabase.from('_jobs').delete().eq('id', jobId);
   if (error) throw error;
 };
 
@@ -775,33 +833,29 @@ export const generateSlug = (title: string): string => {
 
 export const createApplication = async (applicationData: Omit<JobApplication, 'id' | 'createdAt'>): Promise<string> => {
   const now = new Date().toISOString();
+  const payload = toSnakeCaseApplicationRow({ ...applicationData, appliedAt: applicationData.appliedAt || now } as Record<string, unknown>);
   const { data, error } = await supabase
-    .from(COLLECTIONS.APPLICATIONS)
-    .insert({ ...applicationData, createdAt: now })
+    .from('_applications')
+    .insert(payload)
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error('[createApplication] Supabase error:', error);
+    throw error;
+  }
 
   const appId = data.id;
 
-  // Increment applicants count
+  // Read job metadata from the view (reads are fine through views)
   const { data: jobData } = await supabase
     .from(COLLECTIONS.JOBS)
     .select('applicantsCount, enableInstantAssessment, workflowId')
     .eq('id', applicationData.jobId)
     .single();
 
-  let enableInstantAssessment = false;
-  if (jobData) {
-    enableInstantAssessment = jobData.enableInstantAssessment || false;
-    await supabase
-      .from(COLLECTIONS.JOBS)
-      .update({ applicantsCount: (jobData.applicantsCount || 0) + 1 })
-      .eq('id', applicationData.jobId);
-  }
+  const enableInstantAssessment = jobData?.enableInstantAssessment || false;
 
-  const sessionId = await createInterviewSessionFromApplication(appId, applicationData, enableInstantAssessment);
-  await supabase.from(COLLECTIONS.APPLICATIONS).update({ sessionId }).eq('id', appId);
+  await createInterviewSessionFromApplication(appId, applicationData, enableInstantAssessment);
 
   return appId;
 };
@@ -875,8 +929,12 @@ export const createInterviewSessionFromApplication = async (
     workflowId: workflowId || null,
   };
 
-  const { data, error } = await supabase.from(COLLECTIONS.SESSIONS).insert(session).select('id').single();
-  if (error) throw error;
+  const sessionPayload = toSnakeCaseRow(session as unknown as Record<string, unknown>);
+  const { data, error } = await supabase.from('_interview_sessions').insert(sessionPayload).select('id').single();
+  if (error) {
+    console.error('[createInterviewSessionFromApplication] Supabase error:', error);
+    throw error;
+  }
 
   const assessmentLink = `${window.location.origin}/assessment?company=${applicationData.companyId}&session=${data.id}`;
   const { data: companyForEmail } = await supabase

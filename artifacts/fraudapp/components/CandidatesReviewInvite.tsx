@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, Users, FileText, Phone, Mail, MapPin, Calendar, Filter, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, XCircle, Video, Shield, AlertCircle, Clock, UserPlus, Briefcase, Eye, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { InterviewSession, Job, RiskLevel } from '../types';
-import { supabase, COLLECTIONS, sendIntegrityTestInvitation } from '../services/supabase';
+import { supabase, COLLECTIONS, sendIntegrityTestInvitation, toSnakeCaseRow } from '../services/supabase';
 import { useToast } from './Toast';
 
 interface CandidatesReviewInviteProps {
@@ -218,16 +218,16 @@ const CandidatesReviewInvite: React.FC<CandidatesReviewInviteProps> = ({ company
       const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', sessionId).single<{ timeline: InterviewSession['timeline'] }>();
       if (sessionSnap) {
         const currentTimeline = sessionSnap.timeline || [];
-        await supabase.from(COLLECTIONS.SESSIONS).update({
+        await supabase.from('_interview_sessions').update(toSnakeCaseRow({
           recruitmentStage: stage,
           timeline: [...currentTimeline, newTimelineItem]
-        }).eq('id', sessionId);
+        } as Record<string, unknown>)).eq('id', sessionId);
       }
 
       if (applicationId) {
-        await supabase.from(COLLECTIONS.APPLICATIONS).update({
+        await supabase.from('_applications').update({
           status: stage === 'rejected' ? 'Rejected' : 'In Progress',
-          lastUpdated: new Date().toISOString()
+          last_updated: new Date().toISOString()
         }).eq('id', applicationId);
       }
 

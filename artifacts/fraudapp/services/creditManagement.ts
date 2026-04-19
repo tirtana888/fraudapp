@@ -1,4 +1,4 @@
-import { supabase, COLLECTIONS } from './supabase';
+import { supabase, COLLECTIONS, toSnakeCaseRow } from './supabase';
 import { CreditTransaction, CREDIT_COSTS, SUBSCRIPTION_PLANS, CREDIT_TO_IDR_RATE } from '../types';
 
 // ==========================================
@@ -51,7 +51,7 @@ export const deductCredit = async (
       metadata,
     };
 
-    await supabase.from(COLLECTIONS.CREDIT_TRANSACTIONS).insert(transactionData);
+    await supabase.from('_credit_transactions').insert(toSnakeCaseRow(transactionData as unknown as Record<string, unknown>));
 
     return { success: true, remainingCredits: newBalance };
   } catch (error) {
@@ -79,7 +79,7 @@ export const addCredit = async (
     const newBalance = currentCredits + amount;
 
     const { error: updateErr } = await supabase
-      .from(COLLECTIONS.COMPANIES)
+      .from('_companies')
       .update({ credits: newBalance })
       .eq('id', companyId);
     if (updateErr) throw updateErr;
@@ -96,7 +96,7 @@ export const addCredit = async (
       metadata,
     };
 
-    await supabase.from(COLLECTIONS.CREDIT_TRANSACTIONS).insert(transactionData);
+    await supabase.from('_credit_transactions').insert(toSnakeCaseRow(transactionData as unknown as Record<string, unknown>));
 
     return { success: true, message: `${amount} credits added successfully`, newBalance };
   } catch (error) {
@@ -157,15 +157,15 @@ export const upgradeToPremium = async (
     const currentCredits = companyData.credits || 0;
     const newBalance = currentCredits + SUBSCRIPTION_PLANS.PREMIUM.monthlyCredits;
 
-    await supabase.from(COLLECTIONS.COMPANIES).update({
+    await supabase.from('_companies').update({
       tier: 'Premium',
-      subscriptionStartDate: now.toISOString(),
-      subscriptionEndDate: endDate.toISOString(),
-      monthlyCredits: SUBSCRIPTION_PLANS.PREMIUM.monthlyCredits,
+      subscription_start_date: now.toISOString(),
+      subscription_end_date: endDate.toISOString(),
+      monthly_credits: SUBSCRIPTION_PLANS.PREMIUM.monthlyCredits,
       credits: newBalance,
     }).eq('id', companyId);
 
-    await supabase.from(COLLECTIONS.CREDIT_TRANSACTIONS).insert({
+    await supabase.from('_credit_transactions').insert(toSnakeCaseRow({
       companyId,
       type: 'credit',
       amount: SUBSCRIPTION_PLANS.PREMIUM.monthlyCredits,
@@ -175,7 +175,7 @@ export const upgradeToPremium = async (
       balanceAfter: newBalance,
       timestamp: new Date().toISOString(),
       metadata: { paymentId },
-    });
+    } as Record<string, unknown>));
 
     return { success: true, message: 'Successfully upgraded to Premium plan' };
   } catch (error) {
