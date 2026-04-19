@@ -290,12 +290,27 @@ export const createCompany = async (companyData: Omit<CompanyProfile, 'id'>): Pr
   return data.id;
 };
 
+const camelToSnake = (key: string): string =>
+  key.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
+
+const toSnakeCaseRow = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[camelToSnake(k)] = v;
+  }
+  return out;
+};
+
 export const updateCompany = async (companyId: string, updates: Partial<CompanyProfile>): Promise<void> => {
+  const payload = toSnakeCaseRow({ ...updates, updatedAt: new Date().toISOString() });
   const { error } = await supabase
-    .from(COLLECTIONS.COMPANIES)
-    .update({ ...updates, updatedAt: new Date().toISOString() })
+    .from('_companies')
+    .update(payload)
     .eq('id', companyId);
-  if (error) throw error;
+  if (error) {
+    console.error('[updateCompany] Supabase error:', error);
+    throw error;
+  }
 };
 
 export const getCompanies = async (): Promise<CompanyProfile[]> => {
@@ -309,10 +324,13 @@ export const getCompanies = async (): Promise<CompanyProfile[]> => {
 
 export const updateCompanySubscription = async (companyId: string, updates: Partial<CompanyProfile>): Promise<void> => {
   const { error } = await supabase
-    .from(COLLECTIONS.COMPANIES)
-    .update(updates)
+    .from('_companies')
+    .update(toSnakeCaseRow(updates))
     .eq('id', companyId);
-  if (error) throw error;
+  if (error) {
+    console.error('[updateCompanySubscription] Supabase error:', error);
+    throw error;
+  }
 };
 
 export const deleteCompany = async (companyId: string): Promise<void> => {
