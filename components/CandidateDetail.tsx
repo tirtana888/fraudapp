@@ -15,6 +15,7 @@ import IdentityVerificationCard from './candidate-detail/IdentityVerificationCar
 import RiskDonut from './candidate-detail/RiskDonut';
 import PsychometricRadar from './candidate-detail/PsychometricRadar';
 import ContactGlassVault from './candidate-detail/ContactGlassVault';
+import ExtensionScreeningCard from './candidate-detail/ExtensionScreeningCard';
 
 interface CandidateDetailProps {
   sessionId: string;
@@ -1811,6 +1812,16 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         )}
 
         {activeTab === 'overview' && candidate.status === 'completed' && (
+          <>
+            <ExtensionScreeningCard 
+              sessionId={sessionId}
+              candidateName={candidate?.candidate?.name || 'Kandidat'}
+              candidateEmail={candidate?.candidate?.email || ''}
+              companyName={company?.name || 'Perusahaan'}
+              gamblingAnalysis={candidate?.gamblingAnalysis}
+              proctoringData={candidate?.proctoringData}
+            />
+
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -2103,6 +2114,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               </div>
             </div>
           </div>
+          </>
         )}
 
         {activeTab === 'activity' && (
