@@ -54,7 +54,7 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
       console.log('[JOB-APPLICATIONS] Found sessions:', (sessionsData || []).length);
 
       const applicationsWithDetails: ApplicationWithDetails[] = await Promise.all(
-        (sessionsData || []).map(async (sessionData: any) => {
+        (sessionsData || []).map(async (sessionData: InterviewSession) => {
           console.log('[JOB-APPLICATIONS] Processing session:', sessionData.id, sessionData);
 
           let jobTitle = 'Unknown Position';
@@ -65,18 +65,18 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
           let timeline = sessionData.timeline || [];
 
           if (sessionData.jobId) {
-            const { data: jobData } = await supabase.from(COLLECTIONS.JOBS).select('title, location').eq('id', sessionData.jobId).single();
+            const { data: jobData } = await supabase.from(COLLECTIONS.JOBS).select('title, location').eq('id', sessionData.jobId).single<{ title: string; location: string }>();
             if (jobData) {
-              jobTitle = (jobData as any).title;
-              jobLocation = (jobData as any).location;
+              jobTitle = jobData.title;
+              jobLocation = jobData.location;
             }
           }
 
           if (sessionData.applicationId) {
-            const { data: appData } = await supabase.from(COLLECTIONS.APPLICATIONS).select('*').eq('id', sessionData.applicationId).single();
+            const { data: appData } = await supabase.from(COLLECTIONS.APPLICATIONS).select('status, appliedAt').eq('id', sessionData.applicationId).single<{ status: string; appliedAt?: string }>();
             if (appData) {
-              applicationStatus = (appData as any).status;
-              appliedAt = (appData as any).appliedAt || sessionData.date;
+              applicationStatus = appData.status;
+              appliedAt = appData.appliedAt || sessionData.date;
             }
           }
 
@@ -117,9 +117,9 @@ const JobApplicationsView: React.FC<JobApplicationsViewProps> = ({ companyId, on
         note
       };
 
-      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', sessionId).single();
+      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', sessionId).single<{ timeline: InterviewSession['timeline'] }>();
       if (sessionSnap) {
-        const currentTimeline = (sessionSnap as any).timeline || [];
+        const currentTimeline = sessionSnap.timeline || [];
         await supabase.from(COLLECTIONS.SESSIONS).update({
           recruitmentStage: stage,
           timeline: [...currentTimeline, newTimelineItem]

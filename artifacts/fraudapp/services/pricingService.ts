@@ -53,7 +53,7 @@ const getConfig = async (configId: string) => {
     return data?.data || null;
 };
 
-const upsertConfig = async (configId: string, value: any) => {
+const upsertConfig = async (configId: string, value: Record<string, unknown>) => {
     const { error } = await supabase.from('pricing_config').upsert({ id: configId, data: value, updatedAt: new Date().toISOString() });
     if (error) throw error;
 };
@@ -135,7 +135,7 @@ export const deleteCreditPackage = async (packageId: string): Promise<void> => {
 export const getPromoCodes = async (): Promise<PromoCode[]> => {
     const { data, error } = await supabase.from('promo_codes').select('*').order('createdAt', { ascending: false });
     if (error) throw error;
-    return (data || []).map((d: any) => ({
+    return (data || []).map((d: PromoCode & { expiryDate: string; createdAt: string }) => ({
         ...d,
         expiryDate: new Date(d.expiryDate),
         createdAt: new Date(d.createdAt)
@@ -179,8 +179,8 @@ export const deactivatePromoCode = async (codeId: string): Promise<void> => {
 };
 
 export const updatePromoCode = async (codeId: string, updates: Partial<PromoCode>): Promise<void> => {
-    const updateData: any = { ...updates };
-    if (updates.expiryDate) updateData.expiryDate = updates.expiryDate instanceof Date ? updates.expiryDate.toISOString() : updates.expiryDate;
+    const updateData: Partial<Omit<PromoCode, 'expiryDate' | 'createdAt'>> & { expiryDate?: string; createdAt?: string } = { ...updates, expiryDate: undefined, createdAt: undefined };
+    if (updates.expiryDate) updateData.expiryDate = updates.expiryDate instanceof Date ? updates.expiryDate.toISOString() : String(updates.expiryDate);
     const { error } = await supabase.from('promo_codes').update(updateData).eq('id', codeId);
     if (error) throw error;
 };

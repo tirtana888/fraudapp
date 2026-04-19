@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, ArrowRight, CheckCircle2, User, Mail, Briefcase, Loader2, AlertCircle, ChevronDown, MessageSquare, AlertTriangle, BrainCircuit, Send, Lock, Clock, KeyRound, Sparkles, Trophy, Bot } from 'lucide-react';
 import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, markAccessCodeUsed, sendAssessmentCompleteEmail, supabase, COLLECTIONS } from '../services/supabase';
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
-import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel } from '../types';
+import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel, WorkflowStep } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
 import AssessmentProgress from './AssessmentProgress';
 import ChatMessage from './ChatMessage';
@@ -188,11 +188,12 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     const isJobApplication = !!(inviteData?.jobId || inviteData?.applicationId);
     const sessionSource = isJobApplication ? 'job_application' : 'public_link';
 
-    const sessionData: any = {
+    type SessionInit = Omit<InterviewSession, 'id'> & { workflowId?: string | null };
+    const sessionData: SessionInit = {
       candidate: { id: Date.now().toString(), name: candidateName, email: candidateEmail, role: candidateRole },
       date: now,
       status: 'active',
-      recruitmentStage: 'applied', // Keep as 'applied' until assessment starts
+      recruitmentStage: 'applied',
       structuredAssessment: ftAnswers,
       financialStrainResults: finAnswers,
       sjtResults: sjtAnswers,
@@ -207,46 +208,41 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           note: `Kandidat Apply - Menunggu memulai assessment`
         }
       ],
-      workflowId: null  // Will be set if job has workflow
+      workflowId: null
     };
 
-    // Add job-related fields if this is a job application
     if (inviteData?.jobId) {
       sessionData.jobId = inviteData.jobId;
 
       try {
-        const { data: jobDataRow } = await supabase.from(COLLECTIONS.JOBS).select('*').eq('id', inviteData.jobId).single();
+        const { data: jobDataRow } = await supabase.from(COLLECTIONS.JOBS).select('workflowId').eq('id', inviteData.jobId).single<{ workflowId?: string }>();
         if (jobDataRow) {
-          const jobData = jobDataRow as any;
-          const workflowId = jobData.workflowId;
+          const workflowId = jobDataRow.workflowId;
 
           if (workflowId) {
             console.log('[PUBLIC-ASSESSMENT] Job has workflow:', workflowId);
             sessionData.workflowId = workflowId;
 
-            const { data: workflowRow } = await supabase.from(COLLECTIONS.WORKFLOWS).select('*').eq('id', workflowId).single();
+            const { data: workflowRow } = await supabase.from(COLLECTIONS.WORKFLOWS).select('steps').eq('id', workflowId).single<{ steps: WorkflowStep[] }>();
             if (workflowRow) {
-              const workflowData = workflowRow as any;
-              const workflowSteps = workflowData.steps || [];
+              const workflowSteps: WorkflowStep[] = workflowRow.steps || [];
               console.log('[PUBLIC-ASSESSMENT] Loaded workflow with', workflowSteps.length, 'steps');
 
-              // Build timeline from workflow steps
-              const sortedSteps = [...workflowSteps].sort((a: any, b: any) => {
+              const sortedSteps = [...workflowSteps].sort((a: WorkflowStep, b: WorkflowStep) => {
                 if (a.id === 'integrity_assessment') return -1;
                 if (b.id === 'integrity_assessment') return 1;
                 return (a.order || 0) - (b.order || 0);
               });
 
-              sessionData.timeline = sortedSteps.map((step: any, index: number) => ({
+              sessionData.timeline = sortedSteps.map((step: WorkflowStep) => ({
                 stage: step.id,
-                status: 'pending' as const, // All steps pending until assessment starts
+                status: 'pending' as const,
                 date: now,
                 note: step.description || step.name,
                 credits: step.credits,
                 isMandatory: step.isMandatory
               }));
 
-              // Keep as 'applied' - will change to 'integrity_assessment' when they start
               sessionData.recruitmentStage = 'applied';
               console.log('[PUBLIC-ASSESSMENT] ✅ Timeline built with workflow steps, status: applied');
             }
@@ -260,11 +256,11 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     if (inviteData?.applicationId) {
       sessionData.applicationId = inviteData.applicationId;
 
-      // Fetch application data to get cvUrl, whatsapp, and check for existing session
       try {
-        const { data: appRow } = await supabase.from(COLLECTIONS.APPLICATIONS).select('*').eq('id', inviteData.applicationId).single();
+        type AppRow = { sessionId?: string; cvUrl?: string; whatsapp?: string };
+        const { data: appRow } = await supabase.from(COLLECTIONS.APPLICATIONS).select('sessionId, cvUrl, whatsapp').eq('id', inviteData.applicationId).single<AppRow>();
         if (appRow) {
-          const appData = appRow as any;
+          const appData = appRow;
 
           // Check if session already exists for this application
           if (appData.sessionId) {
@@ -309,8 +305,8 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
-      const { data: existingSession } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', realSessionId).single();
-      const existingTimeline = (existingSession as any)?.timeline || [];
+      const { data: existingSession } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline').eq('id', realSessionId).single<{ timeline: InterviewSession['timeline'] }>();
+      const existingTimeline = existingSession?.timeline || [];
       await supabase.from(COLLECTIONS.SESSIONS).update({
         recruitmentStage: 'integrity_assessment',
         timeline: [...existingTimeline, {
@@ -424,10 +420,11 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
     } catch (error) {
       console.error("[FINISH-ASSESSMENT] ❌ Analysis failed, using fallback:", error);
+      const err = error instanceof Error ? error : new Error(String(error));
       console.error("[FINISH-ASSESSMENT] 🚨 Error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack?.substring(0, 200)
+        message: err.message,
+        name: err.name,
+        stack: err.stack?.substring(0, 200)
       });
 
       const manualScores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
@@ -450,19 +447,20 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     }
 
     try {
-      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline, workflowId').eq('id', sessionId).single();
-      let existingTimeline: any[] = [];
+      type SnapRow = { timeline: InterviewSession['timeline']; workflowId?: string };
+      const { data: sessionSnap } = await supabase.from(COLLECTIONS.SESSIONS).select('timeline, workflowId').eq('id', sessionId).single<SnapRow>();
+      let existingTimeline: NonNullable<InterviewSession['timeline']> = [];
       let workflowId: string | null = null;
 
       if (sessionSnap) {
-        existingTimeline = (sessionSnap as any).timeline || [];
-        workflowId = (sessionSnap as any).workflowId || null;
+        existingTimeline = sessionSnap.timeline || [];
+        workflowId = sessionSnap.workflowId || null;
       }
 
       const now = new Date().toISOString();
 
-      // Update timeline properly for workflow
-      const updatedTimeline = existingTimeline.map((event: any) => {
+      type TlItem = NonNullable<InterviewSession['timeline']>[number];
+      const updatedTimeline = existingTimeline.map((event: TlItem) => {
         // Mark current integrity_assessment as completed
         if (event.stage === 'integrity_assessment' && event.status === 'current') {
           return {
