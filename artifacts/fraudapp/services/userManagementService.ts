@@ -63,7 +63,7 @@ export const getBusinessUsers = async (filters?: {
             id: c.id,
             email: c.email || c.adminEmail || '',
             name: c.name || c.email?.split('@')[0] || 'Unknown',
-            role: c.tier === 'enterprise' ? 'admin' : 'user' as any,
+            role: (c.tier === 'enterprise' ? 'admin' : 'user') as BusinessUser['role'],
             status: c.status || 'active',
             joinedDate: c.joinedDate ? new Date(c.joinedDate) : new Date(),
             lastLogin: c.lastActivity ? new Date(c.lastActivity) : undefined,

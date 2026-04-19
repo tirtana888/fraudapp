@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
-import { InterviewSession, ParsedCVData, CompanyProfile, IPData } from '../types';
+import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep } from '../types';
 import { supabase, COLLECTIONS, parseCVWithMistral } from '../services/supabase';
 import { useToast } from './Toast';
 import CandidateActivityTimeline from './CandidateActivityTimeline';
@@ -120,7 +120,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
   const [contactPerson, setContactPerson] = useState('');
   const [sendRejectionEmail, setSendRejectionEmail] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
-  const [workflowData, setWorkflowData] = useState<any>(null);
+  const [workflowData, setWorkflowData] = useState<Workflow | null>(null);
 
   useEffect(() => {
     loadCandidateData();
@@ -478,7 +478,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       // Validate sequential execution
       const currentTimeline = candidate.timeline || [];
       const workflowSteps = currentTimeline.filter((t: any) =>
-        workflowData.steps.some((s: any) => s.id === t.stage)
+        workflowData.steps.some((s: WorkflowStep) => s.id === t.stage)
       );
 
       // Check if this is really the current step
@@ -517,11 +517,11 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       // Add to existing timeline (non-workflow steps)
       const existingTimeline = candidate.timeline || [];
-      const completedStepName = workflowData.steps.find((s: any) => s.id === stageId)?.name;
-      const nextStepName = nextWorkflowStep ? workflowData.steps.find((s: any) => s.id === nextWorkflowStep.stage)?.name : null;
+      const completedStepName = workflowData.steps.find((s: WorkflowStep) => s.id === stageId)?.name;
+      const nextStepName = nextWorkflowStep ? workflowData.steps.find((s: WorkflowStep) => s.id === nextWorkflowStep.stage)?.name : null;
 
       const timelineUpdate = [
-        ...existingTimeline.map((event: any) => {
+        ...existingTimeline.map((event: NonNullable<InterviewSession["timeline"]>[number]) => {
           if (event.stage === stageId && event.status === 'current') {
             return { ...event, status: 'completed', completedAt: now };
           }
@@ -612,7 +612,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const existingTimeline = candidate.timeline || [];
 
       // Update timeline properly for workflow progression
-      const updatedTimeline = existingTimeline.map((event: any) => {
+      const updatedTimeline = existingTimeline.map((event: NonNullable<InterviewSession["timeline"]>[number]) => {
         // Mark current step as completed
         if (event.status === 'current') {
           return {
@@ -718,9 +718,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       const now = new Date().toISOString();
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map((event: any) => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' as const : event.status
+        ...existingTimeline.map((ev: NonNullable<InterviewSession["timeline"]>[number]) => ({
+          ...ev,
+          status: ev.status === 'current' ? 'completed' as const : ev.status
         })),
         {
           stage: 'background_check',
@@ -762,9 +762,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map((event: any) => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' as const : event.status
+        ...existingTimeline.map((ev: NonNullable<InterviewSession["timeline"]>[number]) => ({
+          ...ev,
+          status: ev.status === 'current' ? 'completed' as const : ev.status
         })),
         {
           stage: 'hired',
@@ -813,9 +813,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map((event: any) => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' as const : event.status
+        ...existingTimeline.map((ev: NonNullable<InterviewSession["timeline"]>[number]) => ({
+          ...ev,
+          status: ev.status === 'current' ? 'completed' as const : ev.status
         })),
         {
           stage: 'rejected',
@@ -875,9 +875,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
 
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
-        ...existingTimeline.map((event: any) => ({
-          ...event,
-          status: event.status === 'current' ? 'completed' as const : event.status
+        ...existingTimeline.map((ev: NonNullable<InterviewSession["timeline"]>[number]) => ({
+          ...ev,
+          status: ev.status === 'current' ? 'completed' as const : ev.status
         })),
         {
           stage: newStage,
@@ -1540,9 +1540,9 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 console.log('[BUTTONS] Rendering buttons. workflowData:', workflowData ? 'EXISTS' : 'NULL', 'recruitmentStage:', candidate.recruitmentStage);
 
                 if (workflowData) {
-                  console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: any) => s.name).join(', '));
+                  console.log('[BUTTONS] Using workflow buttons. Steps:', workflowData.steps?.map((s: WorkflowStep) => s.name).join(', '));
                   const workflowTimeline = candidate.timeline?.filter((t: any) =>
-                    workflowData.steps.some((s: any) => s.id === t.stage)
+                    workflowData.steps.some((s: WorkflowStep) => s.id === t.stage)
                   ) || [];
                   console.log('[BUTTONS] Workflow timeline:', workflowTimeline.map((t: any) => `${t.stage}:${t.status}`).join(', '));
 
@@ -1572,7 +1572,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                                   className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium cursor-not-allowed"
                                 >
                                   <Mail size={12} />
-                                  {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Assessment'}
+                                  {workflowData.steps.find((s: WorkflowStep) => s.id === currentStep.stage)?.name || 'Assessment'}
                                   <span className="text-[10px] ml-1">(Email terkirim)</span>
                                 </button>
                               ) : (
@@ -1583,7 +1583,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                                   className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   <CheckCircle2 size={12} />
-                                  {workflowData.steps.find((s: any) => s.id === currentStep.stage)?.name || 'Next'}
+                                  {workflowData.steps.find((s: WorkflowStep) => s.id === currentStep.stage)?.name || 'Next'}
                                 </button>
                               )}
                             </>
@@ -1597,7 +1597,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                               className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-medium opacity-60 cursor-not-allowed"
                             >
                               <Clock size={12} />
-                              {workflowData.steps.find((s: any) => s.id === nextStep.stage)?.name || 'Next'}
+                              {workflowData.steps.find((s: WorkflowStep) => s.id === nextStep.stage)?.name || 'Next'}
                             </button>
                           )}
 

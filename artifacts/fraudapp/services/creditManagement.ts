@@ -19,26 +19,25 @@ export const deductCredit = async (
   try {
     const cost = amount || CREDIT_COSTS[actionType];
 
-    const { data: companyData, error: fetchErr } = await supabase
-      .from(COLLECTIONS.COMPANIES)
-      .select('credits')
-      .eq('id', companyId)
-      .single();
-
-    if (fetchErr || !companyData) throw new Error('Company not found');
-
-    const currentCredits = companyData.credits || 0;
-    if (currentCredits < cost) {
-      throw new Error(`Kredit tidak cukup. Dibutuhkan: ${cost}, Tersedia: ${currentCredits}`);
+    // Atomic credit deduction via RPC (row-level lock prevents double-spend)
+    const { data: rpcResult, error: rpcErr } = await supabase.rpc('deduct_credits', {
+      p_company_id: companyId,
+      p_amount: cost,
+    });
+    if (rpcErr) {
+      // RPC raises a Postgres exception with the business message
+      const msg = rpcErr.message || '';
+      if (msg.includes('Insufficient credits')) {
+        throw new Error(`Kredit tidak cukup. Dibutuhkan: ${cost}`);
+      }
+      if (msg.includes('Company not found')) {
+        throw new Error('Company not found');
+      }
+      throw new Error(msg || 'Credit deduction failed');
     }
 
-    const newBalance = currentCredits - cost;
-
-    const { error: updateErr } = await supabase
-      .from(COLLECTIONS.COMPANIES)
-      .update({ credits: newBalance })
-      .eq('id', companyId);
-    if (updateErr) throw updateErr;
+    const newBalance = rpcResult as number;
+    const currentCredits = newBalance + cost; // pre-deduction balance
 
     const transactionData: Omit<CreditTransaction, 'id'> = {
       companyId,

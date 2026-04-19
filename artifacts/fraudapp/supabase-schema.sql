@@ -247,6 +247,38 @@ create table if not exists payment_transactions (
 );
 
 -- ============================================================
+-- ATOMIC CREDIT DEDUCTION RPC
+-- Called by creditManagement.ts::deductCredit for concurrency safety.
+-- Uses row-level locking (FOR UPDATE) to prevent double-spend.
+-- ============================================================
+create or replace function deduct_credits(
+  p_company_id text,
+  p_amount integer
+) returns integer
+language plpgsql
+as $$
+declare
+  v_current integer;
+begin
+  select credits into v_current
+  from companies
+  where id = p_company_id
+  for update;          -- row-level lock prevents concurrent deductions
+
+  if v_current is null then
+    raise exception 'Company not found: %', p_company_id;
+  end if;
+
+  if v_current < p_amount then
+    raise exception 'Insufficient credits: need %, have %', p_amount, v_current;
+  end if;
+
+  update companies set credits = v_current - p_amount where id = p_company_id;
+  return v_current - p_amount;  -- return new balance
+end;
+$$;
+
+-- ============================================================
 -- STORAGE BUCKETS
 -- Create these in the Supabase dashboard > Storage tab, or
 -- uncomment and run with the service-role key via CLI.
