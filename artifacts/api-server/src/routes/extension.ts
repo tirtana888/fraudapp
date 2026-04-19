@@ -246,4 +246,166 @@ router.post("/submit-proctoring", async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/extension/send-token-email ─────────────────────────────────────
+// Combined: generates a token AND sends the gambling_extension_invite email.
+// Called by the frontend when the gambling_screening workflow step activates.
+
+router.post("/send-token-email", async (req: Request, res: Response) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+
+  const { sessionId, candidateEmail, candidateName, companyName } = req.body as {
+    sessionId: string;
+    candidateEmail: string;
+    candidateName: string;
+    companyName: string;
+  };
+
+  if (!sessionId || !candidateEmail || !candidateName || !companyName) {
+    res.status(400).json({ success: false, error: "sessionId, candidateEmail, candidateName, companyName required" });
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    // Verify session exists
+    const { data: session, error: sessionErr } = await supabase
+      .from("interview_sessions")
+      .select("id, companyId")
+      .eq("id", sessionId)
+      .single();
+
+    if (sessionErr || !session) {
+      res.status(404).json({ success: false, error: "Session not found" });
+      return;
+    }
+
+    // Check if token already exists for this session (avoid duplicates)
+    const { data: existingToken } = await supabase
+      .from("extension_tokens")
+      .select("token, expires_at, used")
+      .eq("session_id", sessionId)
+      .eq("used", false)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let token: string;
+    let expiresAt: string;
+
+    if (existingToken && new Date(existingToken.expires_at) > new Date()) {
+      // Reuse valid existing token
+      token = existingToken.token;
+      expiresAt = existingToken.expires_at;
+      logger.info({ sessionId, token }, "Reusing existing extension token for email");
+    } else {
+      // Generate a new 6-char uppercase token
+      token = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+        .map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32])
+        .join("");
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: insertErr } = await supabase
+        .from("extension_tokens")
+        .insert({
+          token,
+          session_id: sessionId,
+          candidate_email: candidateEmail,
+          company_id: session.companyId,
+          expires_at: expiresAt,
+          used: false,
+        });
+
+      if (insertErr) {
+        logger.error({ insertErr }, "Failed to insert extension token");
+        res.status(500).json({ success: false, error: "Failed to create token" });
+        return;
+      }
+      logger.info({ sessionId, token }, "Extension token generated for email");
+    }
+
+    // Send the email via Resend
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_API_KEY) {
+      // Token created but email not sent — still return success so frontend knows token exists
+      logger.warn("RESEND_API_KEY not configured — token created but email not sent");
+      res.json({ success: true, token, expiresAt, emailSent: false });
+      return;
+    }
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(RESEND_API_KEY);
+
+    const FROM_ADDRESS = "HireGood <noreply@hiregood.one>";
+    const subject = `Screening Browser History — ${companyName}`;
+
+    // Build email HTML inline (same template as gambling_extension_invite)
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>HireGood</title></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+<span style="display:none;max-height:0;overflow:hidden;">${companyName} mengundangmu untuk screening browser history</span>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
+  <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+      <tr><td style="background:#1e293b;padding:24px 32px;">
+        <span style="color:#f97316;font-size:22px;font-weight:bold;">Hire</span><span style="color:#ffffff;font-size:22px;font-weight:bold;">Good</span>
+      </td></tr>
+      <tr><td style="padding:32px;">
+        <h2 style="color:#1e293b;margin-top:0;">Halo, ${candidateName}! 🔍</h2>
+        <p style="color:#475569;line-height:1.6;">Sebagai bagian dari proses seleksi di <strong>${companyName}</strong>, kami meminta kamu untuk menyelesaikan <strong>screening riwayat browser</strong>.</p>
+        <p style="color:#475569;line-height:1.6;">Screening ini menggunakan Chrome Extension <strong>FraudGuard</strong> untuk menganalisis riwayat browsing 30 hari terakhir. Data dienkripsi dan hanya ringkasan risiko yang dikirim ke HR.</p>
+        <table style="background:#f0f9ff;border-radius:8px;padding:20px;margin:24px 0;width:100%;box-sizing:border-box;" cellpadding="0" cellspacing="0">
+          <tr><td>
+            <p style="margin:0 0 12px;color:#0369a1;font-weight:bold;font-size:14px;">📋 Langkah-langkah:</p>
+            <ol style="margin:0;padding-left:20px;color:#0c4a6e;font-size:14px;line-height:2;">
+              <li>Install Chrome Extension <strong>FraudGuard Screening</strong></li>
+              <li>Klik ikon extension di browser Chrome</li>
+              <li>Masukkan token di bawah ini</li>
+              <li>Baca dan setujui ketentuan, lalu klik <strong>Lanjutkan</strong></li>
+            </ol>
+          </td></tr>
+        </table>
+        <div style="text-align:center;margin:28px 0;">
+          <p style="color:#64748b;font-size:13px;margin-bottom:8px;">Token Screening Kamu:</p>
+          <div style="display:inline-block;padding:14px 32px;background:#1e293b;color:#f97316;font-family:monospace;font-size:28px;font-weight:bold;letter-spacing:6px;border-radius:8px;">${token}</div>
+          <p style="color:#94a3b8;font-size:12px;margin-top:8px;">Token berlaku 24 jam</p>
+        </div>
+        <p style="color:#94a3b8;font-size:13px;">Token ini bersifat pribadi — mohon jangan dibagikan ke orang lain.</p>
+      </td></tr>
+      <tr><td style="background:#f8fafc;padding:16px 32px;text-align:center;font-size:12px;color:#94a3b8;">
+        © ${new Date().getFullYear()} HireGood · hiregood.one
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+    const { data: emailData, error: emailError } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [candidateEmail],
+      subject,
+      html,
+    });
+
+    if (emailError) {
+      logger.error({ emailError }, "Resend error sending gambling invite");
+      // Token is created even if email fails
+      res.json({ success: true, token, expiresAt, emailSent: false, emailError: emailError.message });
+      return;
+    }
+
+    logger.info({ sessionId, emailId: emailData?.id, candidateEmail }, "Gambling extension invite email sent");
+    res.json({ success: true, token, expiresAt, emailSent: true, emailId: emailData?.id });
+  } catch (err) {
+    logger.error({ err }, "send-token-email error");
+    res.status(500).json({ success: false, error: "Internal error" });
+  }
+});
+
 export default router;

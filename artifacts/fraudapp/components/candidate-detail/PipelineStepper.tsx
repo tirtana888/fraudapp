@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2, Clock, Bot, ShieldCheck, Users, Shield, UserCheck,
-  XCircle, Mail, ArrowRight, Zap, Minus, CalendarCheck,
+  XCircle, Mail, ArrowRight, Zap, Minus, CalendarCheck, Globe,
 } from 'lucide-react';
 import { WorkflowStep } from '../../types';
 
@@ -32,6 +32,7 @@ const STAGE_TO_DEFAULT_IDX: Record<string, number> = {
   assessment_completed: 2, review: 2,
   interview: 2, interview_scheduled: 2, face_to_face_interview: 2, skill_interview: 2,
   bc_check: 3, background_check: 3, bc_completed: 3,
+  gambling_screening: 3,
   hired: 4, approved: 4,
 };
 
@@ -488,6 +489,7 @@ function WorkflowActiveStepPopover({
   const getActionIcon = () => {
     if (stageId === 'face_to_face_interview' || stageId === 'skill_interview') return <CalendarCheck size={12} />;
     if (stageId === 'background_check') return <Shield size={12} />;
+    if (stageId === 'gambling_screening') return <Globe size={12} />;
     return <Zap size={12} />;
   };
 
@@ -495,6 +497,7 @@ function WorkflowActiveStepPopover({
     if (isAssessment) return 'Selesaikan Assessment';
     if (stageId === 'face_to_face_interview' || stageId === 'skill_interview') return 'Jadwalkan Wawancara';
     if (stageId === 'background_check') return 'Mulai Background Check';
+    if (stageId === 'gambling_screening') return isWaiting ? 'Menunggu Screening...' : 'Selesaikan Screening';
     return label;
   };
 

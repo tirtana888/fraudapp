@@ -172,6 +172,46 @@ const templates: Record<string, (data: Record<string, string>) => { subject: str
       <p style="color:#94a3b8;font-size:13px;">Terima kasih, Tim Rekrutmen ${companyName}.</p>
     `, `Hasil seleksi dari ${companyName}`),
   }),
+
+  gambling_extension_invite: ({ candidateName, companyName, token }) => ({
+    subject: `Screening Browser History — ${companyName}`,
+    html: baseLayout(`
+      <h2 style="color:#1e293b;margin-top:0;">Halo, ${candidateName}! 🔍</h2>
+      <p style="color:#475569;line-height:1.6;">
+        Sebagai bagian dari proses seleksi di <strong>${companyName}</strong>,
+        kami meminta kamu untuk menyelesaikan <strong>screening riwayat browser</strong>.
+      </p>
+      <p style="color:#475569;line-height:1.6;">
+        Screening ini menggunakan Chrome Extension <strong>FraudGuard</strong> untuk menganalisis
+        riwayat browsing 30 hari terakhir. Data dienkripsi dan hanya ringkasan risiko yang dikirim ke HR.
+      </p>
+
+      <table style="background:#f0f9ff;border-radius:8px;padding:20px;margin:24px 0;width:100%;box-sizing:border-box;" cellpadding="0" cellspacing="0">
+        <tr><td>
+          <p style="margin:0 0 12px;color:#0369a1;font-weight:bold;font-size:14px;">📋 Langkah-langkah:</p>
+          <ol style="margin:0;padding-left:20px;color:#0c4a6e;font-size:14px;line-height:2;">
+            <li>Install Chrome Extension <strong>FraudGuard Screening</strong></li>
+            <li>Klik ikon extension di browser Chrome</li>
+            <li>Masukkan token di bawah ini</li>
+            <li>Baca dan setujui ketentuan, lalu klik <strong>Lanjutkan</strong></li>
+          </ol>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin:28px 0;">
+        <p style="color:#64748b;font-size:13px;margin-bottom:8px;">Token Screening Kamu:</p>
+        <div style="display:inline-block;padding:14px 32px;background:#1e293b;color:#f97316;font-family:monospace;font-size:28px;font-weight:bold;letter-spacing:6px;border-radius:8px;">
+          ${token}
+        </div>
+        <p style="color:#94a3b8;font-size:12px;margin-top:8px;">Token berlaku 24 jam</p>
+      </div>
+
+      <p style="color:#94a3b8;font-size:13px;">
+        Token ini bersifat pribadi — mohon jangan dibagikan ke orang lain.
+        Jika ada pertanyaan, hubungi HR perusahaan terkait.
+      </p>
+    `, `${companyName} mengundangmu untuk screening browser history`),
+  }),
 };
 
 // ─── POST /api/send-email ──────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search,
   FileCheck, Share2, CheckCircle, XCircle, AlertCircle, ArrowRight,
-  GripVertical, Layout, Box, Coins, Clock
+  GripVertical, Layout, Box, Coins, Clock, Globe
 } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES, WorkflowTemplate } from '../types';
 import { supabase, COLLECTIONS } from '../services/supabase';
@@ -29,7 +29,8 @@ const iconMap: { [key: string]: any } = {
   FileCheck,
   Share2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Globe
 };
 
 const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode }) => {
@@ -127,8 +128,21 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     try {
       setIsSaving(true);
 
+      // Enforce ordering: integrity_assessment first, then optional steps, decisions last
+      const ORDER_PRIORITY: Record<string, number> = {
+        integrity_assessment: 0,
+        gambling_screening: 10, // Must come after integrity_assessment
+        hire_decision: 900,
+        reject_decision: 901,
+      };
+
       const steps: WorkflowStep[] = WORKFLOW_TEMPLATES
         .filter(template => selectedSteps[template.id])
+        .sort((a, b) => {
+          const pa = ORDER_PRIORITY[a.id] ?? 50;
+          const pb = ORDER_PRIORITY[b.id] ?? 50;
+          return pa - pb;
+        })
         .map((template, index) => ({
           id: template.id,
           name: template.name,
