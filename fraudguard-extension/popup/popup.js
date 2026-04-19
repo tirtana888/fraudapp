@@ -28,6 +28,7 @@ const statFlagged   = document.getElementById('stat-flagged');
 const patNight      = document.getElementById('pat-night');
 const patWeekend    = document.getElementById('pat-weekend');
 const patFrequent   = document.getElementById('pat-frequent');
+const generalDomainsList = document.getElementById('general-domains-list');
 const flaggedList   = document.getElementById('flagged-list');
 const suspiciousSection = document.getElementById('suspicious-section');
 const suspiciousList = document.getElementById('suspicious-list');
@@ -167,14 +168,31 @@ function displayResults(data) {
   patWeekend.textContent = data.timePatterns?.weekendAccess || 0;
   patFrequent.textContent = data.timePatterns?.frequentAccess || 0;
 
+  // Top General domains
+  if (data.topGeneralDomains && data.topGeneralDomains.length > 0) {
+    generalDomainsList.innerHTML = data.topGeneralDomains.map(d => `
+      <li><strong style="color:var(--primary);">${escapeHtml(d.domain)}</strong> (${d.count}x)</li>
+    `).join('');
+  } else {
+    generalDomainsList.innerHTML = '<p class="empty-text">Tidak ada aktivitas terdeteksi.</p>';
+  }
+
   // Flagged sites
   if (data.flaggedSites && data.flaggedSites.length > 0) {
-    flaggedList.innerHTML = data.flaggedSites.map(site => `
-      <div class="flagged-item">
-        <span class="domain">${escapeHtml(site.domain)}</span>
-        <span class="visits">${site.visitCount}x kunjungan</span>
+    flaggedList.innerHTML = data.flaggedSites.map(site => {
+      const urlsHtml = (site.urls || []).slice(0, 3).map(u => 
+        `<div style="font-size: 0.75rem; color: #666; margin-top:0.25rem; word-break: break-all; border-left: 2px solid var(--danger); padding-left: 5px;">${escapeHtml(u.title || u.url)}</div>`
+      ).join('');
+      
+      return `
+      <div class="flagged-item" style="flex-direction: column; align-items: stretch;">
+        <div style="display: flex; justify-content: space-between;">
+          <span class="domain">${escapeHtml(site.domain)}</span>
+          <span class="visits">${site.visitCount}x kunjungan</span>
+        </div>
+        ${urlsHtml}
       </div>
-    `).join('');
+    `}).join('');
   } else {
     flaggedList.innerHTML = '<p class="empty-text">Tidak ada situs yang ditandai ✅</p>';
   }

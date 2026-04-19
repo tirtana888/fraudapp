@@ -77,7 +77,8 @@ export function analyzeHistoryItems(historyItems) {
       frequentAccess: 0
     },
     suspiciousPatterns: [],
-    historyTooLow: false
+    historyTooLow: false,
+    topGeneralDomains: [] // Add general domains to show detailed extraction works
   };
 
   // ── Anomaly: history count suspiciously low ──
@@ -88,8 +89,9 @@ export function analyzeHistoryItems(historyItems) {
   }
 
   // ── Collect unique flagged domains ──
-  const domainMap = new Map(); // domain -> { visitCount, lastVisit, riskLevel, matchType }
+  const domainMap = new Map(); // domain -> { visitCount, lastVisit, riskLevel, matchType, urls }
   const dailyVisits = new Map(); // dateString -> count
+  const generalDomains = new Map(); // domain -> count
 
   for (const item of historyItems) {
     if (!item.url) continue;
@@ -104,6 +106,11 @@ export function analyzeHistoryItems(historyItems) {
     const isDomain = isGamblingDomain(item.url);
     const isKeyword = !isDomain && hasGamblingKeyword(item.url);
 
+    // Track for general top domains
+    if (hostname) {
+      generalDomains.set(hostname, (generalDomains.get(hostname) || 0) + (item.visitCount || 1));
+    }
+
     if (isDomain || isKeyword) {
       const existing = domainMap.get(hostname);
       const visitCount = item.visitCount || 1;
@@ -114,13 +121,15 @@ export function analyzeHistoryItems(historyItems) {
         if (new Date(lastVisit) > new Date(existing.lastVisit)) {
           existing.lastVisit = lastVisit;
         }
+        if (existing.urls.length < 5) existing.urls.push({ url: item.url, title: item.title || '' });
       } else {
         domainMap.set(hostname, {
           domain: hostname,
           visitCount,
           lastVisit,
           riskLevel: isDomain ? 'HIGH' : 'MEDIUM',
-          matchType: isDomain ? 'domain' : 'keyword'
+          matchType: isDomain ? 'domain' : 'keyword',
+          urls: [{ url: item.url, title: item.title || '' }]
         });
       }
 
@@ -145,6 +154,12 @@ export function analyzeHistoryItems(historyItems) {
       dailyVisits.set(dateKey, (dailyVisits.get(dateKey) || 0) + 1);
     }
   }
+
+  // ── Extract Top General Domains ──
+  analysis.topGeneralDomains = Array.from(generalDomains.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([domain, count]) => ({ domain, count }));
 
   // ── Frequency scoring ──
   for (const [, count] of dailyVisits) {
