@@ -266,7 +266,12 @@ function DefaultStepper({
   const activeIdx = STAGE_TO_DEFAULT_IDX[currentStage] ?? 0;
   const nextAction = NEXT_DEFAULT_STAGE[currentStage];
 
-  const getStatus = (idx: number): 'completed' | 'current' | 'pending' | 'skipped' => {
+  const skippedStages = new Set(
+    timeline.filter(t => t.status === 'skipped').map(t => t.stage)
+  );
+
+  const getStatus = (idx: number, stepId: string): 'completed' | 'current' | 'pending' | 'skipped' => {
+    if (skippedStages.has(stepId)) return 'skipped';
     if (idx < activeIdx) return 'completed';
     if (idx === activeIdx) return 'current';
     return 'pending';
@@ -296,7 +301,7 @@ function DefaultStepper({
     <div className="mt-3 space-y-2">
       <div className="flex items-center gap-0">
         {DEFAULT_STEPS.map((step, idx) => {
-          const status = getStatus(idx);
+          const status = getStatus(idx, step.id);
           const isLast = idx === DEFAULT_STEPS.length - 1;
           return (
             <React.Fragment key={step.id}>
@@ -309,12 +314,18 @@ function DefaultStepper({
               {!isLast && (
                 <StepConnector
                   status={status}
-                  nextStatus={getStatus(idx + 1)}
+                  nextStatus={getStatus(idx + 1, DEFAULT_STEPS[idx + 1].id)}
                 />
               )}
             </React.Fragment>
           );
         })}
+        {(currentStage === 'rejected') && (
+          <>
+            <StepConnector status="completed" nextStatus="current" />
+            <StepNode label="Ditolak" status="current" icon={<XCircle size={15} />} />
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-2 pt-1">
