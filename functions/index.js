@@ -79,6 +79,14 @@ const {
   getCandidateStageInfo
 } = require('./stage-functions');
 
+// Import Chrome Extension functions (Gambling Screening + Proctoring)
+const {
+  getExtensionToken,
+  getExtensionConfig,
+  submitGamblingAnalysis,
+  submitProctoringEvent
+} = require('./extension-functions');
+
 // Re-export Didit functions
 exports.diditWebhook = diditWebhook;
 exports.processDiditWebhook = processDiditWebhook;
@@ -104,6 +112,12 @@ exports.sendCandidateWelcomeEmail = sendCandidateWelcomeEmail;
 // Re-export Stage tracking functions
 exports.updateCandidateStage = updateCandidateStage;
 exports.getCandidateStageInfo = getCandidateStageInfo;
+
+// Re-export Chrome Extension functions
+exports.getExtensionToken = getExtensionToken;
+exports.getExtensionConfig = getExtensionConfig;
+exports.submitGamblingAnalysis = submitGamblingAnalysis;
+exports.submitProctoringEvent = submitProctoringEvent;
 
 // Email templates will be loaded from separate file
 const EMAIL_TEMPLATES = require('./email-templates');

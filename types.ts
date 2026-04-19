@@ -60,6 +60,59 @@ export interface ParsedCVData {
   rawText?: string;
 }
 
+// ========== Gambling Analysis Types ==========
+
+export interface GamblingFlaggedSite {
+  domain: string;
+  visitCount: number;
+  lastVisit: string;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  matchType?: 'domain' | 'keyword';
+}
+
+export interface GamblingAnalysis {
+  status: 'pending' | 'completed' | 'skipped';
+  overallRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  riskScore: number;
+  totalHistoryAnalyzed: number;
+  flaggedSitesCount: number;
+  flaggedSites: GamblingFlaggedSite[];
+  timePatterns: {
+    lateNightAccess: number;
+    weekendAccess: number;
+    frequentAccess: number;
+  };
+  suspiciousPatterns: string[];
+  historyTooLow?: boolean;
+  consentToken: string;
+  reportId?: string;
+  completedAt: string;
+  extensionVersion?: string;
+  encryptedReport?: string;
+  reportSignature?: string;
+}
+
+// ========== Proctoring Types ==========
+
+export interface ProctoringAlert {
+  type: 'tab_switch' | 'window_blur' | 'copy_paste' | 'screenshot_attempt' | 'devtools_open' | 'gambling_site_visit' | 'ai_tool_visit';
+  timestamp: string;
+  details: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
+export interface ProctoringData {
+  status: 'monitoring' | 'completed' | 'flagged';
+  totalEvents: number;
+  alerts: ProctoringAlert[];
+  tabSwitchCount: number;
+  windowBlurCount: number;
+  suspiciousActivityScore: number;
+  sessionDuration: number;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface InterviewSession {
   id: string;
   candidate: Candidate;
@@ -85,6 +138,8 @@ export interface InterviewSession {
     note?: string;
   }>;
   backgroundCheck?: BackgroundCheckData;
+  gamblingAnalysis?: GamblingAnalysis;
+  proctoringData?: ProctoringData;
 }
 
 // ========== KYC / Background Check Types ==========
@@ -238,7 +293,7 @@ export interface CreditTransaction {
   companyId: string;
   type: 'debit' | 'credit';
   amount: number;
-  action: 'KYC_VERIFICATION' | 'RESEND_INVITE' | 'UNLOCK_PROFILE' | 'TOP_UP' | 'SUBSCRIPTION' | 'INITIAL_CREDIT' | 'MONTHLY_REFILL';
+  action: 'KYC_VERIFICATION' | 'RESEND_INVITE' | 'UNLOCK_PROFILE' | 'TOP_UP' | 'SUBSCRIPTION' | 'INITIAL_CREDIT' | 'MONTHLY_REFILL' | 'GAMBLING_SCREENING' | 'PROCTORED_ASSESSMENT';
   description: string;
   balanceBefore: number;
   balanceAfter: number;
@@ -255,7 +310,9 @@ export interface CreditTransaction {
 export const CREDIT_COSTS = {
   KYC_VERIFICATION: 100,
   RESEND_INVITE: 2,
-  UNLOCK_PROFILE: 2
+  UNLOCK_PROFILE: 2,
+  GAMBLING_SCREENING: 50,
+  PROCTORED_ASSESSMENT: 10
 } as const;
 
 export const SUBSCRIPTION_PLANS = {
@@ -305,7 +362,7 @@ export interface AssessmentInvite {
 export interface Notification {
   id?: string;
   companyId: string;
-  type: 'new_candidate' | 'assessment_completed';
+  type: 'new_candidate' | 'assessment_completed' | 'gambling_screening_completed' | 'proctoring_flagged';
   title: string;
   message: string;
   icon: string;
@@ -318,6 +375,10 @@ export interface Notification {
     jobTitle?: string;
     sessionId?: string;
     riskLevel?: string;
+    riskScore?: number;
+    reportId?: string;
+    suspiciousActivityScore?: number;
+    totalEvents?: number;
   };
 }
 
@@ -465,6 +526,26 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     icon: 'Share2',
     category: 'verification',
     isAvailable: false // Coming Soon
+  },
+  {
+    id: 'gambling_screening',
+    name: 'Gambling History Screening',
+    description: 'Chrome Extension untuk menganalisa riwayat browser kandidat terkait situs gambling/judi',
+    credits: 50,
+    isMandatory: false,
+    icon: 'Shield',
+    category: 'verification',
+    isAvailable: true
+  },
+  {
+    id: 'proctored_assessment',
+    name: 'Proctored Assessment',
+    description: 'Monitoring kandidat saat mengerjakan assessment via Chrome Extension untuk mencegah kecurangan',
+    credits: 10,
+    isMandatory: false,
+    icon: 'Eye',
+    category: 'assessment',
+    isAvailable: true
   },
   {
     id: 'hire_decision',
