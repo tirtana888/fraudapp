@@ -29,6 +29,23 @@
         <input type="text" id="token-input" placeholder="contoh: a1b2c3d4-e5f6-7890..." maxlength="64" autocomplete="off">
         <button id="btn-validate" class="btn btn-primary">Validasi Token</button>
         <div id="token-error" class="error hidden"></div>
+
+        <details style="margin-top:14px;font-size:12px;color:#64748b;">
+          <summary style="cursor:pointer;user-select:none;">Pengaturan Server (lanjut)</summary>
+          <p style="margin:8px 0 4px;">
+            Alamat server perusahaan (kosongkan untuk default <code>hiregood.one</code>).
+            Tanyakan ke HR jika tidak yakin.
+          </p>
+          <input type="text" id="api-base-input"
+                 placeholder="https://hiregood.one"
+                 style="width:100%;padding:6px;font-size:12px;border:1px solid #cbd5e1;border-radius:4px;"
+                 autocomplete="off">
+          <button id="btn-save-server" type="button"
+                  style="margin-top:6px;padding:6px 10px;font-size:12px;background:#475569;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+            Simpan Server
+          </button>
+          <span id="api-base-status" style="margin-left:8px;color:#16a34a;"></span>
+        </details>
       </div>
     </section>
 

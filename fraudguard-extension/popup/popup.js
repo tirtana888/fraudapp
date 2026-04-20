@@ -14,6 +14,49 @@ const steps = {
 const tokenInput    = document.getElementById('token-input');
 const btnValidate   = document.getElementById('btn-validate');
 const tokenError    = document.getElementById('token-error');
+const apiBaseInput  = document.getElementById('api-base-input');
+const btnSaveServer = document.getElementById('btn-save-server');
+const apiBaseStatus = document.getElementById('api-base-status');
+
+const DEFAULT_API_ORIGIN = 'https://hiregood.one';
+
+function normalizeOrigin(value) {
+  if (!value) return '';
+  let v = value.trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+  try {
+    return new URL(v).origin;
+  } catch {
+    return '';
+  }
+}
+
+(async function loadApiBase() {
+  if (!apiBaseInput) return;
+  try {
+    const stored = await chrome.storage.local.get(['fg_api_base']);
+    const base = stored.fg_api_base || (DEFAULT_API_ORIGIN + '/api/extension');
+    const origin = base.replace(/\/api\/extension\/?$/, '');
+    apiBaseInput.value = origin;
+  } catch {}
+})();
+
+if (btnSaveServer) {
+  btnSaveServer.addEventListener('click', async () => {
+    const origin = normalizeOrigin(apiBaseInput.value) || DEFAULT_API_ORIGIN;
+    apiBaseInput.value = origin;
+    const apiBase = origin + '/api/extension';
+    try {
+      await chrome.storage.local.set({ fg_api_base: apiBase });
+      apiBaseStatus.textContent = '✓ Tersimpan';
+      setTimeout(() => { apiBaseStatus.textContent = ''; }, 2500);
+    } catch (err) {
+      apiBaseStatus.textContent = '✗ Gagal';
+      apiBaseStatus.style.color = '#dc2626';
+    }
+  });
+}
 
 const consentCheck  = document.getElementById('consent-check');
 const btnConsent    = document.getElementById('btn-consent');
