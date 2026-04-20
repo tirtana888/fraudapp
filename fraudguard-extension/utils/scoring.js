@@ -21,10 +21,28 @@ export function isGamblingDomain(url) {
 
 /**
  * Check if a URL contains gambling-related keywords.
+ * Uses word-boundary matching (split by non-alphanumeric chars) to reduce false positives
+ * (e.g. "bet" should not match "alphabetic"). Multi-word keywords with hyphens/spaces are
+ * matched as substrings inside the URL with separator tolerance.
  */
 export function hasGamblingKeyword(url) {
   const lowerUrl = url.toLowerCase();
-  return GAMBLING_KEYWORDS.some(keyword => lowerUrl.includes(keyword));
+  // Tokenize URL by anything that is NOT a letter or digit. Keeps tokens like "slotgacor".
+  const tokens = lowerUrl.split(/[^a-z0-9]+/).filter(Boolean);
+  const tokenSet = new Set(tokens);
+
+  for (const keyword of GAMBLING_KEYWORDS) {
+    const k = keyword.toLowerCase();
+    // Multi-token keyword (contains hyphen/space): try a relaxed substring match
+    if (/[-\s]/.test(k)) {
+      const compact = k.replace(/[-\s]+/g, '');
+      if (lowerUrl.includes(compact) || lowerUrl.includes(k)) return true;
+      continue;
+    }
+    // Single-token keyword: exact token match (avoids "bet" inside "alphabet")
+    if (tokenSet.has(k)) return true;
+  }
+  return false;
 }
 
 /**

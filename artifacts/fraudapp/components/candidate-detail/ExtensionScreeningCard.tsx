@@ -142,7 +142,7 @@ export default function ExtensionScreeningCard({
                 <p className="font-bold text-gray-800 dark:text-gray-200">{gamblingAnalysis.riskScore || 0} / 100</p>
               </div>
               <div className="bg-gray-50 dark:bg-slate-900 rounded p-3 text-center border border-gray-100 dark:border-slate-800">
-                <p className="text-xs text-gray-500 mb-1">Total Dianalisis</p>
+                <p className="text-xs text-gray-500 mb-1">Total Dianalisis (30 hari)</p>
                 <p className="font-bold text-gray-800 dark:text-gray-200">{gamblingAnalysis.totalHistoryAnalyzed || 0}</p>
               </div>
               <div className="bg-gray-50 dark:bg-slate-900 rounded p-3 text-center border border-gray-100 dark:border-slate-800">
