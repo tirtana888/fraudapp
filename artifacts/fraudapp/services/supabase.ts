@@ -1114,15 +1114,18 @@ export const observeAuthState = (callback: (user: UserProfile | null) => void): 
         return;
       }
 
-      const fullName: string = supaUser.user_metadata?.full_name || supaUser.email || 'User';
-      const avatar: string = supaUser.user_metadata?.avatar_url
+      const meta = supaUser.user_metadata || {};
+      const fullName: string = meta.full_name || supaUser.email || 'User';
+      const companyName: string = meta.company_name || `${fullName}'s Company`;
+      const phone: string | null = meta.phone || null;
+      const avatar: string = meta.avatar_url
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
 
       const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
-        p_company_name: `${fullName}'s Company`,
+        p_company_name: companyName,
         p_user_name:    fullName,
         p_user_email:   supaUser.email || '',
-        p_user_phone:   null,
+        p_user_phone:   phone,
         p_user_avatar:  avatar,
       });
 
@@ -1168,29 +1171,53 @@ export const signUpWithFirebase = async (userData: {
   phone: string;
   password: string;
 }): Promise<UserProfile> => {
-  const { data, error } = await supabase.auth.signUp({ email: userData.email, password: userData.password });
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`;
+
+  // Stash signup details in user_metadata so we can finish provisioning later
+  // (after the auth session is actually established — needed when Supabase
+  // email confirmation is enabled and signUp returns no session).
+  const { data, error } = await supabase.auth.signUp({
+    email: userData.email,
+    password: userData.password,
+    options: {
+      data: {
+        full_name:    userData.fullName,
+        company_name: userData.companyName,
+        phone:        userData.phone,
+        avatar_url:   avatarUrl,
+      },
+    },
+  });
   if (error) throw error;
   const userId = data.user!.id;
 
-  // provision_company() is a SECURITY DEFINER RPC that atomically creates the
-  // company and user profile in one trusted call.  This prevents arbitrary
-  // company_id injection via direct client-side INSERT.
-  const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
-    p_company_name: userData.companyName,
-    p_user_name:    userData.fullName,
-    p_user_email:   userData.email,
-    p_user_phone:   userData.phone,
-    p_user_avatar:  `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
-  });
-  if (rpError) throw rpError;
+  // If a session was returned (email confirmation disabled in Supabase),
+  // provision the company right away. Otherwise observeAuthState will do it
+  // automatically on the first SIGNED_IN event.
+  let companyId = `temp-${userId}`;
+  if (data.session) {
+    const { data: rpResult, error: rpError } = await supabase.rpc('provision_company', {
+      p_company_name: userData.companyName,
+      p_user_name:    userData.fullName,
+      p_user_email:   userData.email,
+      p_user_phone:   userData.phone,
+      p_user_avatar:  avatarUrl,
+    });
+    if (rpError) {
+      console.warn('[AUTH] provision_company at signup failed, will retry on SIGNED_IN:', rpError);
+    } else {
+      companyId = (rpResult as { companyId: string })?.companyId || companyId;
+    }
+  } else {
+    console.info('[AUTH] Signup ok but no session (email confirmation likely required). Provisioning will run on first sign-in.');
+  }
 
-  const companyId: string = (rpResult as { companyId: string })?.companyId || `temp-${userId}`;
   return {
     id: userId,
     name: userData.fullName,
     email: userData.email,
     role: 'Company Admin',
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random`,
+    avatar: avatarUrl,
     companyId,
     emailVerified: false,
     createdAt: new Date().toISOString(),

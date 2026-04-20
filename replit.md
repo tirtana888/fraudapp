@@ -57,6 +57,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 - Supabase client is configured with explicit auth options (`persistSession`, `autoRefreshToken`, `flowType: 'pkce'`, custom `storageKey: 'fraudguard-auth'`) and is cached on `globalThis` to avoid duplicate `GoTrueClient` instances during Vite HMR. See top of `artifacts/fraudapp/services/supabase.ts`.
 - `observeAuthState` never logs out an authenticated user on transient errors: profile-lookup failures fall back to a minimal profile derived from the auth user, and `provision_company` is only invoked on a fresh `SIGNED_IN` event (never on `INITIAL_SESSION` / `TOKEN_REFRESHED`), so returning users are not signed out by the RPC throwing "caller already belongs to a company".
+- Signup (`signUpWithFirebase`) stores `full_name`, `company_name`, `phone`, `avatar_url` in Supabase `user_metadata` so provisioning can complete later. It only calls `provision_company` immediately if `auth.signUp` returns a session; otherwise (Supabase email confirmation enabled → no session) provisioning is deferred to the first `SIGNED_IN` event in `observeAuthState`, which reads the same metadata. This prevents the `provision_company: caller is not authenticated` error during registration.
 
 ## Environment notes
 
