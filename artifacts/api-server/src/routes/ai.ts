@@ -319,11 +319,14 @@ router.post("/parse-cv", async (req: Request, res: Response) => {
     return;
   }
 
-  // CV parsing is a recruiter-only action. Require a JWT — sessionId-only callers (public
-  // candidate flow) are not allowed to trigger expensive AI parsing.
+  // Two callers are permitted:
+  //  1. Recruiter dashboard (JWT) — allowed any time, must own the session's company.
+  //  2. Public application flow (sessionId only) — allowed exactly once, only if no
+  //     parsed data exists yet. This is the auto-parse triggered right after a
+  //     candidate uploads a CV through the public job page.
   const auth = await verifyJwtOrSession(req, sessionId);
-  if (!auth.ok || auth.kind !== "jwt") {
-    res.status(401).json({ success: false, error: "Authenticated recruiter session required" });
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
 
@@ -332,7 +335,7 @@ router.post("/parse-cv", async (req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data: sess } = await supabase
       .from("_interview_sessions")
-      .select("id, company_id, cv_url")
+      .select("id, company_id, cv_url, cv_parsed_data")
       .eq("id", sessionId)
       .maybeSingle();
     if (!sess) {
@@ -340,15 +343,23 @@ router.post("/parse-cv", async (req: Request, res: Response) => {
       return;
     }
 
-    const userCompanyId = await getUserCompanyId(auth.userId);
-    if (!userCompanyId || userCompanyId !== sess.company_id) {
-      logger.warn({ userId: auth.userId, sessionCompany: sess.company_id }, "Cross-tenant CV parse attempt blocked");
-      res.status(403).json({ success: false, error: "You do not have access to this candidate" });
-      return;
+    if (auth.kind === "jwt") {
+      const userCompanyId = await getUserCompanyId(auth.userId);
+      if (!userCompanyId || userCompanyId !== sess.company_id) {
+        logger.warn({ userId: auth.userId, sessionCompany: sess.company_id }, "Cross-tenant CV parse attempt blocked");
+        res.status(403).json({ success: false, error: "You do not have access to this candidate" });
+        return;
+      }
+    } else {
+      // Session-only callers (public flow) can only trigger an initial parse.
+      if (sess.cv_parsed_data) {
+        res.status(403).json({ success: false, error: "CV already parsed for this session" });
+        return;
+      }
     }
 
     // The cvUrl in the request must match the one stored on the session
-    // (prevents an authenticated recruiter from parsing arbitrary URLs).
+    // (prevents callers from parsing arbitrary URLs).
     if (!sess.cv_url || sess.cv_url !== cvUrl) {
       res.status(403).json({ success: false, error: "cvUrl does not match session" });
       return;

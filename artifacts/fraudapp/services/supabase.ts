@@ -998,7 +998,9 @@ export const createInterviewSessionFromApplication = async (
   }).catch(() => {});
 
   if (applicationData.cvUrl) {
-    parseCVWithMistral(applicationData.cvUrl, data.id).catch(() => {});
+    parseCVWithMistral(applicationData.cvUrl, data.id).catch((err) => {
+      console.warn('[createInterviewSessionFromApplication] Auto CV parse failed (recruiter can re-trigger from dashboard):', err instanceof Error ? err.message : err);
+    });
   }
 
   return data.id;
