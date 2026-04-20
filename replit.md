@@ -55,6 +55,41 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - `services/stageTracker.ts` — when stage transitions to `background_check`, auto-calls `createReferenceRequest` (best-effort, non-fatal).
 - **Twilio template setup**: create a WhatsApp Content Template with body using `{{1}}` candidate name, `{{2}}` prev company, `{{3}}` prev role, `{{4}}` prev period, plus 2 quick-reply buttons titled "Ya, benar" and "Tidak, tidak pernah". Copy the resulting `HX...` SID into `TWILIO_REFCHECK_CONTENT_SID`. Twilio Console → Messaging → Inbound webhook URL must point to `${PUBLIC_APP_URL}/api/reference/twilio-webhook`.
 
+### Task #13 — Twilio setup checklist (operator-side, in Twilio Console)
+
+Required Replit Secrets (already requested via the Secrets tab):
+`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
+`TWILIO_REFCHECK_CONTENT_SID`, `PUBLIC_APP_URL`. Optional:
+`TWILIO_WEBHOOK_AUTH_TOKEN` (only if your inbound webhook uses a
+separate auth token; otherwise the code falls back to
+`TWILIO_AUTH_TOKEN`), `TWILIO_WEBHOOK_STRICT` (default `true`; set
+`false` only for local dev when Twilio cannot validate the signature URL),
+`TWILIO_CANDIDATE_FORM_CONTENT_SID` (separate template for the
+candidate's form-link notification).
+
+Steps to perform in the Twilio Console:
+1. **Content Template Builder** → New WhatsApp template, body in
+   Bahasa Indonesia using exactly 4 numbered variables in this order:
+   `{{1}}` candidate name, `{{2}}` prev company, `{{3}}` prev role,
+   `{{4}}` prev period. Add 2 Quick-Reply buttons titled exactly
+   `Ya, benar` and `Tidak, tidak pernah` (the webhook parser at
+   `routes/reference.ts` matches on these strings + Indonesian fuzzy
+   matches like "ya"/"tidak"). Submit for WhatsApp approval.
+2. After approval, copy the template's `HX...` SID into the
+   `TWILIO_REFCHECK_CONTENT_SID` Replit Secret.
+3. **Messaging → your WhatsApp sender → Inbound webhook**: set
+   `A MESSAGE COMES IN` URL to `{PUBLIC_APP_URL}/api/reference/twilio-webhook`,
+   method `HTTP POST`. Save.
+4. Verify by triggering a candidate's reference flow end-to-end: HR
+   creates request → candidate fills form → HR contact receives the
+   approved template → HR taps `Ya, benar` → response row updates to
+   `confirmed` and HR sees confirmation in the dashboard.
+
+Operator readiness check: on api-server boot, `routes/reference.ts`
+logs either `[refcheck] Twilio WhatsApp configured` (with masked
+content SID + webhook URL) or `[refcheck] Twilio WhatsApp NOT fully
+configured` listing missing env vars.
+
 ## Chrome Extension (fraudguard-extension/)
 
 - **Location**: `fraudguard-extension/` at workspace root (load unpacked in Chrome)

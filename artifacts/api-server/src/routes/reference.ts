@@ -25,6 +25,37 @@ const REFCHECK_CREDIT_COST = 10; // credits per outgoing reference check
 const REQUEST_TTL_HOURS = 7 * 24;
 const RESEND_MIN_HOURS = 48;
 
+// Log Twilio configuration readiness once at module load so operators can
+// see at a glance whether the reference-check WhatsApp flow is wired up.
+// Sensitive values (account SID, auth token, webhook auth token) are never
+// logged. Non-sensitive operational values — the WhatsApp sender number,
+// a 6-char prefix of the Content Template SID, and the computed webhook
+// URL — are logged to make misconfiguration easy to spot.
+{
+  const missing: string[] = [];
+  if (!TWILIO_ACCOUNT_SID) missing.push("TWILIO_ACCOUNT_SID");
+  if (!TWILIO_AUTH_TOKEN) missing.push("TWILIO_AUTH_TOKEN");
+  if (!TWILIO_WHATSAPP_FROM) missing.push("TWILIO_WHATSAPP_FROM");
+  if (!TWILIO_REFCHECK_CONTENT_SID) missing.push("TWILIO_REFCHECK_CONTENT_SID");
+  if (!process.env.PUBLIC_APP_URL) missing.push("PUBLIC_APP_URL");
+  if (missing.length === 0) {
+    logger.info(
+      {
+        from: TWILIO_WHATSAPP_FROM,
+        contentSid: TWILIO_REFCHECK_CONTENT_SID.slice(0, 6) + "…",
+        webhookStrict: TWILIO_WEBHOOK_STRICT,
+        webhookUrl: `${(process.env.PUBLIC_APP_URL || "").replace(/\/$/, "")}/api/reference/twilio-webhook`,
+      },
+      "[refcheck] Twilio WhatsApp configured",
+    );
+  } else {
+    logger.warn(
+      { missing },
+      "[refcheck] Twilio WhatsApp NOT fully configured — outgoing template sends will fail until these env vars are set",
+    );
+  }
+}
+
 function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
