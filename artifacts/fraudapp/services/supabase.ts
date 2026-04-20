@@ -350,6 +350,7 @@ const toSnakeCaseApplicationRow = (obj: Record<string, unknown>): Record<string,
     sessionId: _sessionId,
     assessmentToken: _assessmentToken,
     createdAt: _createdAt,
+    accessCode: _accessCode,
     ...rest
   } = obj as Record<string, unknown>;
   return {
