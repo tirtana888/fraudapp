@@ -676,8 +676,12 @@ export const subscribeToInvites = (
 
   fetchInvites();
 
+  // Use a unique channel name per subscription instance — Supabase throws
+  // "cannot add postgres_changes callbacks ... after subscribe()" if two callers
+  // (e.g. App.tsx + CandidatesManualInvite) reuse the same channel name.
+  const channelName = `invites:${companyId}:${Math.random().toString(36).slice(2, 10)}`;
   const channel: RealtimeChannel = supabase
-    .channel(`invites:${companyId}`)
+    .channel(channelName)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',

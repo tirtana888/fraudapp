@@ -1,0 +1,52 @@
+lockdown-install.js:1 SES Removing unpermitted intrinsics
+content-script.js:2 Object
+content-script.js:2 Object
+content-script.js:2 Object
+alert-observer.js:1 ALERT OBSERVER Window
+index-C833yACX.js:56 [SEED] Skipping seed - using production Supabase data
+index-C833yACX.js:436 [APP] 🔧 Setting up Firebase Auth observer...
+index-C833yACX.js:436 [APP] Checking payment redirect: Object
+index-C833yACX.js:436 [APP] ⏰ Auth observer timeout - marking as initialized anyway
+index-C833yACX.js:436 [APP] 🚪 No user detected after initialization, showing login page
+index-C833yACX.js:436 [APP] 📡 Auth state changed: om.tirtanakeren@gmail.com
+index-C833yACX.js:436 [APP] ✅ Firebase Auth user detected: om.tirtanakeren@gmail.com Verified: true
+index-C833yACX.js:436 [AUTH] Session saved successfully
+index-C833yACX.js:436 [APP] ✅ User state updated successfully
+index-C833yACX.js:436 [APP] ✅ Auth initialization complete
+index-C833yACX.js:436 [APP] 🚀 Starting dashboard data load...
+index-C833yACX.js:436 [APP] 📄 Loading company profile for ID: 6915fade-825f-4c8b-8dc6-d937340e6e62
+index-C833yACX.js:436 [APP] Checking payment redirect: Object
+index-C833yACX.js:436 [NOTIF-CENTER] Setting up listener for company: 6915fade-825f-4c8b-8dc6-d937340e6e62
+index-C833yACX.js:436 [APP] 📡 Auth state changed: om.tirtanakeren@gmail.com
+index-C833yACX.js:436 [APP] ✅ Firebase Auth user detected: om.tirtanakeren@gmail.com Verified: true
+index-C833yACX.js:436 [AUTH] Session saved successfully
+index-C833yACX.js:436 [APP] ✅ User state updated successfully
+index-C833yACX.js:436 [APP] ✅ Auth initialization complete
+index-C833yACX.js:436 [APP] 🧹 Cleaning up dashboard subscriptions
+index-C833yACX.js:436 [APP] 🚀 Starting dashboard data load...
+index-C833yACX.js:436 [APP] 📄 Loading company profile for ID: 6915fade-825f-4c8b-8dc6-d937340e6e62
+index-C833yACX.js:436 [APP] Checking payment redirect: Object
+index-C833yACX.js:436 [APP] ✅ Company loaded: Steak Indonesia
+index-C833yACX.js:436 [APP] 📊 Sessions updated: 0
+index-C833yACX.js:436 [APP] 📨 Invites updated: 0
+behtywhlundlfxkdesux.supabase.co/rest/v1/system_config?select=data&id=eq.settings:1  Failed to load resource: the server responded with a status of 406 ()
+index-C833yACX.js:436 [APP] ✅ Company loaded: Steak Indonesia
+index-C833yACX.js:436 [APP] 📊 Sessions updated: 0
+index-C833yACX.js:436 [APP] 📨 Invites updated: 0
+content.js:66 Mouse up event, selected text: 
+index-C833yACX.js:21 Uncaught Error: cannot add `postgres_changes` callbacks for realtime:invites:6915fade-825f-4c8b-8dc6-d937340e6e62 after `subscribe()`.
+    at Mg.on (index-C833yACX.js:21:21656)
+    at uC (index-C833yACX.js:56:53714)
+    at index-C833yACX.js:368:32897
+    at Mm (index-C833yACX.js:8:84569)
+    at wP (index-C833yACX.js:8:99394)
+    at Do (index-C833yACX.js:8:99278)
+    at wP (index-C833yACX.js:8:100135)
+    at Do (index-C833yACX.js:8:99278)
+    at wP (index-C833yACX.js:8:100135)
+    at Do (index-C833yACX.js:8:99278)
+index-C833yACX.js:436 [APP] 🧹 Cleaning up Firebase Auth observer
+index-C833yACX.js:436 [APP] 🧹 Cleaning up dashboard subscriptions
+index-C833yACX.js:368 [MANUAL-INVITE] Loading completed candidates...
+index-C833yACX.js:436 [APP] ⏰ Company fetch timeout, using fallback
+index-C833yACX.js:436 [APP] ⏰ Company fetch timeout, using fallback
