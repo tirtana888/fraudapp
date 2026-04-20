@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KRup8YR3lod9kNtKuCIrc"
+uri = "file://fraudguard-extension.zip"
+type = "unspecified"
+title = "FraudGuard Chrome Extension v1.1.0 (terbaru)"
