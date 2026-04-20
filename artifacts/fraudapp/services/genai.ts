@@ -17,10 +17,16 @@ const numericResponse = (resp: AssessmentItem['response']): number => {
 };
 
 export const calculateAssessmentScores = (
-  ftAnswers: AssessmentItem[] = [],
-  sjtAnswers: SJTItem[] = [],
-  finAnswers: AssessmentItem[] = []
+  ftAnswersInput: AssessmentItem[] | unknown = [],
+  sjtAnswersInput: SJTItem[] | unknown = [],
+  finAnswersInput: AssessmentItem[] | unknown = []
 ): { pressureScore: number; rationalizationScore: number; opportunityScore: number } => {
+  // Defensive: legacy session rows sometimes store these as objects rather than arrays.
+  // for...of on a non-iterable would throw and crash the page that called us.
+  const ftAnswers: AssessmentItem[] = Array.isArray(ftAnswersInput) ? ftAnswersInput as AssessmentItem[] : [];
+  const sjtAnswers: SJTItem[] = Array.isArray(sjtAnswersInput) ? sjtAnswersInput as SJTItem[] : [];
+  const finAnswers: AssessmentItem[] = Array.isArray(finAnswersInput) ? finAnswersInput as AssessmentItem[] : [];
+
   const buckets = { pressure: 0, opportunity: 0, rationalization: 0 };
   const counts = { pressure: 0, opportunity: 0, rationalization: 0 };
 
