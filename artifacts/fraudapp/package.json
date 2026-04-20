@@ -35,7 +35,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-leaflet": "^4.2.1",
-    "react-quill": "^2.0.0",
+    "react-quill-new": "^3.8.3",
     "recharts": "^2.15.4",
     "tailwind-merge": "catalog:",
     "xlsx": "^0.18.5"

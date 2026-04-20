@@ -8,8 +8,8 @@ import {
 import { Job, CompanyProfile, Workflow } from '../types';
 import { getJobsByCompany, createJob, updateJob, generateSlug, supabase, COLLECTIONS } from '../services/supabase';
 import { useToast } from './Toast';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
