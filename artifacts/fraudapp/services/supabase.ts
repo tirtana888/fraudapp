@@ -1013,7 +1013,9 @@ export const createInterviewSessionFromApplication = async (
     throw error;
   }
 
-  const assessmentLink = `${window.location.origin}/assessment?company=${applicationData.companyId}&session=${data.id}`;
+  // Use the public-mode query route so App.tsx renders <PublicAssessment/>
+  // instead of dumping the candidate on the recruiter login page.
+  const assessmentLink = `${window.location.origin}?mode=assess&cid=${applicationData.companyId}`;
   const { data: companyForEmail } = await supabase
     .from(COLLECTIONS.COMPANIES)
     .select('name')
