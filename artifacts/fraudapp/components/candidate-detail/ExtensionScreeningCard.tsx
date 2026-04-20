@@ -148,6 +148,11 @@ export default function ExtensionScreeningCard({
               <div className="bg-gray-50 dark:bg-slate-900 rounded p-3 text-center border border-gray-100 dark:border-slate-800">
                 <p className="text-xs text-gray-500 mb-1">Situs Terdeteksi</p>
                 <p className="font-bold text-gray-800 dark:text-gray-200">{gamblingAnalysis.flaggedSitesCount || 0}</p>
+                {(gamblingAnalysis.gamblingSitesCount > 0 || gamblingAnalysis.adultSitesCount > 0) && (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    🎰 {gamblingAnalysis.gamblingSitesCount || 0} · 🔞 {gamblingAnalysis.adultSitesCount || 0}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -157,15 +162,24 @@ export default function ExtensionScreeningCard({
                   <AlertTriangle size={16} /> Domain Bermasalah:
                 </p>
                 <div className="space-y-2">
-                  {gamblingAnalysis.flaggedSites.map((site, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-sm border-b border-red-100 dark:border-red-800/20 pb-1">
-                      <span className="font-mono text-red-700 dark:text-red-300">{site.domain}</span>
-                      <div className="flex gap-3 text-xs">
-                        <span className="text-red-600/70">{site.visitCount}x</span>
-                        <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-200">{site.riskLevel}</span>
+                  {gamblingAnalysis.flaggedSites.map((site, idx) => {
+                    const isAdult = site.category === 'adult';
+                    return (
+                      <div key={idx} className="flex justify-between items-center text-sm border-b border-red-100 dark:border-red-800/20 pb-1">
+                        <span className="font-mono text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <span title={isAdult ? 'Situs Dewasa' : 'Situs Judi'}>{isAdult ? '🔞' : '🎰'}</span>
+                          {site.domain}
+                        </span>
+                        <div className="flex gap-3 text-xs">
+                          <span className="text-red-600/70">{site.visitCount}x</span>
+                          <span className={`px-2 py-0.5 rounded ${isAdult ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                            {isAdult ? 'DEWASA' : 'JUDI'}
+                          </span>
+                          <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-200">{site.riskLevel}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

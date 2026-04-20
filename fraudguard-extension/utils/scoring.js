@@ -3,7 +3,7 @@
 // Risk calculation for gambling history + proctoring events
 // ============================================================
 
-import { GAMBLING_DOMAINS, GAMBLING_KEYWORDS, AI_TOOL_DOMAINS, CONFIG } from './constants.js';
+import { GAMBLING_DOMAINS, GAMBLING_KEYWORDS, ADULT_DOMAINS, ADULT_KEYWORDS, AI_TOOL_DOMAINS, CONFIG } from './constants.js';
 
 /**
  * Check if a URL's domain matches a known gambling domain.
@@ -19,30 +19,48 @@ export function isGamblingDomain(url) {
   }
 }
 
-/**
- * Check if a URL contains gambling-related keywords.
- * Uses word-boundary matching (split by non-alphanumeric chars) to reduce false positives
- * (e.g. "bet" should not match "alphabetic"). Multi-word keywords with hyphens/spaces are
- * matched as substrings inside the URL with separator tolerance.
- */
-export function hasGamblingKeyword(url) {
+function matchKeywordList(url, list) {
   const lowerUrl = url.toLowerCase();
-  // Tokenize URL by anything that is NOT a letter or digit. Keeps tokens like "slotgacor".
   const tokens = lowerUrl.split(/[^a-z0-9]+/).filter(Boolean);
   const tokenSet = new Set(tokens);
-
-  for (const keyword of GAMBLING_KEYWORDS) {
+  for (const keyword of list) {
     const k = keyword.toLowerCase();
-    // Multi-token keyword (contains hyphen/space): try a relaxed substring match
     if (/[-\s]/.test(k)) {
       const compact = k.replace(/[-\s]+/g, '');
       if (lowerUrl.includes(compact) || lowerUrl.includes(k)) return true;
       continue;
     }
-    // Single-token keyword: exact token match (avoids "bet" inside "alphabet")
     if (tokenSet.has(k)) return true;
   }
   return false;
+}
+
+/**
+ * Check if a URL contains gambling-related keywords.
+ */
+export function hasGamblingKeyword(url) {
+  return matchKeywordList(url, GAMBLING_KEYWORDS);
+}
+
+/**
+ * Check if a URL's domain matches a known adult/pornography domain.
+ */
+export function isAdultDomain(url) {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    return ADULT_DOMAINS.some(domain =>
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a URL contains adult-related keywords.
+ */
+export function hasAdultKeyword(url) {
+  return matchKeywordList(url, ADULT_KEYWORDS);
 }
 
 /**
@@ -89,6 +107,8 @@ export function analyzeHistoryItems(historyItems) {
     totalHistoryAnalyzed: historyItems.length,
     flaggedSitesCount: 0,
     flaggedSites: [],
+    gamblingSitesCount: 0,
+    adultSitesCount: 0,
     timePatterns: {
       lateNightAccess: 0,
       weekendAccess: 0,
@@ -117,10 +137,18 @@ export function analyzeHistoryItems(historyItems) {
       continue;
     }
 
-    const isDomain = isGamblingDomain(item.url);
-    const isKeyword = !isDomain && hasGamblingKeyword(item.url);
+    const isGambDomain = isGamblingDomain(item.url);
+    const isGambKeyword = !isGambDomain && hasGamblingKeyword(item.url);
+    const isAdltDomain = !isGambDomain && !isGambKeyword && isAdultDomain(item.url);
+    const isAdltKeyword = !isGambDomain && !isGambKeyword && !isAdltDomain && hasAdultKeyword(item.url);
 
-    if (isDomain || isKeyword) {
+    const isDomain = isGambDomain || isAdltDomain;
+    const isKeyword = isGambKeyword || isAdltKeyword;
+    const category = (isGambDomain || isGambKeyword) ? 'gambling'
+                   : (isAdltDomain || isAdltKeyword) ? 'adult'
+                   : null;
+
+    if (category) {
       const existing = domainMap.get(hostname);
       const visitCount = item.visitCount || 1;
       const lastVisit = new Date(item.lastVisitTime).toISOString();
@@ -135,6 +163,7 @@ export function analyzeHistoryItems(historyItems) {
           domain: hostname,
           visitCount,
           lastVisit,
+          category,
           riskLevel: isDomain ? 'HIGH' : 'MEDIUM',
           matchType: isDomain ? 'domain' : 'keyword'
         });
@@ -193,6 +222,12 @@ export function analyzeHistoryItems(historyItems) {
   analysis.flaggedSites = Array.from(domainMap.values())
     .sort((a, b) => b.visitCount - a.visitCount);
   analysis.flaggedSitesCount = analysis.flaggedSites.length;
+  analysis.gamblingSitesCount = analysis.flaggedSites.filter(s => s.category === 'gambling').length;
+  analysis.adultSitesCount = analysis.flaggedSites.filter(s => s.category === 'adult').length;
+
+  if (analysis.adultSitesCount > 0) {
+    analysis.suspiciousPatterns.push(`Akses situs dewasa terdeteksi (${analysis.adultSitesCount} situs)`);
+  }
 
   return analysis;
 }

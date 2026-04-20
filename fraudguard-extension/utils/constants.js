@@ -142,6 +142,89 @@ export const GAMBLING_KEYWORDS = [
   'gacor88', 'gacor138', 'gacor777', 'hoki', 'hoki-slot', 'hoki-togel',
 ];
 
+// ============================================================
+// Adult / Pornography (treated as a separate red-flag category)
+// ============================================================
+export const ADULT_DOMAINS = [
+  // ── Tube / streaming besar ──
+  'pornhub.com', 'pornhubpremium.com', 'rt.pornhub.com',
+  'xvideos.com', 'xvideos2.com', 'xvideos3.com', 'xvideos.es',
+  'xnxx.com', 'xnxx2.com', 'xnxx3.com', 'xnxx.tv',
+  'xhamster.com', 'xhamster2.com', 'xhamster3.com', 'xhamsterlive.com',
+  'redtube.com', 'redtube.net', 'youporn.com', 'tube8.com', 'tube8live.com',
+  'spankbang.com', 'spankwire.com', 'extremetube.com', 'porntube.com',
+  'tnaflix.com', 'empflix.com', 'beeg.com', 'porn.com', 'porn300.com',
+  'porn4days.com', 'porndoe.com', 'pornone.com', 'porntrex.com',
+  'eporner.com', 'hclips.com', 'hqporner.com', 'sex.com', 'sexvid.xxx',
+  'drtuber.com', 'sunporno.com', 'gotporn.com', 'pornoxo.com',
+  '4tube.com', 'fux.com', 'keezmovies.com', 'mofosex.com', 'pornhd.com',
+  'txxx.com', 'upornia.com', 'vjav.com', 'fapality.com', 'fapster.xxx',
+
+  // ── Premium / studio ──
+  'brazzers.com', 'naughtyamerica.com', 'realitykings.com', 'bangbros.com',
+  'mofos.com', 'digitalplayground.com', 'vivid.com', 'wicked.com',
+  'evilangel.com', 'kink.com', 'twistys.com', 'babes.com',
+  'blacked.com', 'tushy.com', 'vixen.com', 'deeper.com', 'slayed.com',
+  'adulttime.com', 'wankz.com', 'team-skeet.com', 'teamskeet.com',
+
+  // ── Cam / live ──
+  'chaturbate.com', 'cam4.com', 'bongacams.com', 'stripchat.com',
+  'livejasmin.com', 'myfreecams.com', 'cams.com', 'flirt4free.com',
+  'streamate.com', 'camsoda.com', 'cherry.tv', 'jerkmate.com',
+
+  // ── Creator / paywall ──
+  'onlyfans.com', 'fansly.com', 'manyvids.com', 'clips4sale.com',
+  'iwantclips.com', 'fancentro.com', 'justforfans.app', 'justfor.fans',
+  'admireme.vip', 'avn.com',
+
+  // ── Hentai / anime adult ──
+  'nhentai.net', 'nhentai.to', 'nhentai.xxx', 'hanime.tv', 'hentaihaven.xxx',
+  'hentai-foundry.com', 'hentai2read.com', 'hentaimama.io', 'hitomi.la',
+  'ehentai.org', 'e-hentai.org', 'exhentai.org', 'fakku.net',
+  'simply-hentai.com', 'rule34.xxx', 'rule34.us', 'rule34hentai.net',
+  'gelbooru.com', 'danbooru.donmai.us',
+
+  // ── Indonesia / regional ──
+  'bokep.com', 'bokepindo.com', 'bokepindoxxx.com', 'bokephd.com',
+  'bokepjepang.com', 'bokepbarat.com', 'bokepasia.com', 'bokepin.com',
+  'bokepsin.com', 'bokeptube.com', 'bokep4d.com', 'bokep21.com',
+  'simontok.com', 'simontok.app', 'simontox.com',
+  'cerita-dewasa.com', 'ceritadewasa.com', 'ceritaseks.com',
+  'ngentot.com', 'memek.com', 'tante-girang.com', 'tantegirang.com',
+
+  // ── Aggregator / forum ──
+  'motherless.com', 'thumbzilla.com', 'pornpics.com', 'sex.xxx',
+  'thisvid.com', 'porn7.xxx', 'pornhat.com', 'pornky.com',
+  'reddit.com/r/gonewild', 'reddit.com/r/nsfw',
+];
+
+export const ADULT_KEYWORDS = [
+  // ── English umum ──
+  'porn', 'porno', 'pornhub', 'xxx', 'xnxx', 'xvideos', 'xhamster',
+  'redtube', 'youporn', 'tube8', 'spankbang', 'brazzers', 'onlyfans',
+  'sex', 'sexy', 'sextape', 'sexcam', 'sexvid', 'sexvideo',
+  'nude', 'nudes', 'naked', 'nsfw', 'milf', 'gilf', 'dilf',
+  'hentai', 'doujin', 'rule34', 'ecchi', 'lewd',
+  'camgirl', 'webcam-girl', 'chaturbate', 'stripchat', 'bongacams',
+  'fansly', 'manyvids', 'clips4sale', 'fancentro',
+  'erotic', 'erotica', 'fetish', 'bdsm', 'kink', 'kinky',
+  'creampie', 'gangbang', 'threesome', 'orgy', 'hardcore', 'softcore',
+  'masturbation', 'handjob', 'blowjob', 'deepthroat', 'anal',
+  'cumshot', 'facial', 'bukkake', 'jav', 'jav-hd', 'javhd',
+
+  // ── Indonesian / bahasa gaul ──
+  'bokep', 'bokepindo', 'bokep-indo', 'bokephd', 'bokep-hd',
+  'bokepjepang', 'bokep-jepang', 'bokepbarat', 'bokep-barat',
+  'bokepasia', 'bokep-asia', 'bokepterbaru', 'bokepviral',
+  'simontok', 'simontox',
+  'cerita-dewasa', 'ceritadewasa', 'cerita-seks', 'ceritaseks',
+  'ceritapanas', 'cerita-panas', 'cerpen-dewasa',
+  'ngentot', 'ngewe', 'memek', 'kontol', 'tetek', 'toket',
+  'tante-girang', 'tantegirang', 'janda-genit', 'abg-bispak',
+  'foto-bugil', 'fotobugil', 'video-mesum', 'videomesum',
+  'film-dewasa', 'filmdewasa', 'film-bokep', 'filmbokep',
+];
+
 // Domains that indicate AI tool usage (for proctoring)
 export const AI_TOOL_DOMAINS = [
   'chat.openai.com', 'chatgpt.com', 'gemini.google.com',
