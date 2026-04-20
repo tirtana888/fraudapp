@@ -177,9 +177,15 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       setIsCreating(false);
       setEditingWorkflow(null);
       await loadWorkflows();
-    } catch (error) {
+    } catch (error: any) {
       console.error('[WORKFLOW] Error saving workflow:', error);
-      toast.error('Gagal menyimpan workflow. Silakan coba lagi.');
+      const detail =
+        error?.message ||
+        error?.error_description ||
+        error?.hint ||
+        error?.details ||
+        (typeof error === 'string' ? error : 'Unknown error');
+      toast.error(`Gagal menyimpan workflow: ${detail}`);
     } finally {
       setIsSaving(false);
     }
