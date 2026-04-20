@@ -57,8 +57,10 @@ const ActiveInterview: React.FC<ActiveInterviewProps> = ({ onComplete, companyId
               session.candidate.role, 
               session.transcript || [], 
               session.structuredAssessment || [], 
-              session.sjtResults, 
-              companyTier
+              session.sjtResults || [], 
+              companyTier,
+              session.financialStrainResults || [],
+              session.id,
           );
           
           await updateSessionInDB(session.id, {

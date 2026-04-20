@@ -188,6 +188,208 @@ ATURAN WAJIB:
   }
 });
 
+// ─── POST /api/ai/fraud-analysis ─────────────────────────────────────────────
+
+router.post("/fraud-analysis", async (req: Request, res: Response) => {
+  const { sessionId, role, transcript, ftAnswers, sjtAnswers, finAnswers, tier } = req.body as {
+    sessionId?: string;
+    role: string;
+    transcript: Array<{ speaker: string; text: string }>;
+    ftAnswers?: unknown;
+    sjtAnswers?: unknown;
+    finAnswers?: unknown;
+    tier?: string;
+  };
+
+  if (!role || !Array.isArray(transcript)) {
+    res.status(400).json({ success: false, error: "role and transcript required" });
+    return;
+  }
+
+  const auth = await verifyJwtOrSession(req, sessionId);
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: auth.reason || "Unauthorized" });
+    return;
+  }
+
+  if (!OPENAI_API_KEY) {
+    logger.warn("OPENAI_API_KEY not configured");
+    res.status(503).json({ success: false, error: "AI service not configured" });
+    return;
+  }
+
+  const ftArr = Array.isArray(ftAnswers) ? ftAnswers as Array<Record<string, unknown>> : [];
+  const sjtArr = Array.isArray(sjtAnswers) ? sjtAnswers as Array<Record<string, unknown>> : [];
+  const finArr = Array.isArray(finAnswers) ? finAnswers as Array<Record<string, unknown>> : [];
+
+  const ftSummary = ftArr
+    .map(item => `[${String(item.category ?? "").toUpperCase()}] "${String(item.question ?? "").slice(0, 200)}" -> Skor: ${String(item.response ?? "n/a")}`)
+    .join("\n");
+  const finSummary = finArr
+    .map(item => `[FINANCIAL_STRAIN] "${String(item.question ?? "").slice(0, 200)}" -> Skor: ${String(item.response ?? "n/a")}`)
+    .join("\n");
+  const sjtSummary = sjtArr
+    .map(item => {
+      const opts = Array.isArray(item.options) ? item.options as Array<Record<string, unknown>> : [];
+      const idx = typeof item.selectedOptionIndex === "number" ? item.selectedOptionIndex : -1;
+      const chosen = idx >= 0 && opts[idx] ? `${String(opts[idx].label ?? "")} (risk=${String(opts[idx].riskWeight ?? "")})` : "Tidak dijawab";
+      return `[SJT] "${String(item.scenario ?? "").slice(0, 200)}" -> Pilih: ${chosen}`;
+    })
+    .join("\n");
+
+  const transcriptText = transcript
+    .slice(-40)
+    .map(t => `${(t.speaker || "").toUpperCase()}: ${t.text}`)
+    .join("\n");
+
+  const systemPrompt = `Anda adalah Senior Fraud Analyst untuk proses rekrutmen.
+Tugas Anda: berikan analisis risiko fraud berbasis Fraud Triangle (Pressure, Opportunity, Rationalization) untuk seorang kandidat.
+WAJIB membalas dengan JSON valid (tanpa markdown), dalam Bahasa Indonesia, mengikuti skema yang diminta.`;
+
+  const userPrompt = `Posisi yang dilamar: ${role}
+Tier perusahaan: ${tier || "Freemium"}
+
+DATA SURVEY FRAUD TRIANGLE:
+${ftSummary || "(tidak ada)"}
+
+DATA FINANCIAL STRAIN:
+${finSummary || "(tidak ada)"}
+
+DATA SITUATIONAL JUDGMENT TEST:
+${sjtSummary || "(tidak ada)"}
+
+TRANSKRIP WAWANCARA AI (terakhir 40 turn):
+${transcriptText || "(tidak ada)"}
+
+Hasilkan JSON dengan struktur PERSIS berikut:
+{
+  "scores": { "pressure": <0-100>, "opportunity": <0-100>, "rationalization": <0-100> },
+  "riskLevel": "Low" | "Medium" | "High" | "Critical",
+  "summary": "<2 paragraf analisis terintegrasi dalam Bahasa Indonesia>",
+  "redFlags": ["<red flag spesifik dari jawaban kandidat>", ...],
+  "recommendation": "<rekomendasi tindakan konkret untuk recruiter>",
+  "consistencyScore": <0-100, konsistensi antara survey dan wawancara>,
+  "euphemismScore": <0-100, deteksi pola bahasa eufemistis>,
+  "sentimentBreakdown": { "positive": <0-100>, "neutral": <0-100>, "negative": <0-100> },
+  "benchmarkComparison": { "candidateAvg": <rata-rata skor kandidat>, "companyAvg": 48, "industryAvg": 45 }
+}
+
+Skor harus mencerminkan transkrip dan jawaban yang sebenarnya, BUKAN nilai default 50/50/50.
+Red flags dan rekomendasi harus spesifik mengacu pada apa yang kandidat katakan.
+sentimentBreakdown.positive + neutral + negative harus berjumlah 100.`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45_000);
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.4,
+        max_tokens: 2000,
+      }),
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      logger.error({ status: response.status, errText: errText.slice(0, 500) }, "OpenAI fraud-analysis error");
+      const status = response.status === 429 ? 429 : 502;
+      res.status(status).json({
+        success: false,
+        error: response.status === 429 ? "Rate limit terlampaui, coba lagi sebentar." : "AI provider error",
+      });
+      return;
+    }
+
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      res.status(502).json({ success: false, error: "Empty AI response" });
+      return;
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      const cleaned = content.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (err) {
+        logger.error({ err, contentSample: content.slice(0, 300) }, "Failed to parse fraud-analysis JSON");
+        res.status(502).json({ success: false, error: "Invalid AI JSON response" });
+        return;
+      }
+    }
+
+    if (!parsed || typeof parsed !== "object" || !parsed.scores) {
+      res.status(502).json({ success: false, error: "AI response missing required fields" });
+      return;
+    }
+
+    const clamp = (n: unknown, lo = 0, hi = 100): number => {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return lo;
+      return Math.max(lo, Math.min(hi, Math.round(v)));
+    };
+    const validLevels = new Set(["Low", "Medium", "High", "Critical"]);
+    const rawLevel = String((parsed as Record<string, unknown>).riskLevel ?? "");
+    const normalizedLevel = rawLevel.charAt(0).toUpperCase() + rawLevel.slice(1).toLowerCase();
+    const scoresIn = (parsed.scores ?? {}) as Record<string, unknown>;
+    const sentiIn = ((parsed as Record<string, unknown>).sentimentBreakdown ?? {}) as Record<string, unknown>;
+    let pos = clamp(sentiIn.positive);
+    let neu = clamp(sentiIn.neutral);
+    let neg = clamp(sentiIn.negative);
+    const sentiSum = pos + neu + neg;
+    if (sentiSum === 0) { pos = 33; neu = 34; neg = 33; }
+    else if (sentiSum !== 100) {
+      pos = Math.round((pos / sentiSum) * 100);
+      neu = Math.round((neu / sentiSum) * 100);
+      neg = 100 - pos - neu;
+    }
+    const benchIn = ((parsed as Record<string, unknown>).benchmarkComparison ?? {}) as Record<string, unknown>;
+
+    const safeAnalysis = {
+      scores: {
+        pressure: clamp(scoresIn.pressure),
+        opportunity: clamp(scoresIn.opportunity),
+        rationalization: clamp(scoresIn.rationalization),
+      },
+      riskLevel: validLevels.has(normalizedLevel) ? normalizedLevel : "Medium",
+      summary: typeof parsed.summary === "string" ? parsed.summary : "",
+      redFlags: Array.isArray(parsed.redFlags) ? parsed.redFlags.filter(f => typeof f === "string") : [],
+      recommendation: typeof parsed.recommendation === "string" ? parsed.recommendation : "",
+      consistencyScore: clamp((parsed as Record<string, unknown>).consistencyScore),
+      euphemismScore: clamp((parsed as Record<string, unknown>).euphemismScore),
+      sentimentBreakdown: { positive: pos, neutral: neu, negative: neg },
+      benchmarkComparison: {
+        candidateAvg: clamp(benchIn.candidateAvg),
+        companyAvg: clamp(benchIn.companyAvg ?? 48),
+        industryAvg: clamp(benchIn.industryAvg ?? 45),
+      },
+    };
+
+    res.json({ success: true, analysis: safeAnalysis });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ message }, "fraud-analysis error");
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 // ─── POST /api/ai/parse-cv ───────────────────────────────────────────────────
 //
 // Downloads the CV PDF from Supabase Storage using the service key,

@@ -404,7 +404,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
       console.log('[FINISH-ASSESSMENT] 🤖 Calling analyzeFraudRisk...');
 
       finalAnalysis = await Promise.race([
-        analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium'),
+        analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium', finAnswers, sessionId),
         analysisTimeout
       ]) as FraudAnalysis;
 

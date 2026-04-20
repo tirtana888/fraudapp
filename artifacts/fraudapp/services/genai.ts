@@ -1,46 +1,182 @@
-import { FraudAnalysis, RiskLevel } from '../types';
+import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from '../types';
 import { supabase } from './supabase';
 
 // ==========================================
 // GENAI SERVICE
-// Interview chat now calls /api/ai/interview-question (OpenAI on the server).
-// Other functions remain stubbed pending a separate implementation.
+// Interview chat -> /api/ai/interview-question
+// Fraud analysis -> /api/ai/fraud-analysis
+// Both backed by OpenAI on the server.
 // ==========================================
+
+const numericResponse = (resp: AssessmentItem['response']): number => {
+  if (typeof resp === 'number') return resp;
+  if (resp === 'high') return 5;
+  if (resp === 'medium') return 3;
+  if (resp === 'low') return 1;
+  return 0;
+};
+
+export const calculateAssessmentScores = (
+  ftAnswers: AssessmentItem[] = [],
+  sjtAnswers: SJTItem[] = [],
+  finAnswers: AssessmentItem[] = []
+): { pressureScore: number; rationalizationScore: number; opportunityScore: number } => {
+  const buckets = { pressure: 0, opportunity: 0, rationalization: 0 };
+  const counts = { pressure: 0, opportunity: 0, rationalization: 0 };
+
+  for (const item of ftAnswers) {
+    const cat = item.category;
+    if (cat === 'pressure' || cat === 'opportunity' || cat === 'rationalization') {
+      buckets[cat] += numericResponse(item.response);
+      counts[cat] += 1;
+    }
+  }
+
+  // Financial strain feeds into the pressure dimension.
+  for (const item of finAnswers) {
+    buckets.pressure += numericResponse(item.response);
+    counts.pressure += 1;
+  }
+
+  // SJT: bias the opportunity score because risky-choice scenarios reflect
+  // willingness to exploit opportunity.
+  let sjtOppSum = 0;
+  let sjtOppCount = 0;
+  for (const sjt of sjtAnswers) {
+    if (sjt.selectedOptionIndex == null) continue;
+    const opt = sjt.options?.[sjt.selectedOptionIndex];
+    if (!opt) continue;
+    const w = opt.riskWeight === 'critical' ? 5
+      : opt.riskWeight === 'high' ? 4
+      : opt.riskWeight === 'medium' ? 3
+      : 1;
+    sjtOppSum += w;
+    sjtOppCount += 1;
+  }
+  if (sjtOppCount > 0) {
+    buckets.opportunity += sjtOppSum;
+    counts.opportunity += sjtOppCount;
+  }
+
+  const pct = (sum: number, count: number) => count ? Math.round((sum / (count * 5)) * 100) : 50;
+
+  return {
+    pressureScore: pct(buckets.pressure, counts.pressure),
+    rationalizationScore: pct(buckets.rationalization, counts.rationalization),
+    opportunityScore: pct(buckets.opportunity, counts.opportunity),
+  };
+};
+
+const buildManualFallback = (
+  ftAnswers: AssessmentItem[],
+  sjtAnswers: SJTItem[],
+  finAnswers: AssessmentItem[],
+  reason: string
+): FraudAnalysis => {
+  const scores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
+  const avg = (scores.pressureScore + scores.opportunityScore + scores.rationalizationScore) / 3;
+  const riskLevel = avg > 75 ? RiskLevel.CRITICAL
+    : avg > 50 ? RiskLevel.HIGH
+    : avg > 30 ? RiskLevel.MEDIUM
+    : RiskLevel.LOW;
+
+  return {
+    scores: {
+      pressure: scores.pressureScore,
+      opportunity: scores.opportunityScore,
+      rationalization: scores.rationalizationScore,
+    },
+    riskLevel,
+    summary: `Analisis AI tidak tersedia (${reason}). Skor di bawah ini dihitung otomatis dari kuesioner kandidat. Mohon lakukan review manual sebelum mengambil keputusan.`,
+    redFlags: ['Analisis AI gagal — review manual diperlukan'],
+    recommendation: 'Lakukan review manual atas transkrip wawancara dan jawaban kuesioner kandidat.',
+    isManualFallback: true,
+    consistencyScore: 0,
+    euphemismScore: 0,
+    sentimentBreakdown: { positive: 33, neutral: 34, negative: 33 },
+    benchmarkComparison: { candidateAvg: Math.round(avg), companyAvg: 48, industryAvg: 45 },
+  };
+};
 
 export const analyzeFraudRisk = async (
   role: string,
   transcript: Array<{ speaker: string; text: string }>,
-  ftAnswers?: Record<string, any>,
-  sjtAnswers?: Record<string, any>,
-  tier: 'Freemium' | 'Premium' = 'Freemium'
+  ftAnswers: AssessmentItem[] = [],
+  sjtAnswers: SJTItem[] = [],
+  tier: 'Freemium' | 'Premium' = 'Freemium',
+  finAnswers: AssessmentItem[] = [],
+  sessionId?: string,
 ): Promise<FraudAnalysis> => {
-  console.warn('[GENAI] analyzeFraudRisk: not yet implemented in API server. Returning fallback analysis.');
-  return {
-    scores: { pressure: 50, rationalization: 50, opportunity: 50 },
-    riskLevel: RiskLevel.MEDIUM,
-    summary: 'Unable to complete AI analysis. Manual review recommended.',
-    redFlags: ['Analysis service unavailable'],
-    recommendation: 'Conduct thorough background check and schedule follow-up interview',
-    isManualFallback: true
-  };
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const resp = await fetch('/api/ai/fraud-analysis', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        sessionId,
+        role,
+        transcript,
+        ftAnswers,
+        sjtAnswers,
+        finAnswers,
+        tier,
+      }),
+    });
+
+    const json = await resp.json().catch(() => null) as
+      | { success?: boolean; analysis?: Partial<FraudAnalysis>; error?: string }
+      | null;
+
+    if (resp.ok && json?.success && json.analysis && json.analysis.scores) {
+      const a = json.analysis;
+      // Normalize riskLevel string to enum value if possible
+      const rawLevel = String(a.riskLevel || '').toLowerCase();
+      const riskLevel = rawLevel === 'critical' ? RiskLevel.CRITICAL
+        : rawLevel === 'high' ? RiskLevel.HIGH
+        : rawLevel === 'medium' ? RiskLevel.MEDIUM
+        : rawLevel === 'low' ? RiskLevel.LOW
+        : (a.riskLevel as RiskLevel) ?? RiskLevel.MEDIUM;
+
+      return {
+        scores: {
+          pressure: Number(a.scores?.pressure ?? 0),
+          opportunity: Number(a.scores?.opportunity ?? 0),
+          rationalization: Number(a.scores?.rationalization ?? 0),
+        },
+        riskLevel,
+        summary: a.summary || '',
+        redFlags: Array.isArray(a.redFlags) ? a.redFlags : [],
+        recommendation: a.recommendation || '',
+        consistencyScore: a.consistencyScore,
+        euphemismScore: a.euphemismScore,
+        sentimentBreakdown: a.sentimentBreakdown,
+        benchmarkComparison: a.benchmarkComparison,
+        isManualFallback: false,
+      };
+    }
+
+    const reason = json?.error || `HTTP ${resp.status}`;
+    console.warn('[GENAI] fraud-analysis failed:', reason);
+    return buildManualFallback(ftAnswers, sjtAnswers, finAnswers, reason);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'Network error';
+    console.error('[GENAI] fraud-analysis request error:', err);
+    return buildManualFallback(ftAnswers, sjtAnswers, finAnswers, reason);
+  }
 };
 
 export const generateAIReport = async (
-  sessionId: string,
-  candidateData: any,
-  tier: 'Freemium' | 'Premium' = 'Freemium',
-  includeAdvancedAnalysis: boolean = false
+  _sessionId: string,
+  _candidateData: any,
+  _tier: 'Freemium' | 'Premium' = 'Freemium',
+  _includeAdvancedAnalysis: boolean = false
 ): Promise<any> => {
   console.warn('[GENAI] generateAIReport: not yet implemented in API server.');
   return null;
-};
-
-export const calculateAssessmentScores = (
-  ftAnswers: Record<string, any>,
-  sjtAnswers: Record<string, any>,
-  finAnswers?: Record<string, any>
-): { pressureScore: number; rationalizationScore: number; opportunityScore: number } => {
-  return { pressureScore: 50, rationalizationScore: 50, opportunityScore: 50 };
 };
 
 const FALLBACK_QUESTIONS = [
