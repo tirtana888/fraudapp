@@ -284,8 +284,17 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
           </div>
         );
 
-      case 3: // Intelligence (Workflow)
-        const selectedWorkflow = workflows.find(w => w.id === formData.workflowId);
+      case 3: { // Intelligence (Workflow)
+        const safeWorkflows = (workflows || []).map(w => ({
+          ...w,
+          steps: Array.isArray(w?.steps) ? w.steps : [],
+        }));
+        const selectedWorkflow = safeWorkflows.find(w => w.id === formData.workflowId);
+        const computeCredits = (wf: any) =>
+          (wf?.totalCredits ?? (wf?.steps || []).reduce(
+            (s: number, st: any) => s + (Number(st?.credits) || 0),
+            0
+          ));
 
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
@@ -302,7 +311,12 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Pilih Workflow Seleksi <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-1 gap-3">
-                  {workflows.map(wf => (
+                  {safeWorkflows.length === 0 && (
+                    <div className="p-4 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-500 text-center">
+                      Belum ada workflow. Silakan buat workflow terlebih dahulu di menu Workflow.
+                    </div>
+                  )}
+                  {safeWorkflows.map(wf => (
                     <div
                       key={wf.id}
                       onClick={() => setFormData({ ...formData, workflowId: wf.id })}
@@ -314,10 +328,10 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                       )}
                     >
                       <div>
-                        <div className="font-bold text-slate-800">{wf.name}</div>
+                        <div className="font-bold text-slate-800">{wf.name || 'Untitled'}</div>
                         <div className="text-xs text-slate-500 mt-1 flex gap-2">
                           <span className="flex items-center gap-1"><List size={12} /> {wf.steps.length} Steps</span>
-                          <span className="flex items-center gap-1"><TrendingUp size={12} /> {wf.totalCredits} Credits</span>
+                          <span className="flex items-center gap-1"><TrendingUp size={12} /> {computeCredits(wf)} Credits</span>
                         </div>
                       </div>
                       {formData.workflowId === wf.id && <Check className="text-[#D95D00]" />}
@@ -380,6 +394,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
             </div>
           </div>
         );
+      }
 
       case 4: // Review
         return (
