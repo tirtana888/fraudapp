@@ -9,6 +9,7 @@ import CandidateActivityTimeline from './CandidateActivityTimeline';
 import FraudTriangleVisualization from './FraudTriangleVisualization';
 import ParsedCVDisplay from './ParsedCVDisplay';
 import { deductCredit } from '../services/creditManagement';
+import { createBackgroundCheckSession, openBackgroundCheckWindow } from '../services/didit';
 import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
@@ -742,6 +743,22 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       }
 
       const now = new Date().toISOString();
+
+      // Create Didit verification session
+      let diditSession: Awaited<ReturnType<typeof createBackgroundCheckSession>> | null = null;
+      try {
+        diditSession = await createBackgroundCheckSession(
+          sessionId,
+          candidate.candidate.name,
+          candidate.candidate.email || ''
+        );
+      } catch (diditErr) {
+        console.error('Didit session creation failed:', diditErr);
+        toast.error(diditErr instanceof Error ? diditErr.message : 'Gagal membuat sesi Didit');
+        setIsUpdating(false);
+        return;
+      }
+
       const existingTimeline = candidate.timeline || [];
       const updatedTimeline = [
         ...existingTimeline.map((ev: NonNullable<InterviewSession["timeline"]>[number]) => ({
@@ -759,10 +776,22 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
       await supabase.from('_interview_sessions').update(toSnakeCaseRow({
         recruitmentStage: 'background_check',
         timeline: updatedTimeline,
+        backgroundCheck: {
+          status: diditSession.status || 'pending',
+          diditSessionId: diditSession.verificationSessionId,
+          verificationLink: diditSession.verification_url,
+          createdAt: now,
+          lastUpdated: now,
+        },
+        backgroundCheckStatus: diditSession.status || 'pending',
         updatedAt: now
       } as Record<string, unknown>)).eq('id', sessionId);
 
-      toast.success(`Background Check dimulai! (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
+      if (diditSession.verification_url) {
+        openBackgroundCheckWindow(diditSession.verification_url);
+      }
+
+      toast.success(`Background Check dimulai! Link verifikasi terbuka di jendela baru. (100 kredit digunakan, sisa: ${deductionResult.remainingCredits})`);
       await loadCandidateData();
     } catch (error) {
       console.error('Error initiating background check:', error);

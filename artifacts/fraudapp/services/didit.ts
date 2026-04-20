@@ -1,4 +1,4 @@
-import { supabase, COLLECTIONS, toSnakeCaseRow } from './supabase';
+import { supabase, toSnakeCaseRow } from './supabase';
 
 export interface DiditVerificationSession {
   verificationSessionId: string;
@@ -17,28 +17,46 @@ export interface DiditSessionResponse {
 }
 
 export const createBackgroundCheckSession = async (
-  _sessionId: string,
-  _candidateName: string,
-  _candidateEmail: string
+  sessionId: string,
+  candidateName: string,
+  candidateEmail: string
 ): Promise<DiditVerificationSession> => {
-  console.warn('[DIDIT] createBackgroundCheckSession: Didit API calls require a backend proxy (stubbed). Returning no-op sentinel.');
+  const callbackUrl = `${window.location.origin}/?bgcb=1`;
+  const resp = await fetch('/api/didit/create-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, candidateName, candidateEmail, callbackUrl }),
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data?.success) {
+    throw new Error(data?.error || `Gagal membuat sesi Didit (HTTP ${resp.status})`);
+  }
   return {
-    verificationSessionId: 'stub-not-available',
-    verification_url: '',
-    status: 'pending',
-    createdAt: new Date().toISOString()
+    verificationSessionId: data.verificationSessionId,
+    verification_url: data.verification_url,
+    status: data.status || 'pending',
+    createdAt: new Date().toISOString(),
   };
 };
 
-export const getVerificationSession = async (_verificationSessionId: string): Promise<DiditSessionResponse> => {
-  console.warn('[DIDIT] getVerificationSession: Didit API calls require a backend proxy (stubbed). Returning no-op sentinel.');
+export const getVerificationSession = async (
+  verificationSessionId: string
+): Promise<DiditSessionResponse> => {
+  const resp = await fetch(`/api/didit/session/${encodeURIComponent(verificationSessionId)}`, {
+    method: 'GET',
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data?.success) {
+    throw new Error(data?.error || `Gagal mengambil sesi Didit (HTTP ${resp.status})`);
+  }
+  const d = data.data || {};
   return {
-    id: 'stub-not-available',
-    url: '',
-    status: 'pending',
-    workflow_id: '',
-    vendor_data: '',
-    created_at: new Date().toISOString()
+    id: d.session_id || d.id || verificationSessionId,
+    url: d.url || '',
+    status: d.status || 'pending',
+    workflow_id: d.workflow_id || '',
+    vendor_data: d.vendor_data || '',
+    created_at: d.created_at || new Date().toISOString(),
   };
 };
 
@@ -49,18 +67,26 @@ export const handleBackgroundCheckCallback = async (
 ) => {
   const actualSessionId = sessionId;
   if (!actualSessionId) {
-    console.warn('[DIDIT] handleBackgroundCheckCallback: cannot resolve sessionId without Didit API access (stubbed). No update applied.');
+    console.warn('[DIDIT] handleBackgroundCheckCallback: missing sessionId');
     return { success: false, status: 'pending' as const };
   }
 
   let mappedStatus: 'pending' | 'approved' | 'declined' | 'in_review' = 'in_review';
-  if (status.toLowerCase() === 'approved') mappedStatus = 'approved';
-  else if (status.toLowerCase() === 'declined') mappedStatus = 'declined';
+  const s = (status || '').toLowerCase();
+  if (s === 'approved') mappedStatus = 'approved';
+  else if (s === 'declined' || s === 'rejected') mappedStatus = 'declined';
+
+  // Refresh from Didit (best-effort) so the local view has latest decision data
+  try {
+    if (verificationSessionId) await getVerificationSession(verificationSessionId);
+  } catch (err) {
+    console.warn('[DIDIT] refresh after callback failed:', err);
+  }
 
   const { error } = await supabase
     .from('_interview_sessions')
     .update(toSnakeCaseRow({
-      backgroundCheck: { status: mappedStatus },
+      backgroundCheck: { status: mappedStatus, diditSessionId: verificationSessionId },
       backgroundCheckStatus: mappedStatus,
       backgroundCheckCompletedAt: new Date().toISOString()
     } as Record<string, unknown>))
