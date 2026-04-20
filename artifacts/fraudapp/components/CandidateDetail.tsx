@@ -14,6 +14,7 @@ import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
 import ExtensionScreeningCard from './candidate-detail/ExtensionScreeningCard';
+import ProctoringCard from './candidate-detail/ProctoringCard';
 import ReferenceCheckCard from './candidate-detail/ReferenceCheckCard';
 import PipelineStepper from './candidate-detail/PipelineStepper';
 import RiskDonut from './candidate-detail/RiskDonut';
@@ -2388,6 +2389,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               proctoringData={candidate.proctoringData}
             />
 
+            <ProctoringCard
+              sessionId={sessionId}
+              proctoringConsentAt={candidate.proctoringConsentAt}
+              proctoringStartedAt={candidate.proctoringStartedAt}
+              proctoringFinishedAt={candidate.proctoringFinishedAt}
+            />
+
             <ReferenceCheckCard
               sessionId={sessionId}
               candidateName={candidate.candidate?.name || ''}
@@ -3217,6 +3225,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               companyName={company.name}
               gamblingAnalysis={candidate.gamblingAnalysis}
               proctoringData={candidate.proctoringData}
+            />
+
+            <ProctoringCard
+              sessionId={sessionId}
+              proctoringConsentAt={candidate.proctoringConsentAt}
+              proctoringStartedAt={candidate.proctoringStartedAt}
+              proctoringFinishedAt={candidate.proctoringFinishedAt}
             />
 
             <ReferenceCheckCard

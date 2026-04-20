@@ -96,6 +96,9 @@ export interface InterviewSession {
   riskScore?: number;
   gamblingAnalysis?: GamblingAnalysis;
   proctoringData?: ProctoringData;
+  proctoringConsentAt?: string;
+  proctoringStartedAt?: string;
+  proctoringFinishedAt?: string;
 }
 
 // ========== KYC / Background Check Types ==========

@@ -15,10 +15,10 @@
         <span class="logo-icon">🛡️</span>
         <div>
           <h1>FraudGuard</h1>
-          <span class="subtitle">Browser Screening</span>
+          <span class="subtitle">Browser Screening + Proctor</span>
         </div>
       </div>
-      <span class="version">v1.0</span>
+      <span class="version">v1.3</span>
     </header>
 
     <!-- ── Step 1: Token Input ── -->
@@ -26,7 +26,7 @@
       <div class="card">
         <h2>🔑 Masukkan Token</h2>
         <p class="desc">Masukkan token yang diberikan oleh HR / perusahaan Anda.</p>
-        <input type="text" id="token-input" placeholder="contoh: a1b2c3d4-e5f6-7890..." maxlength="64" autocomplete="off">
+        <input type="text" id="token-input" placeholder="contoh: A1B2C3" maxlength="64" autocomplete="off">
         <button id="btn-validate" class="btn btn-primary">Validasi Token</button>
         <div id="token-error" class="error hidden"></div>
 
@@ -49,7 +49,21 @@
       </div>
     </section>
 
-    <!-- ── Step 2: Consent ── -->
+    <!-- ── Step 2: Mode picker ── -->
+    <section id="step-mode" class="step hidden">
+      <div class="card">
+        <h2>Pilih Jenis Screening</h2>
+        <p class="desc">Pilih sesuai instruksi dari HR.</p>
+        <button id="btn-mode-history" class="btn btn-primary" style="margin-bottom:10px;">
+          🌐 Screening Riwayat Browser
+        </button>
+        <button id="btn-mode-proctor" class="btn btn-primary" style="background:linear-gradient(135deg,#f97316,#ea580c);">
+          🎥 Mulai Tes dengan Proctor (Kamera)
+        </button>
+      </div>
+    </section>
+
+    <!-- ── Step 3a: Consent (history only) ── -->
     <section id="step-consent" class="step hidden">
       <div class="card">
         <h2>📋 Persetujuan Analisis</h2>
@@ -71,7 +85,35 @@
       </div>
     </section>
 
-    <!-- ── Step 3: Analysis ── -->
+    <!-- ── Step 3b: Proctor consent (camera + tab tracking) ── -->
+    <section id="step-proctor-consent" class="step hidden">
+      <div class="card">
+        <h2>🎥 Persetujuan Proctor</h2>
+        <div class="consent-box">
+          <p><strong>Selama tes berlangsung, extension akan:</strong></p>
+          <ul>
+            <li>📸 Mengambil <strong>foto kamera setiap 30 detik</strong> untuk verifikasi identitas.</li>
+            <li>👀 Mendeteksi jika Anda <strong>pindah tab</strong> atau membuka tab baru.</li>
+            <li>🚫 Mendeteksi jika Anda mengunjungi <strong>situs AI tools</strong> (ChatGPT, Gemini, dll).</li>
+            <li>📋 Mendeteksi <strong>copy / paste</strong> di halaman tes.</li>
+            <li>🔍 Setelah tes selesai, menganalisis <strong>riwayat browser 30 hari</strong>.</li>
+          </ul>
+          <p style="margin-top:8px;"><strong>Data Anda:</strong> Foto + log disimpan terenkripsi dan hanya dilihat oleh HR perusahaan terkait. Dihapus dalam 30 hari.</p>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="proctor-consent-check">
+          <span>Saya setuju dengan ketentuan proctor di atas</span>
+        </label>
+        <button id="btn-proctor-consent" class="btn btn-primary" disabled>
+          Mulai Proctor & Buka Jendela Monitor
+        </button>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:center;">
+          Browser akan meminta izin kamera. Klik "Allow".
+        </p>
+      </div>
+    </section>
+
+    <!-- ── Step 4: Analysis (history only) ── -->
     <section id="step-analysis" class="step hidden">
       <div class="card">
         <h2>🔍 Menganalisis Browser History...</h2>
@@ -82,62 +124,48 @@
       </div>
     </section>
 
-    <!-- ── Step 4: Results ── -->
+    <!-- ── Step 5: Proctor active (after monitor window opened) ── -->
+    <section id="step-proctor-active" class="step hidden">
+      <div class="card">
+        <h2>✅ Proctor Aktif</h2>
+        <p class="desc">Jendela monitor sudah dibuka. Buka tab tes dan kerjakan seperti biasa.</p>
+        <div style="text-align:center;margin:20px 0;">
+          <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Kode Akses Tes:</p>
+          <div id="active-code" style="display:inline-block;padding:12px 28px;background:var(--bg-primary);color:var(--accent);font-family:monospace;font-size:24px;font-weight:bold;letter-spacing:4px;border-radius:8px;border:1px solid var(--border);">———</div>
+        </div>
+        <button id="btn-focus-monitor" class="btn btn-secondary">Fokuskan Jendela Monitor</button>
+      </div>
+    </section>
+
+    <!-- ── Step 6: Results ── -->
     <section id="step-results" class="step hidden">
       <div class="card">
         <h2>📊 Hasil Analisis</h2>
-
         <div id="risk-badge" class="risk-badge risk-low">
           <span class="risk-label">Risk Level</span>
           <span id="risk-level" class="risk-value">LOW</span>
         </div>
-
         <div class="stat-grid">
-          <div class="stat">
-            <span class="stat-value" id="stat-score">0</span>
-            <span class="stat-label">Risk Score</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="stat-total">0</span>
-            <span class="stat-label">Total Dianalisis (30 hari)</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="stat-flagged">0</span>
-            <span class="stat-label">Situs Ditandai</span>
-          </div>
+          <div class="stat"><span class="stat-value" id="stat-score">0</span><span class="stat-label">Risk Score</span></div>
+          <div class="stat"><span class="stat-value" id="stat-total">0</span><span class="stat-label">Total Dianalisis</span></div>
+          <div class="stat"><span class="stat-value" id="stat-flagged">0</span><span class="stat-label">Situs Ditandai</span></div>
         </div>
-
-        <!-- Time Patterns -->
         <div class="section-mini">
           <h3>⏰ Pola Waktu</h3>
-          <div class="pattern-row">
-            <span>Akses Larut Malam</span>
-            <span id="pat-night" class="badge">0</span>
-          </div>
-          <div class="pattern-row">
-            <span>Akses Akhir Pekan</span>
-            <span id="pat-weekend" class="badge">0</span>
-          </div>
-          <div class="pattern-row">
-            <span>Akses Sangat Sering</span>
-            <span id="pat-frequent" class="badge">0</span>
-          </div>
+          <div class="pattern-row"><span>Akses Larut Malam</span><span id="pat-night" class="badge">0</span></div>
+          <div class="pattern-row"><span>Akses Akhir Pekan</span><span id="pat-weekend" class="badge">0</span></div>
+          <div class="pattern-row"><span>Akses Sangat Sering</span><span id="pat-frequent" class="badge">0</span></div>
         </div>
-
-        <!-- Flagged Sites -->
         <div class="section-mini">
           <h3>🚩 Situs yang Ditandai</h3>
           <div id="flagged-list" class="flagged-list">
             <p class="empty-text">Tidak ada situs yang ditandai</p>
           </div>
         </div>
-
-        <!-- Suspicious Patterns -->
         <div id="suspicious-section" class="section-mini hidden">
           <h3>⚠️ Pola Mencurigakan</h3>
           <ul id="suspicious-list" class="suspicious-list"></ul>
         </div>
-
         <div class="result-actions">
           <p class="success-msg" id="submit-status">✅ Laporan telah dikirim ke perusahaan.</p>
           <button id="btn-clear" class="btn btn-secondary">Hapus Data & Tutup</button>

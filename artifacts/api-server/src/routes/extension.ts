@@ -117,14 +117,239 @@ router.post("/validate-token", async (req: Request, res: Response) => {
       return;
     }
 
+    // Look up the access code for this session (for proctoring) and the candidate URL
+    let accessCode = "";
+    let candidateUrl = "";
+    try {
+      const { data: invite } = await supabase
+        .from("interview_invites")
+        .select("access_code")
+        .eq("session_id", record.session_id)
+        .maybeSingle();
+      if (invite?.access_code) accessCode = invite.access_code;
+
+      const { data: session } = await supabase
+        .from("interview_sessions")
+        .select('"companyId"')
+        .eq("id", record.session_id)
+        .maybeSingle();
+      if (session?.companyId) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("slug, customDomain")
+          .eq("id", session.companyId)
+          .maybeSingle();
+        const slug = company?.slug;
+        const domain = (company as { customDomain?: string } | null)?.customDomain;
+        const base = domain ? `https://${domain}` : "https://hiregood.one";
+        if (slug) candidateUrl = `${base}/c/${slug}`;
+      }
+    } catch (err) {
+      logger.warn({ err }, "validate-token: failed to resolve access code / URL");
+    }
+
     res.json({
       valid: true,
       sessionId: record.session_id,
+      accessCode,
+      candidateUrl,
       config: { candidateEmail: record.candidate_email }
     });
   } catch (err) {
     logger.error({ err }, "validate-token error");
     res.status(500).json({ valid: false, message: "Server error" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROCTORING (Task #15): start, event, snapshot, finish
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function authProctorToken(extensionToken: string, sessionId: string) {
+  const supabase = getSupabase();
+  const { data: record } = await supabase
+    .from("extension_tokens")
+    .select("session_id, expires_at")
+    .eq("token", extensionToken.toUpperCase())
+    .single();
+  if (!record || record.session_id !== sessionId) return { ok: false, reason: "Token tidak valid untuk sesi ini" };
+  if (new Date(record.expires_at) < new Date()) return { ok: false, reason: "Token kadaluarsa" };
+  return { ok: true, supabase };
+}
+
+// POST /api/extension/proctoring/start — record consent + start time
+router.post("/proctoring/start", async (req: Request, res: Response) => {
+  const { extensionToken, sessionId } = req.body as { extensionToken: string; sessionId: string };
+  if (!extensionToken || !sessionId) {
+    res.status(400).json({ success: false, error: "extensionToken and sessionId required" });
+    return;
+  }
+  const auth = await authProctorToken(extensionToken, sessionId);
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: auth.reason });
+    return;
+  }
+  const supabase = auth.supabase!;
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("_interview_sessions")
+    .update({
+      proctoring_consent_at: now,
+      proctoring_started_at: now,
+      updated_at: now,
+    })
+    .eq("id", sessionId);
+  if (error) logger.warn({ error }, "proctoring/start update failed");
+  logger.info({ sessionId }, "Proctoring started");
+  res.json({ success: true });
+});
+
+// POST /api/extension/proctoring/event — log a single event (tab_switch, blur, etc.)
+router.post("/proctoring/event", async (req: Request, res: Response) => {
+  const { extensionToken, sessionId, event } = req.body as {
+    extensionToken: string;
+    sessionId: string;
+    event: { type: string; severity?: string; details?: string; timestamp?: string; metadata?: unknown };
+  };
+  if (!extensionToken || !sessionId || !event?.type) {
+    res.status(400).json({ success: false, error: "extensionToken, sessionId, event.type required" });
+    return;
+  }
+  const auth = await authProctorToken(extensionToken, sessionId);
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: auth.reason });
+    return;
+  }
+  const supabase = auth.supabase!;
+  const { error } = await supabase.from("_proctoring_events").insert({
+    session_id: sessionId,
+    token: extensionToken.toUpperCase(),
+    event_type: event.type,
+    severity: event.severity || "info",
+    details: event.details || null,
+    metadata: event.metadata || null,
+    occurred_at: event.timestamp || new Date().toISOString(),
+  });
+  if (error) {
+    logger.warn({ error }, "proctoring/event insert failed");
+    res.status(500).json({ success: false, error: error.message });
+    return;
+  }
+  res.json({ success: true });
+});
+
+// POST /api/extension/proctoring/snapshot — accept JPEG base64, upload to Supabase Storage
+router.post("/proctoring/snapshot", async (req: Request, res: Response) => {
+  const { extensionToken, sessionId, imageBase64, width, height } = req.body as {
+    extensionToken: string;
+    sessionId: string;
+    imageBase64: string;
+    width?: number;
+    height?: number;
+  };
+  if (!extensionToken || !sessionId || !imageBase64) {
+    res.status(400).json({ success: false, error: "extensionToken, sessionId, imageBase64 required" });
+    return;
+  }
+  const auth = await authProctorToken(extensionToken, sessionId);
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: auth.reason });
+    return;
+  }
+  const supabase = auth.supabase!;
+  try {
+    const buffer = Buffer.from(imageBase64, "base64");
+    const filename = `${sessionId}/${Date.now()}.jpg`;
+    const { error: upErr } = await supabase
+      .storage
+      .from("proctoring-snapshots")
+      .upload(filename, buffer, { contentType: "image/jpeg", upsert: false });
+    if (upErr) {
+      logger.warn({ upErr }, "snapshot storage upload failed");
+      res.status(500).json({ success: false, error: upErr.message });
+      return;
+    }
+    const { error: insErr } = await supabase.from("_proctoring_snapshots").insert({
+      session_id: sessionId,
+      token: extensionToken.toUpperCase(),
+      storage_path: filename,
+      width: width || null,
+      height: height || null,
+      bytes: buffer.byteLength,
+    });
+    if (insErr) logger.warn({ insErr }, "snapshot row insert failed");
+    res.json({ success: true, path: filename });
+  } catch (err) {
+    logger.error({ err }, "proctoring/snapshot error");
+    res.status(500).json({ success: false, error: "Internal error" });
+  }
+});
+
+// POST /api/extension/proctoring/finish — mark proctoring finished
+router.post("/proctoring/finish", async (req: Request, res: Response) => {
+  const { extensionToken, sessionId } = req.body as { extensionToken: string; sessionId: string };
+  if (!extensionToken || !sessionId) {
+    res.status(400).json({ success: false, error: "extensionToken and sessionId required" });
+    return;
+  }
+  const auth = await authProctorToken(extensionToken, sessionId);
+  if (!auth.ok) {
+    res.status(401).json({ success: false, error: auth.reason });
+    return;
+  }
+  const supabase = auth.supabase!;
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("_interview_sessions")
+    .update({ proctoring_finished_at: now, updated_at: now })
+    .eq("id", sessionId);
+  if (error) logger.warn({ error }, "proctoring/finish update failed");
+  logger.info({ sessionId }, "Proctoring finished");
+  res.json({ success: true });
+});
+
+// GET /api/extension/proctoring/data?sessionId=… — HR fetches events + signed snapshot URLs
+router.get("/proctoring/data", async (req: Request, res: Response) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  const sessionId = req.query.sessionId as string;
+  if (!sessionId) {
+    res.status(400).json({ success: false, error: "sessionId required" });
+    return;
+  }
+  try {
+    const supabase = getSupabase();
+    const [eventsRes, snapsRes] = await Promise.all([
+      supabase.from("_proctoring_events")
+        .select("event_type, severity, details, occurred_at")
+        .eq("session_id", sessionId)
+        .order("occurred_at", { ascending: true })
+        .limit(500),
+      supabase.from("_proctoring_snapshots")
+        .select("storage_path, taken_at, width, height")
+        .eq("session_id", sessionId)
+        .order("taken_at", { ascending: true })
+        .limit(200),
+    ]);
+
+    const events = eventsRes.data || [];
+    const snaps = snapsRes.data || [];
+
+    // Generate signed URLs (1 hour) for each snapshot
+    const snapshots = await Promise.all(snaps.map(async (s) => {
+      const { data } = await supabase.storage
+        .from("proctoring-snapshots")
+        .createSignedUrl(s.storage_path, 60 * 60);
+      return { ...s, url: data?.signedUrl || null };
+    }));
+
+    res.json({ success: true, events, snapshots });
+  } catch (err) {
+    logger.error({ err }, "proctoring/data error");
+    res.status(500).json({ success: false, error: "Internal error" });
   }
 });
 

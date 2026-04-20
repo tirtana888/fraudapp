@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>FraudGuard Proctor — Live</title>
+  <link rel="stylesheet" href="monitor.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>FraudGuard Proctor — Live</span>
+    </div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+
+  <div class="main">
+    <div class="cam-wrap">
+      <video id="cam" autoplay muted playsinline></video>
+      <canvas id="snap" hidden></canvas>
+      <div class="cam-status" id="cam-status">Menyiapkan kamera…</div>
+    </div>
+
+    <div class="info">
+      <h2>Tes Sedang Berjalan</h2>
+      <p class="muted">Jangan tutup jendela ini sampai tes selesai.</p>
+
+      <div class="codebox">
+        <div class="label">Kode Akses Tes</div>
+        <div class="code" id="access-code">———</div>
+        <button id="copy-code" class="btn-mini">Salin</button>
+      </div>
+
+      <button id="open-test" class="btn-primary">Buka Halaman Tes</button>
+
+      <div class="stats">
+        <div><span class="stat-label">Snapshot</span><span id="snap-count">0</span></div>
+        <div><span class="stat-label">Pelanggaran</span><span id="event-count">0</span></div>
+      </div>
+
+      <div class="rules">
+        <strong>Selama tes:</strong>
+        <ul>
+          <li>Wajah harus terlihat di kamera</li>
+          <li>Jangan pindah tab atau buka aplikasi lain</li>
+          <li>Jangan copy / paste</li>
+          <li>Jangan tutup jendela ini</li>
+        </ul>
+      </div>
+
+      <button id="finish" class="btn-secondary">Saya Sudah Selesai Tes</button>
+    </div>
+  </div>
+
+  <script src="monitor.js" type="module"></script>
+</body>
+</html>
