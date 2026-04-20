@@ -120,7 +120,10 @@ btnValidate.addEventListener('click', async () => {
       await chrome.storage.local.set({ extensionToken: token, sessionId: response.sessionId });
       showStep('consent');
     } else {
-      showError(response?.error || 'Token tidak valid atau sudah kadaluarsa');
+      const stored = await chrome.storage.local.get(['fg_api_base']);
+      const base = stored.fg_api_base || 'https://hiregood.one/api/extension';
+      const origin = base.replace(/\/api\/extension\/?$/, '');
+      showError(`${response?.error || 'Token tidak valid atau sudah kadaluarsa'}\n\nServer yang dihubungi: ${origin}\nJika salah, ubah di "Pengaturan Server".`);
     }
   } catch (err) {
     showError('Gagal memvalidasi token. Periksa koneksi internet Anda.');

@@ -89,14 +89,21 @@ router.post("/validate-token", async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
 
+    const tokenUpper = extensionToken.toUpperCase().trim();
     const { data: record, error } = await supabase
       .from("extension_tokens")
       .select("token, session_id, candidate_email, expires_at, used")
-      .eq("token", extensionToken.toUpperCase())
-      .single();
+      .eq("token", tokenUpper)
+      .maybeSingle();
 
-    if (error || !record) {
-      res.json({ valid: false, message: "Token tidak ditemukan" });
+    if (error) {
+      logger.error({ err: error, tokenUpper }, "validate-token db query error");
+      res.json({ valid: false, message: `DB error: ${error.message}` });
+      return;
+    }
+    if (!record) {
+      logger.info({ tokenUpper }, "Token not found in extension_tokens");
+      res.json({ valid: false, message: "Token tidak ditemukan di server ini" });
       return;
     }
 
