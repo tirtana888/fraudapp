@@ -345,6 +345,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
     try {
       const nextQuestion = await generateNextQuestion({
+        sessionId,
         role: candidateRole,
         history: newHistory,
         assessmentData: {

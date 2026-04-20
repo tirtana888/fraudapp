@@ -1,8 +1,10 @@
 import { FraudAnalysis, RiskLevel } from '../types';
+import { supabase } from './supabase';
 
 // ==========================================
-// GENAI SERVICE - Fraud Analysis with AI
-// Cloud Functions have been removed; all calls log a warning and return fallback.
+// GENAI SERVICE
+// Interview chat now calls /api/ai/interview-question (OpenAI on the server).
+// Other functions remain stubbed pending a separate implementation.
 // ==========================================
 
 export const analyzeFraudRisk = async (
@@ -12,7 +14,7 @@ export const analyzeFraudRisk = async (
   sjtAnswers?: Record<string, any>,
   tier: 'Freemium' | 'Premium' = 'Freemium'
 ): Promise<FraudAnalysis> => {
-  console.warn('[GENAI] analyzeFraudRisk: Cloud Functions removed. Returning fallback analysis.');
+  console.warn('[GENAI] analyzeFraudRisk: not yet implemented in API server. Returning fallback analysis.');
   return {
     scores: { pressure: 50, rationalization: 50, opportunity: 50 },
     riskLevel: RiskLevel.MEDIUM,
@@ -29,7 +31,7 @@ export const generateAIReport = async (
   tier: 'Freemium' | 'Premium' = 'Freemium',
   includeAdvancedAnalysis: boolean = false
 ): Promise<any> => {
-  console.warn('[GENAI] generateAIReport: Cloud Functions removed.');
+  console.warn('[GENAI] generateAIReport: not yet implemented in API server.');
   return null;
 };
 
@@ -41,19 +43,48 @@ export const calculateAssessmentScores = (
   return { pressureScore: 50, rationalizationScore: 50, opportunityScore: 50 };
 };
 
+const FALLBACK_QUESTIONS = [
+  'Ceritakan tentang pengalaman kerja Anda yang paling menantang.',
+  'Bagaimana Anda menangani situasi di mana Anda harus membuat keputusan etis yang sulit?',
+  'Apakah Anda pernah menghadapi tekanan untuk melanggar aturan? Bagaimana Anda meresponsnya?',
+  'Apa yang akan Anda lakukan jika Anda melihat rekan kerja melakukan sesuatu yang tidak etis?',
+  'Terima kasih atas jawaban Anda. Sesi wawancara telah selesai.'
+];
+
 export const generateNextQuestion = async (context: {
+  sessionId?: string;
   role: string;
   history: Array<{ speaker: string; text: string }>;
   assessmentData?: any;
 }): Promise<string> => {
-  console.warn('[GENAI] generateNextQuestion: Cloud Functions removed. Using fallback questions.');
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const resp = await fetch('/api/ai/interview-question', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        sessionId: context.sessionId,
+        role: context.role,
+        history: context.history,
+        assessmentData: context.assessmentData,
+      }),
+    });
+
+    const json = await resp.json().catch(() => null) as { success?: boolean; question?: string; error?: string } | null;
+    if (resp.ok && json?.success && json.question) {
+      return json.question;
+    }
+    console.warn('[GENAI] interview-question failed:', resp.status, json?.error);
+  } catch (err) {
+    console.error('[GENAI] interview-question request error:', err);
+  }
+
+  // Fallback: rotate through hardcoded questions so the assessment is never blocked.
   const questionCount = context.history.filter(h => h.speaker === 'ai').length;
-  const fallbackQuestions = [
-    'Ceritakan tentang pengalaman kerja Anda yang paling menantang.',
-    'Bagaimana Anda menangani situasi di mana Anda harus membuat keputusan etis yang sulit?',
-    'Apakah Anda pernah menghadapi tekanan untuk melanggar aturan? Bagaimana Anda meresponsnya?',
-    'Apa yang akan Anda lakukan jika Anda melihat rekan kerja melakukan sesuatu yang tidak etis?',
-    'Terima kasih atas jawaban Anda. Sesi wawancara telah selesai.'
-  ];
-  return fallbackQuestions[Math.min(questionCount, fallbackQuestions.length - 1)];
+  return FALLBACK_QUESTIONS[Math.min(questionCount, FALLBACK_QUESTIONS.length - 1)];
 };

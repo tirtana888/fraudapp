@@ -30,10 +30,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## API Server (artifacts/api-server)
 
-- **Routes**: `/api/healthz`, `/api/send-email` (JWT-auth), `/api/send-email-public` (session-verified), `/api/extension/*` (token/JWT-auth)
+- **Routes**: `/api/healthz`, `/api/send-email` (JWT-auth), `/api/send-email-public` (session-verified), `/api/extension/*` (token/JWT-auth), `/api/ai/*` (JWT or session-verified)
 - **Email**: Resend SDK — templates: `assessment_invite`, `candidate_welcome`, `assessment_complete`, `hire_notification`, `rejection_notification`
 - **Extension API**: `generate-token` (JWT), `validate-token` (public), `submit-gambling` (token), `submit-proctoring` (token)
-- **Secrets required**: `RESEND_API_KEY`, `SESSION_SECRET`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **AI API**:
+  - `POST /api/ai/interview-question` — OpenAI `gpt-4o-mini` generates the next contextual interview question in Indonesian. Accepts `{ sessionId?, role, history, assessmentData? }`. Frontend stub `generateNextQuestion` in `services/genai.ts` calls this; on failure falls back to 5 hardcoded questions so an in-progress assessment is never blocked.
+  - `POST /api/ai/parse-cv` — Mistral OCR (`mistral-ocr-latest`) extracts text from the uploaded PDF (downloaded server-side via `SUPABASE_SERVICE_KEY` from `candidate-documents`), then `mistral-small-latest` with `response_format: json_object` extracts structured `ParsedCVData` fields and writes them to `_interview_sessions.cv_parsed_data`. Frontend stub `parseCVWithMistral` in `services/supabase.ts` calls this; throws on failure so `CandidateDetail.handleParseCV` shows an error toast. Image-only / unreadable scans return 422.
+- **Secrets required**: `RESEND_API_KEY`, `SESSION_SECRET`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`
 
 ## Chrome Extension (fraudguard-extension/)
 

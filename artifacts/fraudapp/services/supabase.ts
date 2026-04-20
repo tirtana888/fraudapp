@@ -761,8 +761,37 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
 // ==========================================
 
 export const parseCVWithMistral = async (cvUrl: string, sessionId: string): Promise<any> => {
-  console.warn('[DOC-PARSE] parseCVWithMistral: Cloud Functions removed. CV parsing not available.');
-  return null;
+  if (!cvUrl || !sessionId) {
+    console.warn('[DOC-PARSE] parseCVWithMistral: missing cvUrl or sessionId');
+    return null;
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const resp = await fetch('/api/ai/parse-cv', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ sessionId, cvUrl }),
+    });
+
+    const json = await resp.json().catch(() => null) as { success?: boolean; parsedData?: any; error?: string } | null;
+
+    if (!resp.ok || !json?.success) {
+      const errMsg = json?.error || `HTTP ${resp.status}`;
+      console.error('[DOC-PARSE] parseCVWithMistral failed:', errMsg);
+      throw new Error(errMsg);
+    }
+
+    return json.parsedData ?? null;
+  } catch (err) {
+    console.error('[DOC-PARSE] parseCVWithMistral exception:', err);
+    throw err;
+  }
 };
 
 export const initiateBackgroundCheck = async (candidateId: string, candidateName: string): Promise<string> => {
