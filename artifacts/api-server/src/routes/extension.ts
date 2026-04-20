@@ -174,8 +174,8 @@ router.post("/submit-gambling", async (req: Request, res: Response) => {
     // Store on session + mark token used
     const [updateErr, tokenErr] = await Promise.all([
       supabase
-        .from("interview_sessions")
-        .update({ gambling_analysis: gamblingAnalysis, updatedAt: new Date().toISOString() })
+        .from("_interview_sessions")
+        .update({ gambling_analysis: gamblingAnalysis, updated_at: new Date().toISOString() })
         .eq("id", record.session_id)
         .then(r => r.error),
       supabase
@@ -239,8 +239,8 @@ router.post("/submit-proctoring", async (req: Request, res: Response) => {
     };
 
     const { error } = await supabase
-      .from("interview_sessions")
-      .update({ proctoring_data: proctoring, updatedAt: new Date().toISOString() })
+      .from("_interview_sessions")
+      .update({ proctoring_data: proctoring, updated_at: new Date().toISOString() })
       .eq("id", sessionId);
 
     if (error) logger.warn({ error }, "Failed to update proctoring_data");
