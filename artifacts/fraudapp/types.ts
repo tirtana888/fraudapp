@@ -530,6 +530,15 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     category: 'verification'
   },
   {
+    id: 'reference_check',
+    name: 'Cek Referensi Kerja',
+    description: 'Verifikasi pengalaman kerja kandidat via WhatsApp ke HR perusahaan sebelumnya',
+    credits: 30,
+    isMandatory: false,
+    icon: 'PhoneCall',
+    category: 'verification'
+  },
+  {
     id: 'gambling_screening',
     name: 'Test Judol (Browser History)',
     description: 'Screening riwayat browser kandidat untuk mendeteksi aktivitas judi online via Chrome Extension',

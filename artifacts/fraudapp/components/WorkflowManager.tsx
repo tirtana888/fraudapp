@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Save, X, ShieldCheck, Brain, Video, Users, Search,
   FileCheck, Share2, CheckCircle, XCircle, AlertCircle, ArrowRight,
-  GripVertical, Layout, Box, Coins, Clock, Globe
+  GripVertical, Layout, Box, Coins, Clock, Globe, PhoneCall
 } from 'lucide-react';
 import { Workflow, WorkflowStep, WORKFLOW_TEMPLATES, WorkflowTemplate } from '../types';
 import { supabase, COLLECTIONS, createWorkflow, updateWorkflow, deleteWorkflow } from '../services/supabase';
@@ -30,7 +30,8 @@ const iconMap: { [key: string]: any } = {
   Share2,
   CheckCircle,
   XCircle,
-  Globe
+  Globe,
+  PhoneCall
 };
 
 const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode }) => {
@@ -132,6 +133,8 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       const ORDER_PRIORITY: Record<string, number> = {
         integrity_assessment: 0,
         gambling_screening: 10, // Must come after integrity_assessment
+        background_check: 20,
+        reference_check: 30, // After background_check
         hire_decision: 900,
         reject_decision: 901,
       };

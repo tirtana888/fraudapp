@@ -8,6 +8,7 @@ export type RecruitmentStage =
     | 'interview'
     | 'background_check'
     | 'bc_completed'
+    | 'reference_check'
     | 'hired'
     | 'rejected';
 
@@ -19,6 +20,7 @@ export const getStageLabel = (stage: RecruitmentStage): string => {
         'interview': 'Wawancara Scheduled',
         'background_check': 'Background Check Process',
         'bc_completed': 'Background Check Selesai',
+        'reference_check': 'Cek Referensi Kerja',
         'hired': 'Hire',
         'rejected': 'Tolak'
     };
@@ -62,9 +64,9 @@ export const updateCandidateStage = async (
         if (error) throw error;
         console.log(`[STAGE-TRACKER] ✅ Stage updated successfully to ${newStage}`);
 
-        // Auto-trigger: when stage moves to background_check, kick off
-        // reference-check request to candidate (best-effort, non-fatal).
-        if (newStage === 'background_check') {
+        // Auto-trigger: when stage moves to background_check OR reference_check,
+        // kick off reference-check request to candidate (best-effort, non-fatal).
+        if (newStage === 'background_check' || newStage === 'reference_check') {
             try {
                 const { data: full } = await supabase
                     .from(COLLECTIONS.SESSIONS)
@@ -109,6 +111,7 @@ export const getStageColor = (stage: RecruitmentStage): string => {
         'interview': 'purple',
         'background_check': 'blue',
         'bc_completed': 'green',
+        'reference_check': 'cyan',
         'hired': 'green',
         'rejected': 'red'
     };
@@ -123,6 +126,7 @@ export const getStageIcon = (stage: RecruitmentStage): string => {
         'interview': 'MessageSquare',
         'background_check': 'Search',
         'bc_completed': 'CheckCircle2',
+        'reference_check': 'PhoneCall',
         'hired': 'UserCheck',
         'rejected': 'XCircle'
     };
