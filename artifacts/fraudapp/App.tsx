@@ -11,6 +11,7 @@ import SignUpPage from './components/SignUpPage';
 import SettingsPage from './components/SettingsPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicAssessment from './components/PublicAssessment';
+import PublicReferenceForm from './components/PublicReferenceForm';
 import AssessmentSettings from './components/AssessmentSettings';
 import PricingView from './components/PricingView';
 import CandidatesManualInvite from './components/CandidatesManualInvite';
@@ -143,7 +144,7 @@ const App: React.FC = () => {
       return false;
     }
 
-    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname === '/background-check-callback' || pathname === '/confirm-interview';
+    return params.get('mode') === 'assess' || pathname.startsWith('/jobs/') || pathname.startsWith('/careers/') || pathname.startsWith('/reference/') || pathname === '/background-check-callback' || pathname === '/confirm-interview';
   });
 
   const [isBackgroundCheckCallback, setIsBackgroundCheckCallback] = useState(() => {
@@ -702,6 +703,15 @@ const App: React.FC = () => {
 
   // PRIORITY RENDER: Check Public Mode First
   if (isPublicMode) {
+    // Reference Check public form
+    const refMatch = window.location.pathname.match(/^\/reference\/([^/]+)\/?$/);
+    if (refMatch) {
+      return (
+        <ToastProvider>
+          <PublicReferenceForm token={refMatch[1]} />
+        </ToastProvider>
+      );
+    }
     // Interview Confirmation Page
     if (window.location.pathname === '/confirm-interview') {
       return (

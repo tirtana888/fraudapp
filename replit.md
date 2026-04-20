@@ -30,13 +30,30 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## API Server (artifacts/api-server)
 
-- **Routes**: `/api/healthz`, `/api/send-email` (JWT-auth), `/api/send-email-public` (session-verified), `/api/extension/*` (token/JWT-auth), `/api/ai/*` (JWT or session-verified)
+- **Routes**: `/api/healthz`, `/api/send-email` (JWT-auth), `/api/send-email-public` (session-verified), `/api/extension/*` (token/JWT-auth), `/api/ai/*` (JWT or session-verified), `/api/reference/*` (mixed: HR JWT + public token + Twilio webhook)
 - **Email**: Resend SDK — templates: `assessment_invite`, `candidate_welcome`, `assessment_complete`, `hire_notification`, `rejection_notification`
 - **Extension API**: `generate-token` (JWT), `validate-token` (public), `submit-gambling` (token), `submit-proctoring` (token)
 - **AI API**:
   - `POST /api/ai/interview-question` — OpenAI `gpt-4o-mini` generates the next contextual interview question in Indonesian. Accepts `{ sessionId?, role, history, assessmentData? }`. Frontend stub `generateNextQuestion` in `services/genai.ts` calls this; on failure falls back to 5 hardcoded questions so an in-progress assessment is never blocked.
   - `POST /api/ai/parse-cv` — Mistral OCR (`mistral-ocr-latest`) extracts text from the uploaded PDF (downloaded server-side via `SUPABASE_SERVICE_KEY` from `candidate-documents`), then `mistral-small-latest` with `response_format: json_object` extracts structured `ParsedCVData` fields and writes them to `_interview_sessions.cv_parsed_data`. Frontend stub `parseCVWithMistral` in `services/supabase.ts` calls this; throws on failure so `CandidateDetail.handleParseCV` shows an error toast. Image-only / unreadable scans return 422.
-- **Secrets required**: `RESEND_API_KEY`, `SESSION_SECRET`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`
+- **Secrets required**: `RESEND_API_KEY`, `SESSION_SECRET`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` (e.g. `+14155238886`), `TWILIO_REFCHECK_CONTENT_SID` (Content Template SID with 4 vars + 2 quick-reply buttons "Ya, benar" / "Tidak, tidak pernah"), `TWILIO_CANDIDATE_FORM_CONTENT_SID` (Content Template for candidate notification, vars 1=name, 2=company, 3=formLink), optional `TWILIO_WEBHOOK_AUTH_TOKEN`, `TWILIO_WEBHOOK_STRICT` (default `true` — set `false` only for local dev when Twilio cannot validate the signature URL), `PUBLIC_APP_URL`
+
+## Reference Check (Cek Referensi Kerja via WhatsApp) — Task #11
+
+- **Tables (run `artifacts/fraudapp/migrations/2026-04-20-reference-checks.sql`)**: `_reference_check_requests`, `_reference_check_responses`, plus camelCase view `reference_check_requests` joining responses.
+- **API**:
+  - `POST /api/reference/create-request` (HR JWT) — generates token, emails + WAs candidate the form link `${PUBLIC_APP_URL}/reference/<token>`. Deducts 1 credit (best-effort).
+  - `GET /api/reference/:token` (public) — form metadata.
+  - `POST /api/reference/:token/submit` (public) — accepts up to 3 references, normalizes phone to E.164 (+62), inserts response rows, sends Twilio Content template per HR (vars: 1=candidateName, 2=prevCompany, 3=prevRole, 4=prevPeriod), deducts 10 credits per outgoing WA.
+  - `POST /api/reference/twilio-webhook` (public, X-Twilio-Signature verified) — parses ButtonText / Body for Ya / Tidak / free-text, updates response status (`confirmed` | `denied` | `pending` | `no_response`), replies thank-you.
+  - `POST /api/reference/:requestId/resend/:responseId` (HR JWT) — resends template to a specific HR (allowed only after 48h with no reply).
+  - `GET /api/reference/by-session/:sessionId` (HR JWT) — list requests + nested responses.
+- **Frontend**:
+  - `services/referenceService.ts` — typed client.
+  - `components/PublicReferenceForm.tsx` mounted at `/reference/:token` via App.tsx public-mode route.
+  - `components/candidate-detail/ReferenceCheckCard.tsx` — rendered in CandidateDetail Background tab (twice — same spots as ExtensionScreeningCard). Polls every 30s; shows status badges and resend button after 48h.
+  - `services/stageTracker.ts` — when stage transitions to `background_check`, auto-calls `createReferenceRequest` (best-effort, non-fatal).
+- **Twilio template setup**: create a WhatsApp Content Template with body using `{{1}}` candidate name, `{{2}}` prev company, `{{3}}` prev role, `{{4}}` prev period, plus 2 quick-reply buttons titled "Ya, benar" and "Tidak, tidak pernah". Copy the resulting `HX...` SID into `TWILIO_REFCHECK_CONTENT_SID`. Twilio Console → Messaging → Inbound webhook URL must point to `${PUBLIC_APP_URL}/api/reference/twilio-webhook`.
 
 ## Chrome Extension (fraudguard-extension/)
 
