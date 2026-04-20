@@ -749,15 +749,38 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
     throw new Error('Ukuran file terlalu besar. Maksimal 5MB.');
   }
 
-  const storagePath = `cvs/${applicationId}/${file.name}`;
-  const { error } = await supabase.storage
-    .from('candidate-documents')
-    .upload(storagePath, file, { upsert: true });
+  // Public job applicants are unauthenticated, and Supabase Storage RLS on the
+  // `candidate-documents` bucket blocks anonymous uploads. Route the upload
+  // through our API server, which uses the service key to bypass RLS safely.
+  const fileBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // strip the "data:<mime>;base64," prefix
+      const idx = result.indexOf(',');
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
 
-  if (error) throw new Error(`Gagal upload dokumen: ${error.message}`);
+  const resp = await fetch('/api/upload/cv-public', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      applicationId,
+      fileName: file.name,
+      fileType: file.type,
+      fileBase64,
+    }),
+  });
 
-  const { data } = supabase.storage.from('candidate-documents').getPublicUrl(storagePath);
-  return data.publicUrl;
+  const json = await resp.json().catch(() => ({} as any));
+  if (!resp.ok || !json?.success || !json?.url) {
+    const msg = json?.error || `HTTP ${resp.status}`;
+    throw new Error(`Gagal upload dokumen: ${msg}`);
+  }
+  return json.url as string;
 };
 
 // ==========================================
