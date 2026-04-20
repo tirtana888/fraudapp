@@ -51,12 +51,20 @@ const FALLBACK_QUESTIONS = [
   'Terima kasih atas jawaban Anda. Sesi wawancara telah selesai.'
 ];
 
+export interface GeneratedQuestion {
+  question: string;
+  fallbackUsed: boolean;
+  error?: string;
+}
+
 export const generateNextQuestion = async (context: {
   sessionId?: string;
   role: string;
   history: Array<{ speaker: string; text: string }>;
   assessmentData?: any;
-}): Promise<string> => {
+}): Promise<GeneratedQuestion> => {
+  let errorMessage: string | undefined;
+
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
@@ -77,14 +85,21 @@ export const generateNextQuestion = async (context: {
 
     const json = await resp.json().catch(() => null) as { success?: boolean; question?: string; error?: string } | null;
     if (resp.ok && json?.success && json.question) {
-      return json.question;
+      return { question: json.question, fallbackUsed: false };
     }
-    console.warn('[GENAI] interview-question failed:', resp.status, json?.error);
+    errorMessage = json?.error || `HTTP ${resp.status}`;
+    console.warn('[GENAI] interview-question failed:', resp.status, errorMessage);
   } catch (err) {
+    errorMessage = err instanceof Error ? err.message : 'Network error';
     console.error('[GENAI] interview-question request error:', err);
   }
 
-  // Fallback: rotate through hardcoded questions so the assessment is never blocked.
+  // Fallback: rotate through hardcoded questions so the assessment is never blocked,
+  // but signal to the caller so they can show a notice.
   const questionCount = context.history.filter(h => h.speaker === 'ai').length;
-  return FALLBACK_QUESTIONS[Math.min(questionCount, FALLBACK_QUESTIONS.length - 1)];
+  return {
+    question: FALLBACK_QUESTIONS[Math.min(questionCount, FALLBACK_QUESTIONS.length - 1)],
+    fallbackUsed: true,
+    error: errorMessage,
+  };
 };

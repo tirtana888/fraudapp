@@ -5,6 +5,7 @@ import { saveSessionToDB, getCompanyById, updateSessionInDB, verifyAccessCode, m
 import { generateNextQuestion, analyzeFraudRisk, calculateAssessmentScores } from '../services/genai';
 import { AssessmentItem, CompanyProfile, InterviewSession, SJTItem, AssessmentInvite, FraudAnalysis, RiskLevel, WorkflowStep } from '../types';
 import { FRAUD_TRIANGLE_QUESTIONS, SJT_SCENARIOS, FINANCIAL_STRAIN_QUESTIONS } from '../constants/assessment_questions';
+import { useToast } from './Toast';
 import AssessmentProgress from './AssessmentProgress';
 import ChatMessage from './ChatMessage';
 import ConfettiAnimation from './ConfettiAnimation';
@@ -25,6 +26,7 @@ interface PublicAssessmentProps {
 }
 
 const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propCompanyId }) => {
+  const toast = useToast();
   const [step, setStep] = useState<AssessmentStep>(propCompanyId ? 'loading' : 'login');
   const [companyId, setCompanyId] = useState<string | null>(propCompanyId);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
@@ -344,7 +346,7 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
     await updateSessionInDB(sessionId, { transcript: newHistory });
 
     try {
-      const nextQuestion = await generateNextQuestion({
+      const result = await generateNextQuestion({
         sessionId,
         role: candidateRole,
         history: newHistory,
@@ -354,11 +356,16 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
           financialStrainResults: finAnswers
         }
       });
-      const updatedHistory = [...newHistory, { speaker: 'ai', text: nextQuestion } as const];
+
+      if (result.fallbackUsed) {
+        toast.error(`AI interviewer sedang bermasalah, melanjutkan dengan pertanyaan cadangan${result.error ? ` (${result.error})` : ''}.`);
+      }
+
+      const updatedHistory = [...newHistory, { speaker: 'ai', text: result.question } as const];
       setChatHistory(updatedHistory);
       await updateSessionInDB(sessionId, { transcript: updatedHistory });
 
-      if (nextQuestion.toLowerCase().includes("sesi wawancara telah selesai")) {
+      if (result.question.toLowerCase().includes("sesi wawancara telah selesai")) {
         setTimeout(handleFinishAssessment, 2000);
       }
     } catch (error) {

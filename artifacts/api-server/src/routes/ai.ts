@@ -29,7 +29,12 @@ async function verifySession(sessionId: string): Promise<boolean> {
   }
 }
 
-async function verifyJwtOrSession(req: Request, sessionId?: string): Promise<{ ok: boolean; reason?: string }> {
+type AuthResult =
+  | { ok: true; kind: "jwt"; userId: string }
+  | { ok: true; kind: "session" }
+  | { ok: false; reason: string };
+
+async function verifyJwtOrSession(req: Request, sessionId?: string): Promise<AuthResult> {
   const authHeader = req.headers["authorization"];
   if (authHeader?.startsWith("Bearer ") && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const token = authHeader.slice(7);
@@ -37,13 +42,30 @@ async function verifyJwtOrSession(req: Request, sessionId?: string): Promise<{ o
       const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
         headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
       });
-      if (userRes.ok) return { ok: true };
+      if (userRes.ok) {
+        const u = await userRes.json() as { id?: string };
+        if (u?.id) return { ok: true, kind: "jwt", userId: u.id };
+      }
     } catch {
       /* fall through */
     }
   }
-  if (sessionId && (await verifySession(sessionId))) return { ok: true };
+  if (sessionId && (await verifySession(sessionId))) return { ok: true, kind: "session" };
   return { ok: false, reason: "Unauthorized" };
+}
+
+async function getUserCompanyId(userId: string): Promise<string | null> {
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from("_users")
+      .select("company_id")
+      .eq("id", userId)
+      .maybeSingle();
+    return (data?.company_id as string) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── POST /api/ai/interview-question ─────────────────────────────────────────
@@ -181,30 +203,19 @@ function extractStoragePath(cvUrl: string): string | null {
 }
 
 async function downloadCvAsBase64(cvUrl: string): Promise<{ base64: string; mime: string } | null> {
-  const supabase = getSupabase();
   const path = extractStoragePath(cvUrl);
-
-  if (path) {
-    const { data, error } = await supabase.storage.from("candidate-documents").download(path);
-    if (error || !data) {
-      logger.warn({ error, path }, "Failed to download CV via service key, falling back to direct fetch");
-    } else {
-      const buf = Buffer.from(await data.arrayBuffer());
-      return { base64: buf.toString("base64"), mime: data.type || "application/pdf" };
-    }
-  }
-
-  // Fallback: try fetching the URL directly
-  try {
-    const resp = await fetch(cvUrl);
-    if (!resp.ok) return null;
-    const buf = Buffer.from(await resp.arrayBuffer());
-    const mime = resp.headers.get("content-type") || "application/pdf";
-    return { base64: buf.toString("base64"), mime };
-  } catch (err) {
-    logger.error({ err }, "Direct CV fetch failed");
+  if (!path) {
+    logger.warn({ cvUrl: cvUrl.slice(0, 120) }, "CV URL is not a candidate-documents storage URL — refusing to fetch");
     return null;
   }
+  const supabase = getSupabase();
+  const { data, error } = await supabase.storage.from("candidate-documents").download(path);
+  if (error || !data) {
+    logger.error({ error, path }, "Failed to download CV from candidate-documents bucket");
+    return null;
+  }
+  const buf = Buffer.from(await data.arrayBuffer());
+  return { base64: buf.toString("base64"), mime: data.type || "application/pdf" };
 }
 
 async function mistralOcr(base64: string, mime: string): Promise<string | null> {
@@ -308,25 +319,37 @@ router.post("/parse-cv", async (req: Request, res: Response) => {
     return;
   }
 
+  // CV parsing is a recruiter-only action. Require a JWT — sessionId-only callers (public
+  // candidate flow) are not allowed to trigger expensive AI parsing.
   const auth = await verifyJwtOrSession(req, sessionId);
-  if (!auth.ok) {
-    res.status(401).json({ success: false, error: "Unauthorized" });
+  if (!auth.ok || auth.kind !== "jwt") {
+    res.status(401).json({ success: false, error: "Authenticated recruiter session required" });
     return;
   }
 
   try {
-    // Verify the cvUrl actually belongs to this session
+    // Load the session from the base table (not the view) and verify tenant ownership.
     const supabase = getSupabase();
     const { data: sess } = await supabase
-      .from("interview_sessions")
-      .select("id, cvUrl")
+      .from("_interview_sessions")
+      .select("id, company_id, cv_url")
       .eq("id", sessionId)
       .maybeSingle();
     if (!sess) {
       res.status(404).json({ success: false, error: "Session not found" });
       return;
     }
-    if (sess.cvUrl && sess.cvUrl !== cvUrl) {
+
+    const userCompanyId = await getUserCompanyId(auth.userId);
+    if (!userCompanyId || userCompanyId !== sess.company_id) {
+      logger.warn({ userId: auth.userId, sessionCompany: sess.company_id }, "Cross-tenant CV parse attempt blocked");
+      res.status(403).json({ success: false, error: "You do not have access to this candidate" });
+      return;
+    }
+
+    // The cvUrl in the request must match the one stored on the session
+    // (prevents an authenticated recruiter from parsing arbitrary URLs).
+    if (!sess.cv_url || sess.cv_url !== cvUrl) {
       res.status(403).json({ success: false, error: "cvUrl does not match session" });
       return;
     }
