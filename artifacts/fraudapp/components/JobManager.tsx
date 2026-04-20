@@ -171,10 +171,12 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
     return `${window.location.origin}/jobs/${companySlug}/${job.slug}`;
   };
 
-  const filteredJobs = jobs.filter(job =>
-    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredJobs = jobs.filter(job => {
+    const q = (searchQuery || '').toLowerCase();
+    const title = (job?.title || '').toLowerCase();
+    const location = (job?.location || '').toLowerCase();
+    return title.includes(q) || location.includes(q);
+  });
 
   // -- RENDER WIZARD STEPS --
   const renderWizardStep = () => {
