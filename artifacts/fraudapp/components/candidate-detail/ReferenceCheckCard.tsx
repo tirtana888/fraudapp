@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Briefcase, Send, RefreshCw, MessageSquare, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus } from 'lucide-react';
+import { Briefcase, Send, RefreshCw, MessageSquare, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Copy, Link2 } from 'lucide-react';
 import {
   createReferenceRequest,
   requestAdditionalReferences,
@@ -141,6 +141,12 @@ const ReferenceCheckCard: React.FC<Props> = ({ sessionId, candidateName, candida
 
         {activeRequest && (
           <div>
+            {activeRequest.status === 'pending' && (
+              <FormLinkBox
+                link={`${window.location.origin}/reference/${activeRequest.requestToken}`}
+                onCopied={() => toast.success('Link disalin ke clipboard')}
+              />
+            )}
             <div className="flex items-center justify-between mb-4 text-sm gap-2 flex-wrap">
               <span className="text-gray-600 dark:text-gray-400">
                 Status form:{' '}
@@ -282,6 +288,50 @@ const ReferenceRow: React.FC<{
           Kirim Ulang ke HR
         </button>
       )}
+    </div>
+  );
+};
+
+const FormLinkBox: React.FC<{ link: string; onCopied: () => void }> = ({ link, onCopied }) => {
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      onCopied();
+    } catch {
+      window.prompt('Salin link berikut:', link);
+    }
+  };
+  const waText = encodeURIComponent(`Halo, mohon isi form verifikasi riwayat kerja berikut: ${link}`);
+  return (
+    <div className="mb-4 p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/60 dark:bg-emerald-900/10">
+      <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+        <Link2 size={13} /> Link form untuk kandidat
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          readOnly
+          value={link}
+          onFocus={(e) => e.currentTarget.select()}
+          className="flex-1 min-w-[200px] text-xs px-2 py-1.5 rounded border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-mono"
+        />
+        <button
+          onClick={handleCopy}
+          className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center gap-1"
+        >
+          <Copy size={12} /> Salin
+        </button>
+        <a
+          href={`https://wa.me/?text=${waText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+        >
+          <Send size={12} /> Kirim via WA
+        </a>
+      </div>
+      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+        Bisa kirim manual ke kandidat lewat WhatsApp/email pribadi jika pesan otomatis belum sampai.
+      </p>
     </div>
   );
 };
