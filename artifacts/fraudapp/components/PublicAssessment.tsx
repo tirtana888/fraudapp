@@ -395,17 +395,13 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
     let finalAnalysis: FraudAnalysis;
 
-    // Timeout must exceed backend's 45s to avoid discarding a valid in-flight response
-    const analysisTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Analysis timeout')), 50000)
-    );
-
     try {
       console.log('[FINISH-ASSESSMENT] 🤖 Calling analyzeFraudRisk...');
 
+      // Each call gets its own 50s timeout so retries have a full budget
       const callAnalysis = () => Promise.race([
         analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium', finAnswers, sessionId),
-        analysisTimeout
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Analysis timeout')), 50000)),
       ]) as Promise<FraudAnalysis>;
 
       finalAnalysis = await callAnalysis();
