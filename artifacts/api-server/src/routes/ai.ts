@@ -7,8 +7,104 @@ const router: IRouter = Router();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+
+type ChatMessage = { role: string; content: string };
+
+interface ChatCompletionResult {
+  content: string;
+  provider: "gemini" | "deepseek";
+}
+
+async function chatCompletion(
+  messages: ChatMessage[],
+  opts: { temperature?: number; max_tokens?: number; response_format?: { type: string }; timeoutMs?: number } = {},
+): Promise<ChatCompletionResult> {
+  const { temperature = 0.7, max_tokens = 200, response_format, timeoutMs = 30_000 } = opts;
+
+  const providers: Array<{
+    name: "gemini" | "deepseek";
+    url: string;
+    key: string | undefined;
+    model: string;
+  }> = [
+    {
+      name: "gemini",
+      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      key: GEMINI_API_KEY,
+      model: "gemini-3-flash-preview",
+    },
+    {
+      name: "deepseek",
+      url: "https://api.deepseek.com/chat/completions",
+      key: DEEPSEEK_API_KEY,
+      model: "deepseek-chat",
+    },
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const p of providers) {
+    if (!p.key) {
+      logger.warn(`${p.name} API key not configured, skipping`);
+      continue;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      const body: Record<string, unknown> = {
+        model: p.model,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      if (response_format) body.response_format = response_format;
+
+      const response = await fetch(p.url, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${p.key}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        logger.error({ provider: p.name, status: response.status, errText: errText.slice(0, 500) }, `${p.name} API error`);
+        if (response.status === 429) {
+          lastError = new Error(`${p.name}: rate limit`);
+          continue;
+        }
+        lastError = new Error(`${p.name}: HTTP ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (!content) {
+        lastError = new Error(`${p.name}: empty response`);
+        continue;
+      }
+
+      logger.info({ provider: p.name }, "AI response received");
+      return { content, provider: p.name };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      logger.error({ provider: p.name, err: msg }, `${p.name} request failed`);
+      lastError = err instanceof Error ? err : new Error(msg);
+    }
+  }
+
+  throw lastError ?? new Error("No AI provider available");
+}
 
 function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -89,8 +185,8 @@ router.post("/interview-question", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!OPENAI_API_KEY) {
-    logger.warn("OPENAI_API_KEY not configured");
+  if (!GEMINI_API_KEY && !DEEPSEEK_API_KEY) {
+    logger.warn("No AI provider configured (GEMINI_API_KEY / DEEPSEEK_API_KEY)");
     res.status(503).json({ success: false, error: "AI service not configured" });
     return;
   }
@@ -140,39 +236,13 @@ ATURAN WAJIB:
   });
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        temperature: 0.75,
-        max_tokens: 200,
-      }),
+    const result = await chatCompletion(messages, {
+      temperature: 0.75,
+      max_tokens: 1024,
+      timeoutMs: 30_000,
     });
 
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      logger.error({ status: response.status, errText }, "OpenAI error");
-      const status = response.status === 429 ? 429 : 502;
-      res.status(status).json({
-        success: false,
-        error: response.status === 429 ? "Rate limit terlampaui, coba lagi sebentar." : "AI provider error",
-      });
-      return;
-    }
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    let question = data.choices?.[0]?.message?.content?.trim() ?? "";
+    let question = result.content;
     question = question.replace(/^(AI|Interviewer|Assistant)\s*:\s*/i, "").replace(/^["']|["']$/g, "").trim();
 
     if (!question) {
@@ -212,8 +282,8 @@ router.post("/fraud-analysis", async (req: Request, res: Response) => {
     return;
   }
 
-  if (!OPENAI_API_KEY) {
-    logger.warn("OPENAI_API_KEY not configured");
+  if (!GEMINI_API_KEY && !DEEPSEEK_API_KEY) {
+    logger.warn("No AI provider configured (GEMINI_API_KEY / DEEPSEEK_API_KEY)");
     res.status(503).json({ success: false, error: "AI service not configured" });
     return;
   }
@@ -279,47 +349,20 @@ Red flags dan rekomendasi harus spesifik mengacu pada apa yang kandidat katakan.
 sentimentBreakdown.positive + neutral + negative harus berjumlah 100.`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45_000);
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+    const result = await chatCompletion(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      {
         temperature: 0.4,
-        max_tokens: 2000,
-      }),
-    });
+        max_tokens: 8192,
+        response_format: { type: "json_object" },
+        timeoutMs: 45_000,
+      },
+    );
 
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      logger.error({ status: response.status, errText: errText.slice(0, 500) }, "OpenAI fraud-analysis error");
-      const status = response.status === 429 ? 429 : 502;
-      res.status(status).json({
-        success: false,
-        error: response.status === 429 ? "Rate limit terlampaui, coba lagi sebentar." : "AI provider error",
-      });
-      return;
-    }
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      res.status(502).json({ success: false, error: "Empty AI response" });
-      return;
-    }
+    const content = result.content;
 
     let parsed: Record<string, unknown>;
     try {
