@@ -251,37 +251,37 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
     const activeSteps = WORKFLOW_TEMPLATES.filter(t => selectedSteps[t.id]);
 
     return (
-      <div className="flex flex-col h-[calc(100vh-8rem)] bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+      <div className="flex flex-col h-[calc(100vh-6rem)] md:h-[calc(100vh-5rem)] bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
 
         {/* Editor Toolbar */}
-        <div className="h-16 px-6 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 z-20 shadow-sm relative">
-          <div className="flex items-center gap-4 flex-1">
+        <div className="px-4 md:px-6 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-3 shrink-0 z-20 shadow-sm relative">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <button
               onClick={() => setIsCreating(false)}
-              className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+              className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors shrink-0"
             >
               <X className="w-5 h-5 text-slate-500" />
             </button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-            <div className="flex-1 max-w-md">
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 shrink-0" />
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Nama Workflow (mis: Standard Hiring)"
                 value={workflowName}
                 onChange={(e) => setWorkflowName(e.target.value)}
-                className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+                className="w-full bg-transparent text-base md:text-lg font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none truncate"
               />
               <input
                 type="text"
                 placeholder="Deskripsi singkat..."
                 value={workflowDescription}
                 onChange={(e) => setWorkflowDescription(e.target.value)}
-                className="w-full bg-transparent text-xs text-slate-500 dark:text-slate-400 focus:outline-none"
+                className="w-full bg-transparent text-xs text-slate-500 dark:text-slate-400 focus:outline-none truncate"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg">
               <Coins className="w-4 h-4 text-orange-500" />
               <div className="flex flex-col items-end leading-none">
@@ -292,19 +292,20 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
             <button
               onClick={handleSaveWorkflow}
               disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B14d00] transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:grayscale"
+              className="flex items-center gap-2 px-4 py-2 bg-[#D95D00] text-white rounded-lg hover:bg-[#B14d00] transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:grayscale text-sm"
             >
               {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Simpan Workflow</span>
+              <span className="hidden sm:inline">Simpan Workflow</span>
+              <span className="sm:hidden">Simpan</span>
             </button>
           </div>
         </div>
 
         {/* Split View */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
           {/* LEFT: TIMELINE CANVAS */}
-          <div className="flex-1 bg-slate-50/50 dark:bg-[#0B1120] relative overflow-y-auto p-8 custom-scrollbar">
+          <div className="flex-1 bg-slate-50/50 dark:bg-[#0B1120] relative overflow-y-auto p-4 md:p-8 custom-scrollbar">
             <div className="max-w-xl mx-auto">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 text-center">Visual Timeline</h4>
 
@@ -388,7 +389,7 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
           </div>
 
           {/* RIGHT: LIBRARY */}
-          <div className="w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col z-10 shadow-xl">
+          <div className="w-full md:w-72 lg:w-80 bg-white dark:bg-slate-900 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 flex flex-col z-10 shadow-xl shrink-0 max-h-[40vh] md:max-h-none">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Box className="w-4 h-4 text-[#D95D00]" /> Step Library
