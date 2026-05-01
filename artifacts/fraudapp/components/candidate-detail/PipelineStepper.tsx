@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2, Clock, Bot, ShieldCheck, Users, Shield, UserCheck,
   XCircle, Mail, ArrowRight, Zap, Minus, CalendarCheck, Globe,
+  FileCheck, PhoneCall,
 } from 'lucide-react';
 import { WorkflowStep } from '../../types';
 
@@ -21,27 +22,34 @@ interface StepDef {
 const DEFAULT_STEPS: StepDef[] = [
   { id: 'screening',            label: 'Screening',         icon: <Bot size={15} /> },
   { id: 'integrity_assessment', label: 'Assessment',        icon: <ShieldCheck size={15} /> },
+  { id: 'assessment_completed', label: 'Review',            icon: <FileCheck size={15} /> },
   { id: 'interview',            label: 'Wawancara',         icon: <Users size={15} /> },
   { id: 'bc_check',             label: 'Background Check',  icon: <Shield size={15} /> },
+  { id: 'reference_check',      label: 'Cek Referensi',     icon: <PhoneCall size={15} /> },
   { id: 'hired',                label: 'Diterima',          icon: <UserCheck size={15} /> },
 ];
 
 const STAGE_TO_DEFAULT_IDX: Record<string, number> = {
-  new: 0, screening: 0, cv_review: 0,
+  new: 0, screening: 0, cv_review: 0, applied: 0,
   assessment_sent: 1, in_progress: 1, pending_review: 1, integrity_assessment: 1,
   assessment_completed: 2, review: 2,
-  interview: 2, interview_scheduled: 2, face_to_face_interview: 2, skill_interview: 2,
-  bc_check: 3, background_check: 3, bc_completed: 3,
-  gambling_screening: 3,
-  hired: 4, approved: 4,
+  interview: 3, interview_scheduled: 3, face_to_face_interview: 3, skill_interview: 3,
+  bc_check: 4, background_check: 4, bc_completed: 4,
+  gambling_screening: 4,
+  reference_check: 5,
+  hired: 6, approved: 6,
 };
 
 const NEXT_DEFAULT_STAGE: Record<string, { stage: string; label: string }> = {
-  assessment_completed: { stage: 'interview', label: 'Jadwalkan Wawancara' },
-  review:               { stage: 'interview', label: 'Jadwalkan Wawancara' },
-  interview:            { stage: 'bc_check',  label: 'Mulai Background Check' },
-  interview_scheduled:  { stage: 'bc_check',  label: 'Mulai Background Check' },
-  face_to_face_interview: { stage: 'bc_check', label: 'Mulai Background Check' },
+  assessment_completed: { stage: 'interview',       label: 'Jadwalkan Wawancara' },
+  review:               { stage: 'interview',       label: 'Jadwalkan Wawancara' },
+  interview:            { stage: 'background_check', label: 'Mulai Background Check' },
+  interview_scheduled:  { stage: 'background_check', label: 'Mulai Background Check' },
+  face_to_face_interview: { stage: 'background_check', label: 'Mulai Background Check' },
+  skill_interview:      { stage: 'background_check', label: 'Mulai Background Check' },
+  background_check:     { stage: 'reference_check',  label: 'Mulai Cek Referensi' },
+  bc_check:             { stage: 'reference_check',  label: 'Mulai Cek Referensi' },
+  bc_completed:         { stage: 'reference_check',  label: 'Mulai Cek Referensi' },
 };
 
 function formatDate(iso?: string) {
@@ -326,11 +334,11 @@ function DefaultStepper({
   let contextMsg = '';
   if (isWaitingForAssessment) {
     contextMsg = '⏳ Menunggu kandidat menyelesaikan assessment...';
-  } else if (isAssessmentCompleted && activeIdx <= 1) {
+  } else if (isAssessmentCompleted && activeIdx <= 2) {
     contextMsg = '✅ Assessment selesai — jadwalkan wawancara untuk lanjut';
   } else if (nextAction) {
     contextMsg = `Siap lanjut ke tahap berikutnya`;
-  } else if (candidateStatus === 'completed' || activeIdx >= 3) {
+  } else if (candidateStatus === 'completed' || activeIdx >= 5) {
     contextMsg = '✅ Proses selesai — buat keputusan akhir: Rekrut atau Tolak';
   } else {
     contextMsg = 'Lanjutkan proses rekrutmen untuk kandidat ini';
@@ -490,6 +498,7 @@ function WorkflowActiveStepPopover({
     if (stageId === 'face_to_face_interview' || stageId === 'skill_interview') return <CalendarCheck size={12} />;
     if (stageId === 'background_check') return <Shield size={12} />;
     if (stageId === 'gambling_screening') return <Globe size={12} />;
+    if (stageId === 'reference_check') return <PhoneCall size={12} />;
     return <Zap size={12} />;
   };
 
@@ -498,6 +507,7 @@ function WorkflowActiveStepPopover({
     if (stageId === 'face_to_face_interview' || stageId === 'skill_interview') return 'Jadwalkan Wawancara';
     if (stageId === 'background_check') return 'Mulai Background Check';
     if (stageId === 'gambling_screening') return isWaiting ? 'Menunggu Screening...' : 'Selesaikan Screening';
+    if (stageId === 'reference_check') return 'Mulai Cek Referensi';
     return label;
   };
 
@@ -569,6 +579,8 @@ function DefaultActiveStepPopover({
 }) {
   const actionIcon = nextAction?.stage === 'interview'
     ? <CalendarCheck size={12} />
+    : nextAction?.stage === 'reference_check'
+    ? <PhoneCall size={12} />
     : <Shield size={12} />;
 
   return (
