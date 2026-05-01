@@ -502,17 +502,15 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     isMandatory: false,
     icon: 'Brain',
     category: 'interview',
-    isAvailable: false // Coming Soon
   },
   {
     id: 'live_proctoring',
-    name: 'Live Proctoring',
-    description: 'Monitoring real-time dengan AI untuk mencegah kecurangan',
+    name: 'Proctored Wawancara',
+    description: 'Monitoring real-time dengan AI untuk mencegah kecurangan saat wawancara',
     credits: 5,
     isMandatory: false,
     icon: 'Video',
     category: 'assessment',
-    isAvailable: false // Coming Soon
   },
   {
     id: 'face_to_face_interview',
@@ -553,12 +551,11 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'document_forgery',
     name: 'Document Forgery Detection',
-    description: 'AI detection untuk mendeteksi pemalsuan dokumen',
+    description: 'AI detection untuk mendeteksi pemalsuan dokumen (ijazah, KTP, SKCK)',
     credits: 50,
     isMandatory: false,
     icon: 'FileCheck',
     category: 'verification',
-    isAvailable: false // Coming Soon
   },
   {
     id: 'social_media_screening',
@@ -568,7 +565,6 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     isMandatory: false,
     icon: 'Share2',
     category: 'verification',
-    isAvailable: false // Coming Soon
   },
   {
     id: 'hire_decision',

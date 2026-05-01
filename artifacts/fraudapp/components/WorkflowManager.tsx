@@ -132,9 +132,14 @@ const WorkflowManager: React.FC<WorkflowManagerProps> = ({ companyId, isDarkMode
       // Enforce ordering: integrity_assessment first, then optional steps, decisions last
       const ORDER_PRIORITY: Record<string, number> = {
         integrity_assessment: 0,
-        gambling_screening: 10, // Must come after integrity_assessment
+        live_proctoring: 5,      // During assessment
+        skill_interview: 8,      // AI skill interview
+        gambling_screening: 10,  // After integrity_assessment
+        face_to_face_interview: 15,
         background_check: 20,
-        reference_check: 30, // After background_check
+        document_forgery: 25,    // After background_check
+        social_media_screening: 28,
+        reference_check: 30,     // After background_check
         hire_decision: 900,
         reject_decision: 901,
       };

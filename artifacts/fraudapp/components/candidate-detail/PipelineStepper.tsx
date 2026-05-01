@@ -20,13 +20,13 @@ interface StepDef {
 }
 
 const DEFAULT_STEPS: StepDef[] = [
-  { id: 'screening',            label: 'Screening',         icon: <Bot size={15} /> },
-  { id: 'integrity_assessment', label: 'Assessment',        icon: <ShieldCheck size={15} /> },
-  { id: 'assessment_completed', label: 'Review',            icon: <FileCheck size={15} /> },
-  { id: 'interview',            label: 'Wawancara',         icon: <Users size={15} /> },
-  { id: 'bc_check',             label: 'Background Check',  icon: <Shield size={15} /> },
-  { id: 'reference_check',      label: 'Cek Referensi',     icon: <PhoneCall size={15} /> },
-  { id: 'hired',                label: 'Diterima',          icon: <UserCheck size={15} /> },
+  { id: 'screening',            label: 'Screening',    icon: <Bot size={15} /> },
+  { id: 'integrity_assessment', label: 'Assessment',   icon: <ShieldCheck size={15} /> },
+  { id: 'assessment_completed', label: 'Review',       icon: <FileCheck size={15} /> },
+  { id: 'interview',            label: 'Wawancara',    icon: <Users size={15} /> },
+  { id: 'bc_check',             label: 'BC',           icon: <Shield size={15} /> },
+  { id: 'reference_check',      label: 'Referensi',    icon: <PhoneCall size={15} /> },
+  { id: 'hired',                label: 'Diterima',     icon: <UserCheck size={15} /> },
 ];
 
 const STAGE_TO_DEFAULT_IDX: Record<string, number> = {
@@ -192,7 +192,7 @@ function WorkflowStepper({
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="flex items-center gap-0">
+      <div className="flex items-center gap-0 overflow-x-auto pb-1">
         {workflowData.steps.map((step, idx) => {
           const status = getStepStatus(step.id);
           const isLast = idx === workflowData.steps.length - 1;
@@ -351,7 +351,7 @@ function DefaultStepper({
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="flex items-center gap-0">
+      <div className="flex items-center gap-0 overflow-x-auto pb-1">
         {DEFAULT_STEPS.map((step, idx) => {
           const status = getStatus(idx, step.id);
           const isLast = idx === DEFAULT_STEPS.length - 1;
@@ -669,8 +669,8 @@ function StepNode({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col items-center min-w-0 relative"
-      style={{ minWidth: 72 }}
+      className="flex flex-col items-center min-w-0 relative shrink-0"
+      style={{ minWidth: 56 }}
     >
       <div
         onClick={onClick}
@@ -702,7 +702,7 @@ function StepNode({
         {status === 'pending'   && (icon ?? <Clock size={14} />)}
       </div>
 
-      <span className={`mt-1 text-[10px] font-medium text-center leading-tight max-w-[72px] truncate ${
+      <span className={`mt-1 text-[10px] font-medium text-center leading-tight max-w-[56px] truncate ${
         status === 'completed'
           ? 'text-green-600 dark:text-green-400'
           : status === 'current'
