@@ -52,10 +52,10 @@ async function chatCompletion(
       continue;
     }
 
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
+    try {
       const body: Record<string, unknown> = {
         model: p.model,
         messages,
@@ -73,8 +73,6 @@ async function chatCompletion(
         },
         body: JSON.stringify(body),
       });
-
-      clearTimeout(timeout);
 
       if (!response.ok) {
         const errText = await response.text().catch(() => "");
@@ -100,6 +98,8 @@ async function chatCompletion(
       const msg = err instanceof Error ? err.message : "Unknown error";
       logger.error({ provider: p.name, err: msg }, `${p.name} request failed`);
       lastError = err instanceof Error ? err : new Error(msg);
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
