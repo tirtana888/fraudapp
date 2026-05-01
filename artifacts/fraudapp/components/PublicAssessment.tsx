@@ -395,35 +395,53 @@ const PublicAssessment: React.FC<PublicAssessmentProps> = ({ companyId: propComp
 
     let finalAnalysis: FraudAnalysis;
 
-    // Add timeout to prevent infinite spinner
+    // Timeout must exceed backend's 45s to avoid discarding a valid in-flight response
     const analysisTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Analysis timeout')), 30000) // 30 second timeout
+      setTimeout(() => reject(new Error('Analysis timeout')), 50000)
     );
 
     try {
       console.log('[FINISH-ASSESSMENT] 🤖 Calling analyzeFraudRisk...');
 
-      finalAnalysis = await Promise.race([
+      const callAnalysis = () => Promise.race([
         analyzeFraudRisk(candidateRole, chatHistory, ftAnswers, sjtAnswers, company?.tier || 'Freemium', finAnswers, sessionId),
         analysisTimeout
-      ]) as FraudAnalysis;
+      ]) as Promise<FraudAnalysis>;
 
-      console.log('[FINISH-ASSESSMENT] ✅ Analysis completed successfully!');
-      console.log('[FINISH-ASSESSMENT] 📊 AI Response:', {
+      finalAnalysis = await callAnalysis();
+
+      console.log('[FINISH-ASSESSMENT] AI Response:', {
         scores: finalAnalysis.scores,
         riskLevel: finalAnalysis.riskLevel,
         isManualFallback: finalAnalysis.isManualFallback,
         redFlagsCount: finalAnalysis.redFlags?.length || 0,
-        summaryLength: finalAnalysis.summary?.length || 0
       });
 
-      // 🚨 CRITICAL CHECK: Detect if AI returned fallback scores
+      // Detect suspect 50/50/50 default scores — retry once before accepting
       if (finalAnalysis.scores.pressure === 50 &&
         finalAnalysis.scores.opportunity === 50 &&
-        finalAnalysis.scores.rationalization === 50) {
-        console.warn('[FINISH-ASSESSMENT] ⚠️ WARNING: AI returned fallback scores (50,50,50)!');
-        console.warn('[FINISH-ASSESSMENT] 🔍 This indicates AI analysis may have failed silently');
-        console.warn('[FINISH-ASSESSMENT] 📋 Check Cloud Function logs for errors');
+        finalAnalysis.scores.rationalization === 50 &&
+        !finalAnalysis.isManualFallback) {
+        console.warn('[FINISH-ASSESSMENT] Suspect 50/50/50 scores — retrying once');
+        try {
+          const retryResult = await callAnalysis();
+          if (!(retryResult.scores.pressure === 50 && retryResult.scores.opportunity === 50 && retryResult.scores.rationalization === 50)) {
+            finalAnalysis = retryResult;
+            console.log('[FINISH-ASSESSMENT] Retry returned valid scores:', retryResult.scores);
+          } else {
+            // Still 50/50/50 after retry — use questionnaire-based scores instead
+            const manualScores = calculateAssessmentScores(ftAnswers, sjtAnswers, finAnswers);
+            finalAnalysis = {
+              ...finalAnalysis,
+              scores: { pressure: manualScores.pressureScore, opportunity: manualScores.opportunityScore, rationalization: manualScores.rationalizationScore },
+              isManualFallback: true,
+              summary: finalAnalysis.summary + '\n\n[Catatan: Skor dihitung dari kuesioner karena AI mengembalikan nilai default. Review manual disarankan.]',
+            };
+            console.warn('[FINISH-ASSESSMENT] Retry still 50/50/50 — using questionnaire scores');
+          }
+        } catch (retryErr) {
+          console.warn('[FINISH-ASSESSMENT] Retry failed, keeping original result:', retryErr);
+        }
       }
 
     } catch (error) {

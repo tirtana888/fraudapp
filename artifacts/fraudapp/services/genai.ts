@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 // GENAI SERVICE
 // Interview chat -> /api/ai/interview-question
 // Fraud analysis -> /api/ai/fraud-analysis
-// Both backed by OpenAI on the server.
+// Both backed by Gemini (primary) / DeepSeek (fallback) on the server.
 // ==========================================
 
 const numericResponse = (resp: AssessmentItem['response']): number => {
@@ -207,7 +207,7 @@ export const generateNextQuestion = async (context: {
 }): Promise<GeneratedQuestion> => {
   let errorMessage: string | undefined;
 
-  try {
+  const attempt = async (): Promise<GeneratedQuestion | null> => {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
 
@@ -230,11 +230,22 @@ export const generateNextQuestion = async (context: {
       return { question: json.question, fallbackUsed: false };
     }
     errorMessage = json?.error || `HTTP ${resp.status}`;
-    console.warn('[GENAI] interview-question failed:', resp.status, errorMessage);
-  } catch (err) {
-    errorMessage = err instanceof Error ? err.message : 'Network error';
-    console.error('[GENAI] interview-question request error:', err);
+    return null;
+  };
+
+  // Try up to 2 times before falling back to hardcoded questions
+  for (let i = 0; i < 2; i++) {
+    try {
+      const result = await attempt();
+      if (result) return result;
+      if (i === 0) console.warn('[GENAI] interview-question attempt 1 failed, retrying...');
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : 'Network error';
+      if (i === 0) console.warn('[GENAI] interview-question attempt 1 error, retrying...', errorMessage);
+    }
   }
+
+  console.warn('[GENAI] interview-question failed after 2 attempts:', errorMessage);
 
   // Fallback: rotate through hardcoded questions so the assessment is never blocked,
   // but signal to the caller so they can show a notice.

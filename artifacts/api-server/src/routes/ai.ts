@@ -164,6 +164,47 @@ async function getUserCompanyId(userId: string): Promise<string | null> {
   }
 }
 
+// ─── Assessment data summarizer (avoids truncating raw JSON mid-string) ──────
+
+function summarizeAssessment(data: Record<string, unknown>): string {
+  const lines: string[] = [];
+
+  const ftItems = Array.isArray(data.structuredAssessment) ? data.structuredAssessment as Array<Record<string, unknown>> : [];
+  if (ftItems.length) {
+    const buckets: Record<string, number[]> = {};
+    for (const item of ftItems) {
+      const cat = String(item.category ?? "other");
+      const val = Number(item.response ?? 0);
+      (buckets[cat] ??= []).push(val);
+    }
+    const avg = (arr: number[]) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : "n/a";
+    const parts = Object.entries(buckets).map(([cat, vals]) => `${cat}=${avg(vals)}/5`);
+    lines.push(`Fraud Triangle (rata-rata): ${parts.join(", ")}`);
+  }
+
+  const finItems = Array.isArray(data.financialStrainResults) ? data.financialStrainResults as Array<Record<string, unknown>> : [];
+  if (finItems.length) {
+    const vals = finItems.map(i => Number(i.response ?? 0));
+    const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
+    lines.push(`Financial Strain (rata-rata): ${avg}/5`);
+  }
+
+  const sjtItems = Array.isArray(data.sjtResults) ? data.sjtResults as Array<Record<string, unknown>> : [];
+  if (sjtItems.length) {
+    const choices: string[] = [];
+    for (const sjt of sjtItems) {
+      const idx = typeof sjt.selectedOptionIndex === "number" ? sjt.selectedOptionIndex : -1;
+      const opts = Array.isArray(sjt.options) ? sjt.options as Array<Record<string, unknown>> : [];
+      if (idx >= 0 && opts[idx]) {
+        choices.push(`${String(sjt.id ?? "sjt")}: pilih "${String(opts[idx].label ?? "").slice(0, 60)}" (risk=${String(opts[idx].riskWeight ?? "?")})`);
+      }
+    }
+    if (choices.length) lines.push(`SJT:\n${choices.join("\n")}`);
+  }
+
+  return lines.length ? lines.join("\n") : "(tidak ada data assessment)";
+}
+
 // ─── POST /api/ai/interview-question ─────────────────────────────────────────
 
 router.post("/interview-question", async (req: Request, res: Response) => {
@@ -227,7 +268,7 @@ ATURAN WAJIB:
   if (assessmentData) {
     messages.push({
       role: "system",
-      content: `Konteks hasil assessment kandidat (gunakan untuk menargetkan pertanyaan): ${JSON.stringify(assessmentData).slice(0, 1500)}`,
+      content: `Konteks hasil assessment kandidat (gunakan untuk menargetkan pertanyaan):\n${summarizeAssessment(assessmentData)}`,
     });
   }
   messages.push({
