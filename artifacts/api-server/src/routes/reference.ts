@@ -97,6 +97,10 @@ function whatsappAddress(phoneE164: string): string {
   return p;
 }
 
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
 interface AuthCtx {
   userId: string;
   companyId: string | null;
@@ -1597,7 +1601,7 @@ router.post("/ai-call", async (req: Request, res: Response) => {
     const params = new URLSearchParams();
     params.set("From", TWILIO_PHONE_NUMBER);
     params.set("To", resp.prev_hr_phone);
-    params.set("Twiml", `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${greeting}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${webhookUrl}?responseId=${resp.id}&amp;step=1&amp;candidateName=${encodeURIComponent(candidateName)}&amp;company=${encodeURIComponent(resp.prev_company_name)}&amp;role=${encodeURIComponent(resp.prev_role || "")}&amp;period=${encodeURIComponent(resp.prev_period || "")}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab sekarang.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Maaf, kami tidak menerima jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`);
+    params.set("Twiml", `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${escapeXml(greeting)}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${escapeXml(`${webhookUrl}?responseId=${resp.id}&step=1&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(resp.prev_company_name)}&role=${encodeURIComponent(resp.prev_role || "")}&period=${encodeURIComponent(resp.prev_period || "")}`)}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab sekarang.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Maaf, kami tidak menerima jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`);
     params.set("StatusCallback", `${webhookUrl}?responseId=${resp.id}&statusCallback=true`);
     params.set("Record", "true");
     params.set("RecordingStatusCallback", `${webhookUrl}?responseId=${resp.id}&recordingCallback=true`);
@@ -1746,7 +1750,7 @@ router.post(
         const nextUrl = `${apiUrl}/api/reference/ai-call-webhook?responseId=${responseId}&step=${step + 1}&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&period=${encodeURIComponent(period)}`;
 
         res.status(200).type("text/xml").send(
-          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${analysis.followUp}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${nextUrl}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
+          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${escapeXml(analysis.followUp)}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${escapeXml(nextUrl)}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
         );
       } else {
         // Conversation done
@@ -1776,7 +1780,7 @@ router.post(
         }).eq("id", responseId);
 
         res.status(200).type("text/xml").send(
-          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${closing}</Say></Response>`,
+          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${escapeXml(closing)}</Say></Response>`,
         );
       }
     } catch (err) {
