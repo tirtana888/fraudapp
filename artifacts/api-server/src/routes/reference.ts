@@ -60,7 +60,7 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
         from: TWILIO_WHATSAPP_FROM,
         contentSid: TWILIO_REFCHECK_CONTENT_SID.slice(0, 6) + "…",
         webhookStrict: TWILIO_WEBHOOK_STRICT,
-        webhookUrl: `${(process.env.PUBLIC_APP_URL || "").replace(/\/$/, "")}/api/reference/twilio-webhook`,
+        webhookUrl: `${(process.env.PUBLIC_API_URL || process.env.PUBLIC_APP_URL || "").replace(/\/$/, "")}/api/reference/twilio-webhook`,
       },
       "[refcheck] Twilio WhatsApp configured",
     );
@@ -291,6 +291,17 @@ function getPublicBaseUrl(req: Request): string {
   const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
   const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
   return `${proto}://${host}`;
+}
+
+// Returns the public URL for API-specific endpoints (email confirm/deny links,
+// Twilio webhooks, AI call callbacks). When the API server runs on a separate
+// domain (e.g. api.hiregood.one) set PUBLIC_API_URL so links point to the API
+// rather than the frontend.
+function getPublicApiUrl(req: Request): string {
+  const envUrl = process.env.PUBLIC_API_URL;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  // Fall back to PUBLIC_APP_URL / request host when a dedicated API URL is not set.
+  return getPublicBaseUrl(req);
 }
 
 // ── POST /api/reference/create-request ───────────────────────────────────────
@@ -1296,9 +1307,9 @@ router.post("/send-email", async (req: Request, res: Response) => {
       email_sent_at: new Date().toISOString(),
     }).eq("id", resp.id);
 
-    const baseUrl = getPublicBaseUrl(req);
-    const confirmUrl = `${baseUrl}/api/reference/email-respond/${confirmToken}/confirm`;
-    const denyUrl = `${baseUrl}/api/reference/email-respond/${denyToken}/deny`;
+    const apiUrl = getPublicApiUrl(req);
+    const confirmUrl = `${apiUrl}/api/reference/email-respond/${confirmToken}/confirm`;
+    const denyUrl = `${apiUrl}/api/reference/email-respond/${denyToken}/deny`;
 
     // Send email via Resend
     if (!process.env.RESEND_API_KEY) {
@@ -1571,8 +1582,8 @@ router.post("/ai-call", async (req: Request, res: Response) => {
       }
     }
 
-    const baseUrl = getPublicBaseUrl(req);
-    const webhookUrl = `${baseUrl}/api/reference/ai-call-webhook`;
+    const apiUrl = getPublicApiUrl(req);
+    const webhookUrl = `${apiUrl}/api/reference/ai-call-webhook`;
 
     // Build TwiML for the initial greeting
     const greeting =
@@ -1731,8 +1742,8 @@ router.post(
           call_transcript: transcript,
         }).eq("id", responseId);
 
-        const baseUrl = getPublicBaseUrl(req);
-        const nextUrl = `${baseUrl}/api/reference/ai-call-webhook?responseId=${responseId}&step=${step + 1}&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&period=${encodeURIComponent(period)}`;
+        const apiUrl = getPublicApiUrl(req);
+        const nextUrl = `${apiUrl}/api/reference/ai-call-webhook?responseId=${responseId}&step=${step + 1}&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&period=${encodeURIComponent(period)}`;
 
         res.status(200).type("text/xml").send(
           `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${analysis.followUp}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${nextUrl}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
