@@ -141,6 +141,7 @@ create table if not exists _interview_sessions (
 
 alter table _interview_sessions add column if not exists gambling_analysis jsonb;
 alter table _interview_sessions add column if not exists proctoring_data   jsonb;
+alter table _interview_sessions add column if not exists pddikti_verification jsonb;
 
 create table if not exists _assessment_invites (
   id                  uuid primary key default gen_random_uuid(),
@@ -392,6 +393,7 @@ create or replace view interview_sessions as
     background_check_completed_at::text         as "backgroundCheckCompletedAt",
     gambling_analysis                           as "gamblingAnalysis",
     proctoring_data                             as "proctoringData",
+    pddikti_verification                       as "pddiktiVerification",
     created_at::text                            as "createdAt",
     updated_at::text                            as "updatedAt"
   from _interview_sessions;

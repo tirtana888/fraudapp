@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../lib/logger";
+import { runPddiktiVerificationBackground } from "./pddikti";
 
 const router: IRouter = Router();
 
@@ -686,6 +687,12 @@ router.post("/parse-cv", async (req: Request, res: Response) => {
     }
 
     logger.info({ sessionId }, "CV parsed successfully");
+
+    // Auto-trigger PDDikti NIM verification in background (fire-and-forget)
+    runPddiktiVerificationBackground(sessionId).catch((err) =>
+      logger.warn({ err, sessionId }, "Background PDDikti verification failed (non-fatal)"),
+    );
+
     res.json({ success: true, parsedData: finalData });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

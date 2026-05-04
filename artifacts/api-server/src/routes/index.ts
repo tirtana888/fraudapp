@@ -6,6 +6,7 @@ import aiRouter from "./ai";
 import uploadRouter from "./upload";
 import diditRouter from "./didit";
 import referenceRouter from "./reference";
+import pddiktiRouter from "./pddikti";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/ai", aiRouter);
 router.use("/upload", uploadRouter);
 router.use("/didit", diditRouter);
 router.use("/reference", referenceRouter);
+router.use("/pddikti", pddiktiRouter);
 
 export default router;
