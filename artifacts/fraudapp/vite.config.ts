@@ -7,6 +7,10 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
 
+// API server port for proxying /api/* requests during development.
+// Defaults to 3001 — override with API_PORT env var when needed.
+const apiPort = process.env.API_PORT ? Number(process.env.API_PORT) : 3001;
+
 const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
@@ -49,10 +53,22 @@ export default defineConfig({
       strict: false,
       deny: ["**/.*"],
     },
+    proxy: {
+      "/api": {
+        target: `http://localhost:${apiPort}`,
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: `http://localhost:${apiPort}`,
+        changeOrigin: true,
+      },
+    },
   },
 });

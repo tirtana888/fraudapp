@@ -93,11 +93,22 @@ router.post("/cv-public", async (req: Request, res: Response) => {
       return;
     }
 
-    const { data } = supabase.storage
+    // The candidate-documents bucket is private, so getPublicUrl() would
+    // produce a URL that returns 403.  Use a signed URL instead (valid 1 year).
+    const { data: signedData, error: signErr } = await supabase.storage
       .from("candidate-documents")
-      .getPublicUrl(storagePath);
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
 
-    res.json({ success: true, url: data.publicUrl, path: storagePath });
+    if (signErr || !signedData?.signedUrl) {
+      // Fallback: return the storage path so downstream code can still
+      // download the file via the service key.
+      logger.warn({ err: signErr, storagePath }, "Failed to create signed URL, returning path");
+      const fallbackUrl = `${SUPABASE_URL}/storage/v1/object/candidate-documents/${storagePath}`;
+      res.json({ success: true, url: fallbackUrl, path: storagePath });
+      return;
+    }
+
+    res.json({ success: true, url: signedData.signedUrl, path: storagePath });
   } catch (err) {
     logger.error({ err }, "Unexpected error in /upload/cv-public");
     res.status(500).json({ success: false, error: "Server error" });
