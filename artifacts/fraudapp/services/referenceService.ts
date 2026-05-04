@@ -7,6 +7,7 @@ export interface ReferenceCheckResponse {
   prevPeriod: string | null;
   prevHrName: string | null;
   prevHrPhone: string;
+  refEmail: string | null;
   twilioMessageSid: string | null;
   sentAt: string | null;
   status: 'pending' | 'confirmed' | 'denied' | 'no_response';
@@ -14,6 +15,13 @@ export interface ReferenceCheckResponse {
   respondedAt: string | null;
   resendCount: number;
   lastResendAt: string | null;
+  emailSentAt: string | null;
+  callStatus: string | null;
+  callSid: string | null;
+  callTranscript: Array<{ speaker: string; text: string; timestamp: string }> | null;
+  callAnalysis: { confirmed: boolean; status: string; reasoning: string } | null;
+  callDuration: number | null;
+  callRecordingUrl: string | null;
   createdAt: string;
 }
 
@@ -121,6 +129,80 @@ export async function submitReferenceForm(
   const json = await r.json();
   if (!json.success) throw new Error(json.error || 'Gagal mengirim form');
   return json;
+}
+
+// ── Direct WhatsApp to reference (Fitur 1) ──────────────────────────────────
+
+export interface DirectReferenceInput {
+  name: string;
+  phone: string;
+  company: string;
+  role?: string;
+  period?: string;
+  email?: string;
+}
+
+export async function sendDirectWhatsapp(args: {
+  sessionId: string;
+  references: DirectReferenceInput[];
+}): Promise<{ requestId: string; results: Array<{ id: string; name: string; ok: boolean; error?: string }> }> {
+  const headers = await getAuthHeader();
+  const r = await fetch('/api/reference/direct-whatsapp', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(args),
+  });
+  const json = await r.json();
+  if (!json.success) throw new Error(json.error || 'Gagal mengirim WhatsApp langsung');
+  return json;
+}
+
+// ── Email reference (Fitur 2) ────────────────────────────────────────────────
+
+export async function sendReferenceEmail(requestId: string, responseId: string): Promise<{ emailId: string }> {
+  const headers = await getAuthHeader();
+  const r = await fetch('/api/reference/send-email', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ requestId, responseId }),
+  });
+  const json = await r.json();
+  if (!json.success) throw new Error(json.error || 'Gagal mengirim email referensi');
+  return json;
+}
+
+// ── AI Voice Call (Fitur 3) ──────────────────────────────────────────────────
+
+export async function initiateAiCall(requestId: string, responseId: string): Promise<{ callSid: string }> {
+  const headers = await getAuthHeader();
+  const r = await fetch('/api/reference/ai-call', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ requestId, responseId }),
+  });
+  const json = await r.json();
+  if (!json.success) throw new Error(json.error || 'Gagal memulai panggilan AI');
+  return json;
+}
+
+export function callStatusLabel(s: string | null): string {
+  switch (s) {
+    case 'in_progress': return 'SEDANG BERLANGSUNG';
+    case 'completed': return 'SELESAI';
+    case 'no_answer': return 'TIDAK DIANGKAT';
+    case 'failed': return 'GAGAL';
+    default: return '';
+  }
+}
+
+export function callStatusColor(s: string | null): string {
+  switch (s) {
+    case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400';
+    case 'completed': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400';
+    case 'no_answer': return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400';
+    case 'failed': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400';
+    default: return '';
+  }
 }
 
 export function refStatusLabel(s: ReferenceCheckResponse['status']): string {

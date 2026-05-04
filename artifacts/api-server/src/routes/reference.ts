@@ -3,6 +3,7 @@ import express from "express";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../lib/logger";
+import { Resend } from "resend";
 
 const router: IRouter = Router();
 
@@ -21,9 +22,14 @@ const TWILIO_WEBHOOK_AUTH_TOKEN =
 const TWILIO_WEBHOOK_STRICT =
   (process.env.TWILIO_WEBHOOK_STRICT ?? "true").toLowerCase() !== "false";
 
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || "";
+
 const REFCHECK_CREDIT_COST = 10; // credits per outgoing reference check
 const REQUEST_TTL_HOURS = 7 * 24;
 const RESEND_MIN_HOURS = 48;
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 
 // Log Twilio configuration readiness once at module load so operators can
 // see at a glance whether the reference-check WhatsApp flow is wired up.
@@ -953,5 +959,798 @@ router.get("/by-session/:sessionId", async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : "Internal error" });
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FITUR 1: WhatsApp Referensi Langsung (Direct WA to reference without form)
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface DirectReference {
+  name: string;
+  phone: string;
+  company: string;
+  role?: string;
+  period?: string;
+  email?: string;
+}
+
+router.post("/direct-whatsapp", async (req: Request, res: Response) => {
+  const auth = await requireSupabaseAuth(req, res);
+  if (!auth) return;
+
+  const { sessionId, references } = req.body as {
+    sessionId: string;
+    references: DirectReference[];
+  };
+
+  if (!sessionId || !Array.isArray(references) || references.length === 0) {
+    res.status(400).json({ success: false, error: "sessionId dan references wajib diisi" });
+    return;
+  }
+  if (references.length > 5) {
+    res.status(400).json({ success: false, error: "Maksimal 5 referensi per pengiriman" });
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    const { data: sessionRaw } = await supabase
+      .from("interview_sessions")
+      .select('id, "companyId", candidate')
+      .eq("id", sessionId)
+      .maybeSingle<SessionRow>();
+
+    if (!sessionRaw) {
+      res.status(404).json({ success: false, error: "Session not found" });
+      return;
+    }
+    if (!auth.companyId || sessionRaw.companyId !== auth.companyId) {
+      denyTenant(res);
+      return;
+    }
+
+    const candidateName = sessionRaw.candidate?.name || "Kandidat";
+
+    // Create or reuse a request record
+    const requestToken = genToken(24);
+    const expiresAt = new Date(Date.now() + REQUEST_TTL_HOURS * 3600 * 1000).toISOString();
+    const { data: inserted, error: insErr } = await supabase
+      .from("_reference_check_requests")
+      .insert({
+        session_id: sessionId,
+        candidate_id: sessionRaw.candidate?.id ?? null,
+        company_id: sessionRaw.companyId,
+        request_token: requestToken,
+        status: "submitted",
+        expires_at: expiresAt,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (insErr || !inserted) {
+      res.status(500).json({ success: false, error: "Gagal membuat request" });
+      return;
+    }
+    const requestId = inserted.id;
+
+    // Deduct credits
+    const totalCost = REFCHECK_CREDIT_COST * references.length;
+    if (sessionRaw.companyId) {
+      const ok = await tryDeductCredits(sessionRaw.companyId, totalCost);
+      if (!ok) {
+        await supabase.from("_reference_check_requests").delete().eq("id", requestId);
+        res.status(402).json({ success: false, error: `Kredit tidak cukup (butuh ${totalCost})` });
+        return;
+      }
+    }
+
+    // Insert response rows and send WA
+    const results: Array<{ id: string; name: string; ok: boolean; sid?: string; error?: string }> = [];
+    let failedCount = 0;
+
+    for (const ref of references) {
+      const phone = normalizePhone(ref.phone);
+      const row = {
+        request_id: requestId,
+        prev_company_name: ref.company.trim(),
+        prev_role: ref.role?.trim() || null,
+        prev_period: ref.period?.trim() || null,
+        prev_hr_name: ref.name.trim(),
+        prev_hr_phone: phone,
+        ref_email: ref.email?.trim() || null,
+        status: "pending" as const,
+      };
+
+      const { data: resp, error: respErr } = await supabase
+        .from("_reference_check_responses")
+        .insert(row)
+        .select("id")
+        .single<{ id: string }>();
+
+      if (respErr || !resp) {
+        failedCount += 1;
+        results.push({ id: "", name: ref.name, ok: false, error: "DB insert failed" });
+        continue;
+      }
+
+      // Send WhatsApp
+      let sendOk = false;
+      let sid: string | undefined;
+      let errMsg: string | undefined;
+
+      const variables = {
+        "1": candidateName,
+        "2": ref.company,
+        "3": ref.role || "-",
+        "4": ref.period || "-",
+      };
+
+      if (TWILIO_REFCHECK_CONTENT_SID) {
+        const r = await twilioSendContentTemplate({
+          to: phone,
+          contentSid: TWILIO_REFCHECK_CONTENT_SID,
+          contentVariables: variables,
+        });
+        sendOk = r.ok; sid = r.sid; errMsg = r.error;
+      } else {
+        const body =
+          `Halo ${ref.name}, kami HireGood.one. Mohon konfirmasi: apakah ${candidateName} pernah bekerja di ${ref.company}` +
+          (ref.role ? ` sebagai ${ref.role}` : "") +
+          (ref.period ? ` periode ${ref.period}` : "") +
+          `? Balas YA, TIDAK, atau ketik catatan.`;
+        const r = await twilioSendText({ to: phone, body });
+        sendOk = r.ok; sid = r.sid; errMsg = r.error;
+      }
+
+      await supabase
+        .from("_reference_check_responses")
+        .update({
+          twilio_message_sid: sid || null,
+          sent_at: sendOk ? new Date().toISOString() : null,
+          status: sendOk ? "pending" : "no_response",
+        })
+        .eq("id", resp.id);
+
+      if (!sendOk) failedCount += 1;
+      results.push({ id: resp.id, name: ref.name, ok: sendOk, sid, error: errMsg });
+    }
+
+    // Refund failed sends
+    if (failedCount > 0 && sessionRaw.companyId) {
+      await refundCredits(sessionRaw.companyId, REFCHECK_CREDIT_COST * failedCount);
+    }
+
+    res.json({ success: true, requestId, results });
+  } catch (err) {
+    logger.error({ err }, "direct-whatsapp error");
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : "Internal error" });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FITUR 2: Email Referensi dari hiregood.one
+// ══════════════════════════════════════════════════════════════════════════════
+
+function buildReferenceEmailHtml(args: {
+  refName: string;
+  candidateName: string;
+  company: string;
+  role: string;
+  period: string;
+  confirmUrl: string;
+  denyUrl: string;
+}): string {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
+  <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+      <tr><td style="background:#1e293b;padding:24px 32px;">
+        <span style="color:#f97316;font-size:22px;font-weight:bold;">Hire</span><span style="color:#ffffff;font-size:22px;font-weight:bold;">Good</span>
+        <span style="color:#94a3b8;font-size:14px;margin-left:12px;">Verification Request</span>
+      </td></tr>
+      <tr><td style="padding:32px;">
+        <h2 style="color:#1e293b;margin-top:0;">Konfirmasi Riwayat Kerja</h2>
+        <p style="color:#475569;line-height:1.6;">
+          Yth. <strong>${args.refName}</strong>,
+        </p>
+        <p style="color:#475569;line-height:1.6;">
+          Kami dari <strong>HireGood.one</strong>, platform verifikasi rekrutmen terpercaya di Indonesia.
+          Kami ingin mengonfirmasi informasi berikut terkait calon karyawan:
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+          <tr style="background:#f8fafc;">
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;width:140px;">Nama Kandidat</td>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#1e293b;font-weight:bold;">${args.candidateName}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;">Perusahaan</td>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#1e293b;">${args.company}</td>
+          </tr>
+          <tr style="background:#f8fafc;">
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;">Jabatan</td>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#1e293b;">${args.role || "-"}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;">Periode</td>
+            <td style="padding:10px 16px;border:1px solid #e2e8f0;color:#1e293b;">${args.period || "-"}</td>
+          </tr>
+        </table>
+        <p style="color:#475569;line-height:1.6;">
+          Apakah informasi di atas benar? Silakan klik salah satu tombol di bawah:
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:28px auto;">
+          <tr>
+            <td style="padding-right:12px;">
+              <a href="${args.confirmUrl}" style="display:inline-block;padding:14px 32px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:15px;">
+                Ya, Benar
+              </a>
+            </td>
+            <td>
+              <a href="${args.denyUrl}" style="display:inline-block;padding:14px 32px;background:#dc2626;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:15px;">
+                Tidak Benar
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#94a3b8;font-size:12px;text-align:center;">
+          Email ini dikirim secara otomatis oleh sistem HireGood.one.<br/>
+          Jika Anda tidak mengenali permintaan ini, silakan abaikan email ini.
+        </p>
+      </td></tr>
+      <tr><td style="background:#f8fafc;padding:16px 32px;text-align:center;font-size:12px;color:#94a3b8;">
+        &copy; ${new Date().getFullYear()} HireGood &middot; hiregood.one
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+// Send reference check email to a specific response's HR
+router.post("/send-email", async (req: Request, res: Response) => {
+  const auth = await requireSupabaseAuth(req, res);
+  if (!auth) return;
+
+  const { responseId, requestId } = req.body as {
+    responseId: string;
+    requestId: string;
+  };
+
+  if (!responseId || !requestId) {
+    res.status(400).json({ success: false, error: "responseId dan requestId wajib" });
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    // Fetch response
+    const { data: refResp } = await supabase
+      .from("_reference_check_responses")
+      .select("id, request_id, prev_company_name, prev_role, prev_period, prev_hr_name, prev_hr_phone, ref_email")
+      .eq("id", responseId)
+      .eq("request_id", requestId)
+      .maybeSingle();
+
+    if (!refResp) {
+      res.status(404).json({ success: false, error: "Response not found" });
+      return;
+    }
+
+    const resp = refResp as {
+      id: string; request_id: string; prev_company_name: string;
+      prev_role: string | null; prev_period: string | null;
+      prev_hr_name: string | null; prev_hr_phone: string; ref_email: string | null;
+    };
+
+    if (!resp.ref_email) {
+      res.status(400).json({ success: false, error: "Email referensi belum diisi" });
+      return;
+    }
+
+    // Tenant check
+    const { data: reqRow } = await supabase
+      .from("_reference_check_requests")
+      .select("session_id, company_id")
+      .eq("id", requestId)
+      .maybeSingle<Pick<RequestRow, "session_id" | "company_id">>();
+
+    if (!reqRow || !auth.companyId || reqRow.company_id !== auth.companyId) {
+      denyTenant(res);
+      return;
+    }
+
+    // Get candidate name
+    let candidateName = "Kandidat";
+    if (reqRow.session_id) {
+      const { data: s } = await supabase
+        .from("interview_sessions")
+        .select("candidate")
+        .eq("id", reqRow.session_id)
+        .maybeSingle<{ candidate: { name?: string } | null }>();
+      candidateName = s?.candidate?.name || candidateName;
+    }
+
+    // Generate unique email response tokens
+    const confirmToken = genToken(32);
+    const denyToken = genToken(32);
+
+    // Store tokens in DB
+    await supabase.from("_reference_check_responses").update({
+      email_confirm_token: confirmToken,
+      email_deny_token: denyToken,
+      email_sent_at: new Date().toISOString(),
+    }).eq("id", resp.id);
+
+    const baseUrl = getPublicBaseUrl(req);
+    const confirmUrl = `${baseUrl}/api/reference/email-respond/${confirmToken}/confirm`;
+    const denyUrl = `${baseUrl}/api/reference/email-respond/${denyToken}/deny`;
+
+    // Send email via Resend
+    if (!process.env.RESEND_API_KEY) {
+      res.status(503).json({ success: false, error: "Email service belum dikonfigurasi (RESEND_API_KEY)" });
+      return;
+    }
+
+    const resendClient = new Resend(process.env.RESEND_API_KEY);
+    const html = buildReferenceEmailHtml({
+      refName: resp.prev_hr_name || "Bapak/Ibu",
+      candidateName,
+      company: resp.prev_company_name,
+      role: resp.prev_role || "",
+      period: resp.prev_period || "",
+      confirmUrl,
+      denyUrl,
+    });
+
+    const emailResult = await resendClient.emails.send({
+      from: "HireGood <noreply@hiregood.one>",
+      replyTo: "verification@hiregood.one",
+      to: [resp.ref_email],
+      subject: `Konfirmasi Riwayat Kerja — ${candidateName} di ${resp.prev_company_name}`,
+      html,
+    });
+
+    if (emailResult.error) {
+      logger.error({ error: emailResult.error }, "Failed to send reference email");
+      res.status(500).json({ success: false, error: "Gagal mengirim email" });
+      return;
+    }
+
+    logger.info({ responseId: resp.id, to: resp.ref_email }, "Reference email sent");
+    res.json({ success: true, emailId: emailResult.data?.id });
+  } catch (err) {
+    logger.error({ err }, "send-email error");
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : "Internal error" });
+  }
+});
+
+// Email response handler (public — clicked from email)
+router.get("/email-respond/:token/:action", async (req: Request, res: Response) => {
+  const token = req.params.token as string;
+  const action = req.params.action as string;
+  if (!token || !["confirm", "deny"].includes(action)) {
+    res.status(400).send("Invalid link");
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    const column = action === "confirm" ? "email_confirm_token" : "email_deny_token";
+    const { data: resp } = await supabase
+      .from("_reference_check_responses")
+      .select("id, status")
+      .eq(column, token)
+      .maybeSingle<{ id: string; status: string }>();
+
+    if (!resp) {
+      res.status(404).send(htmlPage("Link Tidak Valid", "Link konfirmasi tidak ditemukan atau sudah digunakan."));
+      return;
+    }
+
+    if (resp.status !== "pending") {
+      res.status(200).send(htmlPage("Sudah Dikonfirmasi", "Anda sudah pernah memberikan konfirmasi sebelumnya. Terima kasih!"));
+      return;
+    }
+
+    const newStatus = action === "confirm" ? "confirmed" : "denied";
+    await supabase.from("_reference_check_responses").update({
+      status: newStatus,
+      response_text: action === "confirm" ? "[EMAIL] Dikonfirmasi via email" : "[EMAIL] Ditolak via email",
+      responded_at: new Date().toISOString(),
+      email_confirm_token: null,
+      email_deny_token: null,
+    }).eq("id", resp.id);
+
+    const title = action === "confirm" ? "Terima Kasih!" : "Terima Kasih";
+    const message = action === "confirm"
+      ? "Anda telah <strong>mengonfirmasi</strong> bahwa informasi riwayat kerja tersebut benar. Terima kasih atas waktunya!"
+      : "Anda telah menyatakan bahwa informasi riwayat kerja tersebut <strong>tidak benar</strong>. Terima kasih atas klarifikasinya.";
+
+    res.status(200).send(htmlPage(title, message));
+  } catch (err) {
+    logger.error({ err }, "email-respond error");
+    res.status(500).send(htmlPage("Error", "Terjadi kesalahan. Silakan coba lagi nanti."));
+  }
+});
+
+function htmlPage(title: string, body: string): string {
+  return `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title} — HireGood</title></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+<div style="background:#fff;padding:48px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:480px;text-align:center;">
+  <div style="margin-bottom:16px;"><span style="color:#f97316;font-size:28px;font-weight:bold;">Hire</span><span style="color:#1e293b;font-size:28px;font-weight:bold;">Good</span></div>
+  <h2 style="color:#1e293b;margin-bottom:16px;">${title}</h2>
+  <p style="color:#475569;line-height:1.6;">${body}</p>
+  <p style="color:#94a3b8;font-size:12px;margin-top:32px;">&copy; ${new Date().getFullYear()} HireGood &middot; hiregood.one</p>
+</div></body></html>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FITUR 3: AI Voice Call ke Referensi (Twilio Voice + Gemini)
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function aiAnalyzeCallResponse(
+  candidateName: string,
+  company: string,
+  role: string,
+  period: string,
+  speechResult: string,
+  conversationHistory: Array<{ speaker: string; text: string }>,
+): Promise<{ status: "confirmed" | "denied" | "unclear"; followUp: string | null; reasoning: string }> {
+  const prompt = `Kamu adalah analis percakapan telepon verifikasi kerja untuk HireGood.one.
+
+Data kandidat:
+- Nama: ${candidateName}
+- Perusahaan: ${company}
+- Jabatan: ${role || "tidak disebutkan"}
+- Periode: ${period || "tidak disebutkan"}
+
+Percakapan sejauh ini:
+${conversationHistory.map((c) => `${c.speaker}: ${c.text}`).join("\n")}
+
+Respons terakhir dari referensi:
+"${speechResult}"
+
+Tugas:
+1. Analisis apakah referensi mengonfirmasi, menolak, atau belum jelas
+2. Jika belum jelas atau perlu informasi lebih, buat pertanyaan follow-up yang natural dalam bahasa Indonesia
+3. Jika sudah cukup jelas (konfirmasi atau tolak), set followUp = null
+
+Jawab dalam JSON format:
+{
+  "status": "confirmed" | "denied" | "unclear",
+  "followUp": "pertanyaan lanjutan" | null,
+  "reasoning": "penjelasan singkat"
+}`;
+
+  const apiUrl = GEMINI_API_KEY
+    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    : null;
+  const deepseekUrl = DEEPSEEK_API_KEY ? "https://api.deepseek.com/v1/chat/completions" : null;
+
+  let raw = "";
+
+  if (apiUrl) {
+    try {
+      const r = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 500, responseMimeType: "application/json" },
+        }),
+      });
+      const data = (await r.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } catch (err) {
+      logger.warn({ err }, "Gemini call analysis failed, trying DeepSeek");
+    }
+  }
+
+  if (!raw && deepseekUrl) {
+    try {
+      const r = await fetch(deepseekUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        }),
+      });
+      const data = (await r.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      raw = data.choices?.[0]?.message?.content || "";
+    } catch (err) {
+      logger.warn({ err }, "DeepSeek call analysis also failed");
+    }
+  }
+
+  if (!raw) {
+    return { status: "unclear", followUp: null, reasoning: "AI analysis unavailable" };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { status: string; followUp: string | null; reasoning: string };
+    return {
+      status: (["confirmed", "denied", "unclear"].includes(parsed.status) ? parsed.status : "unclear") as "confirmed" | "denied" | "unclear",
+      followUp: parsed.followUp || null,
+      reasoning: parsed.reasoning || "",
+    };
+  } catch {
+    return { status: "unclear", followUp: null, reasoning: raw.slice(0, 200) };
+  }
+}
+
+// Initiate AI voice call to a reference
+router.post("/ai-call", async (req: Request, res: Response) => {
+  const auth = await requireSupabaseAuth(req, res);
+  if (!auth) return;
+
+  const { responseId, requestId } = req.body as { responseId: string; requestId: string };
+
+  if (!responseId || !requestId) {
+    res.status(400).json({ success: false, error: "responseId dan requestId wajib" });
+    return;
+  }
+
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    res.status(503).json({ success: false, error: "Twilio Voice belum dikonfigurasi (TWILIO_PHONE_NUMBER)" });
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    const { data: refResp } = await supabase
+      .from("_reference_check_responses")
+      .select("id, request_id, prev_company_name, prev_role, prev_period, prev_hr_name, prev_hr_phone, call_status")
+      .eq("id", responseId)
+      .eq("request_id", requestId)
+      .maybeSingle();
+
+    if (!refResp) {
+      res.status(404).json({ success: false, error: "Response not found" });
+      return;
+    }
+
+    const resp = refResp as {
+      id: string; request_id: string; prev_company_name: string;
+      prev_role: string | null; prev_period: string | null;
+      prev_hr_name: string | null; prev_hr_phone: string; call_status: string | null;
+    };
+
+    if (resp.call_status === "in_progress") {
+      res.status(409).json({ success: false, error: "Panggilan sedang berlangsung" });
+      return;
+    }
+
+    // Tenant check
+    const { data: reqRow } = await supabase
+      .from("_reference_check_requests")
+      .select("session_id, company_id")
+      .eq("id", requestId)
+      .maybeSingle<Pick<RequestRow, "session_id" | "company_id">>();
+
+    if (!reqRow || !auth.companyId || reqRow.company_id !== auth.companyId) {
+      denyTenant(res);
+      return;
+    }
+
+    let candidateName = "Kandidat";
+    if (reqRow.session_id) {
+      const { data: s } = await supabase
+        .from("interview_sessions")
+        .select("candidate")
+        .eq("id", reqRow.session_id)
+        .maybeSingle<{ candidate: { name?: string } | null }>();
+      candidateName = s?.candidate?.name || candidateName;
+    }
+
+    // Deduct credits for voice call
+    if (reqRow.company_id) {
+      const ok = await tryDeductCredits(reqRow.company_id, REFCHECK_CREDIT_COST);
+      if (!ok) {
+        res.status(402).json({ success: false, error: "Kredit tidak cukup" });
+        return;
+      }
+    }
+
+    const baseUrl = getPublicBaseUrl(req);
+    const webhookUrl = `${baseUrl}/api/reference/ai-call-webhook`;
+
+    // Build TwiML for the initial greeting
+    const greeting =
+      `Selamat siang, saya dari HireGood titik one, platform verifikasi rekrutmen. ` +
+      `Kami ingin mengonfirmasi, apakah ${candidateName} pernah bekerja di ${resp.prev_company_name}` +
+      (resp.prev_role ? ` sebagai ${resp.prev_role}` : "") +
+      `? Mohon jawab ya atau tidak.`;
+
+    // Initiate Twilio outbound call
+    const callUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`;
+    const params = new URLSearchParams();
+    params.set("From", TWILIO_PHONE_NUMBER);
+    params.set("To", resp.prev_hr_phone);
+    params.set("Twiml", `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${greeting}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${webhookUrl}?responseId=${resp.id}&amp;step=1&amp;candidateName=${encodeURIComponent(candidateName)}&amp;company=${encodeURIComponent(resp.prev_company_name)}&amp;role=${encodeURIComponent(resp.prev_role || "")}&amp;period=${encodeURIComponent(resp.prev_period || "")}"><Say language="id-ID">Silakan jawab sekarang.</Say></Gather><Say language="id-ID">Maaf, kami tidak menerima jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`);
+    params.set("StatusCallback", `${webhookUrl}?responseId=${resp.id}&statusCallback=true`);
+    params.set("Record", "true");
+    params.set("RecordingStatusCallback", `${webhookUrl}?responseId=${resp.id}&recordingCallback=true`);
+    params.set("Timeout", "30");
+
+    const twilioAuth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+    const callResp = await fetch(callUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${twilioAuth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    const callData = await callResp.json() as { sid?: string; message?: string };
+
+    if (!callResp.ok || !callData.sid) {
+      logger.error({ status: callResp.status, callData }, "Failed to initiate AI call");
+      if (reqRow.company_id) await refundCredits(reqRow.company_id, REFCHECK_CREDIT_COST);
+      res.status(500).json({ success: false, error: callData.message || "Gagal memulai panggilan" });
+      return;
+    }
+
+    // Update response record
+    await supabase.from("_reference_check_responses").update({
+      call_status: "in_progress",
+      call_sid: callData.sid,
+      call_transcript: JSON.stringify([{ speaker: "AI", text: greeting, timestamp: new Date().toISOString() }]),
+    }).eq("id", resp.id);
+
+    logger.info({ responseId: resp.id, callSid: callData.sid }, "AI call initiated");
+    res.json({ success: true, callSid: callData.sid });
+  } catch (err) {
+    logger.error({ err }, "ai-call error");
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : "Internal error" });
+  }
+});
+
+// AI call webhook — handles speech results and call status updates
+router.post(
+  "/ai-call-webhook",
+  express.urlencoded({ extended: true }),
+  async (req: Request, res: Response) => {
+    const responseId = req.query.responseId as string;
+    const isStatusCallback = req.query.statusCallback === "true";
+    const isRecordingCallback = req.query.recordingCallback === "true";
+
+    if (!responseId) {
+      res.status(200).type("text/xml").send("<Response/>");
+      return;
+    }
+
+    try {
+      const supabase = getSupabase();
+
+      // Handle call status callback (completed, no-answer, busy, failed)
+      if (isStatusCallback) {
+        const callStatus = (req.body as Record<string, string>).CallStatus || "";
+        const duration = parseInt((req.body as Record<string, string>).CallDuration || "0", 10);
+
+        if (["completed", "no-answer", "busy", "failed", "canceled"].includes(callStatus)) {
+          const dbStatus = callStatus === "completed" ? "completed"
+            : callStatus === "no-answer" ? "no_answer"
+            : "failed";
+
+          await supabase.from("_reference_check_responses").update({
+            call_status: dbStatus,
+            call_duration: duration || null,
+          }).eq("id", responseId);
+
+          logger.info({ responseId, callStatus, duration }, "AI call status update");
+        }
+        res.status(200).type("text/xml").send("<Response/>");
+        return;
+      }
+
+      // Handle recording callback
+      if (isRecordingCallback) {
+        const recordingUrl = (req.body as Record<string, string>).RecordingUrl || "";
+        if (recordingUrl) {
+          await supabase.from("_reference_check_responses").update({
+            call_recording_url: recordingUrl,
+          }).eq("id", responseId);
+        }
+        res.status(200).type("text/xml").send("<Response/>");
+        return;
+      }
+
+      // Handle speech result
+      const speechResult = (req.body as Record<string, string>).SpeechResult || "";
+      const step = parseInt(req.query.step as string || "1", 10);
+      const candidateName = decodeURIComponent(req.query.candidateName as string || "Kandidat");
+      const company = decodeURIComponent(req.query.company as string || "");
+      const role = decodeURIComponent(req.query.role as string || "");
+      const period = decodeURIComponent(req.query.period as string || "");
+
+      if (!speechResult) {
+        res.status(200).type("text/xml").send(
+          `<Response><Say language="id-ID">Maaf, kami tidak mendengar jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
+        );
+        return;
+      }
+
+      // Get existing transcript
+      const { data: existing } = await supabase
+        .from("_reference_check_responses")
+        .select("call_transcript")
+        .eq("id", responseId)
+        .maybeSingle();
+
+      let transcript: Array<{ speaker: string; text: string; timestamp: string }> = [];
+      try {
+        transcript = JSON.parse((existing as { call_transcript: string } | null)?.call_transcript || "[]");
+      } catch { /* empty */ }
+
+      transcript.push({ speaker: "Referensi", text: speechResult, timestamp: new Date().toISOString() });
+
+      // AI analysis
+      const analysis = await aiAnalyzeCallResponse(
+        candidateName, company, role, period, speechResult,
+        transcript.map((t) => ({ speaker: t.speaker, text: t.text })),
+      );
+
+      // Max 3 steps of conversation
+      if (analysis.followUp && step < 3) {
+        transcript.push({ speaker: "AI", text: analysis.followUp, timestamp: new Date().toISOString() });
+
+        await supabase.from("_reference_check_responses").update({
+          call_transcript: JSON.stringify(transcript),
+        }).eq("id", responseId);
+
+        const baseUrl = getPublicBaseUrl(req);
+        const nextUrl = `${baseUrl}/api/reference/ai-call-webhook?responseId=${responseId}&step=${step + 1}&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&period=${encodeURIComponent(period)}`;
+
+        res.status(200).type("text/xml").send(
+          `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${analysis.followUp}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${nextUrl}"><Say language="id-ID">Silakan jawab.</Say></Gather><Say language="id-ID">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
+        );
+      } else {
+        // Conversation done
+        const closing = analysis.status === "confirmed"
+          ? "Terima kasih atas konfirmasinya. Informasi ini sangat membantu. Selamat siang."
+          : analysis.status === "denied"
+          ? "Terima kasih atas informasinya. Kami akan meninjau lebih lanjut. Selamat siang."
+          : "Terima kasih atas waktunya. Selamat siang.";
+
+        transcript.push({ speaker: "AI", text: closing, timestamp: new Date().toISOString() });
+
+        const refStatus = analysis.status === "confirmed" ? "confirmed"
+          : analysis.status === "denied" ? "denied"
+          : "pending";
+
+        await supabase.from("_reference_check_responses").update({
+          call_transcript: JSON.stringify(transcript),
+          call_analysis: JSON.stringify({
+            confirmed: analysis.status === "confirmed",
+            status: analysis.status,
+            reasoning: analysis.reasoning,
+          }),
+          call_status: "completed",
+          status: refStatus,
+          response_text: `[AI CALL] ${analysis.reasoning}`,
+          responded_at: new Date().toISOString(),
+        }).eq("id", responseId);
+
+        res.status(200).type("text/xml").send(
+          `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${closing}</Say></Response>`,
+        );
+      }
+    } catch (err) {
+      logger.error({ err }, "ai-call-webhook error");
+      res.status(200).type("text/xml").send("<Response><Say language=\"id-ID\">Maaf terjadi kesalahan. Selamat siang.</Say></Response>");
+    }
+  },
+);
 
 export default router;
