@@ -1790,4 +1790,54 @@ router.post(
   },
 );
 
+// Proxy Twilio call recordings — Twilio recording URLs require Basic Auth so
+// the browser cannot fetch them directly in an <audio> tag.
+router.get("/recording/:sid", async (req: Request, res: Response) => {
+  const sid = req.params.sid as string;
+  if (!sid || !/^RE[0-9a-f]{32}$/i.test(sid)) {
+    res.status(400).json({ error: "Invalid recording SID" });
+    return;
+  }
+
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+    res.status(503).json({ error: "Twilio not configured" });
+    return;
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Recordings/${sid}.mp3`;
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+    const upstream = await fetch(url, {
+      headers: { Authorization: `Basic ${auth}` },
+      redirect: "follow",
+    });
+
+    if (!upstream.ok) {
+      res.status(upstream.status).json({ error: "Recording not found" });
+      return;
+    }
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    const body = upstream.body;
+    if (body) {
+      // Node 18+ ReadableStream → pipe to Express response
+      const reader = body.getReader();
+      const pump = async (): Promise<void> => {
+        const { done, value } = await reader.read();
+        if (done) { res.end(); return; }
+        res.write(value);
+        return pump();
+      };
+      await pump();
+    } else {
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.send(buf);
+    }
+  } catch (err) {
+    logger.error({ err }, "recording proxy error");
+    res.status(500).json({ error: "Failed to fetch recording" });
+  }
+});
+
 export default router;

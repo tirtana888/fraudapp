@@ -12,6 +12,7 @@ import {
   callStatusColor,
   refStatusLabel,
   refStatusColor,
+  getRecordingProxyUrl,
   type ReferenceCheckRequest,
   type ReferenceCheckResponse,
   type DirectReferenceInput,
@@ -429,9 +430,9 @@ const ReferenceRow: React.FC<{
       })()}
 
       {/* Call Recording */}
-      {response.callRecordingUrl && (
+      {response.callRecordingUrl && getRecordingProxyUrl(response.callRecordingUrl) && (
         <div className="mt-2">
-          <audio controls className="w-full h-8" src={response.callRecordingUrl + '.mp3'}>
+          <audio controls className="w-full h-8" src={getRecordingProxyUrl(response.callRecordingUrl)}>
             <track kind="captions" />
           </audio>
         </div>
