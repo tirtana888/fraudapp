@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 import type { PddiktiVerification } from '../types';
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -13,7 +14,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 
 export async function verifyNim(sessionId: string): Promise<PddiktiVerification> {
   const headers = await getAuthHeader();
-  const resp = await fetch('/api/pddikti/verify-nim', {
+  const resp = await fetch(`${API_BASE}/api/pddikti/verify-nim`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ sessionId }),
@@ -28,7 +29,7 @@ export async function selectMatch(
   matchId: string,
 ): Promise<PddiktiVerification> {
   const headers = await getAuthHeader();
-  const resp = await fetch('/api/pddikti/select-match', {
+  const resp = await fetch(`${API_BASE}/api/pddikti/select-match`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ sessionId, matchId }),

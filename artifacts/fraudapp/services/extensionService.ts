@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 export async function requestExtensionToken(
   sessionId: string,
@@ -8,7 +9,7 @@ export async function requestExtensionToken(
   const token = sessionData?.session?.access_token;
   if (!token) throw new Error('Sesi tidak aktif — silakan login ulang');
 
-  const resp = await fetch('/api/extension/generate-token', {
+  const resp = await fetch(`${API_BASE}/api/extension/generate-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

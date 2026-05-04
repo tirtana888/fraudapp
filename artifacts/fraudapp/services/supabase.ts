@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { API_BASE } from './apiBase';
 import { InterviewSession, AssessmentInvite, CompanyProfile, UserProfile, Job, JobApplication, Workflow, WorkflowStep } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -83,7 +84,7 @@ export const sendEmailViaCloudFunction = async (
       console.warn('[EMAIL] No active session — email not sent');
       return false;
     }
-    const resp = await fetch('/api/send-email', {
+    const resp = await fetch(`${API_BASE}/api/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ export const sendEmailViaPublicEndpoint = async (
   sessionId: string
 ): Promise<boolean> => {
   try {
-    const resp = await fetch('/api/send-email-public', {
+    const resp = await fetch(`${API_BASE}/api/send-email-public`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ emailType, to_email, emailData, sessionId }),
@@ -765,7 +766,7 @@ export const uploadCV = async (applicationId: string, file: File): Promise<strin
     reader.readAsDataURL(file);
   });
 
-  const resp = await fetch('/api/upload/cv-public', {
+  const resp = await fetch(`${API_BASE}/api/upload/cv-public`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -801,7 +802,7 @@ export const parseCVWithMistral = async (cvUrl: string, sessionId: string): Prom
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const resp = await fetch('/api/ai/parse-cv', {
+    const resp = await fetch(`${API_BASE}/api/ai/parse-cv`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ sessionId, cvUrl }),

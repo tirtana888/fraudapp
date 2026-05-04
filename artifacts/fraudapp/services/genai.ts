@@ -1,5 +1,6 @@
 import { FraudAnalysis, RiskLevel, AssessmentItem, SJTItem } from '../types';
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 // ==========================================
 // GENAI SERVICE
@@ -119,7 +120,7 @@ export const analyzeFraudRisk = async (
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const resp = await fetch('/api/ai/fraud-analysis', {
+    const resp = await fetch(`${API_BASE}/api/ai/fraud-analysis`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -214,7 +215,7 @@ export const generateNextQuestion = async (context: {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const resp = await fetch('/api/ai/interview-question', {
+    const resp = await fetch(`${API_BASE}/api/ai/interview-question`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
