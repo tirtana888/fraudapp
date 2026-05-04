@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
-import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep } from '../types';
+import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep, PddiktiVerification } from '../types';
 import { supabase, COLLECTIONS, parseCVWithMistral, sendEmailViaCloudFunction, toSnakeCaseRow } from '../services/supabase';
 
 type TimelineItem = NonNullable<InterviewSession['timeline']>[number];
@@ -14,6 +14,7 @@ import { updateCandidateStage } from '../services/stageTracker';
 import CVPremiumGate from './candidate-detail/CVPremiumGate';
 import IdentityVerificationCard from './candidate-detail/IdentityVerificationCard';
 import ExtensionScreeningCard from './candidate-detail/ExtensionScreeningCard';
+import NimVerificationCard from './candidate-detail/NimVerificationCard';
 import ProctoringCard from './candidate-detail/ProctoringCard';
 import ReferenceCheckCard from './candidate-detail/ReferenceCheckCard';
 import PipelineStepper from './candidate-detail/PipelineStepper';
@@ -187,6 +188,13 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
                 console.error('[STAGE-TRACKER] Error updating stage:', err)
               );
             }
+          }
+
+          // Update pddiktiVerification if it changes
+          if (data.pddiktiVerification && !prev.pddiktiVerification) {
+            console.log('[CANDIDATE-DETAIL] PDDikti verification received via real-time');
+            newCandidate.pddiktiVerification = data.pddiktiVerification as PddiktiVerification;
+            updated = true;
           }
 
           // Update backgroundCheck if it changes
@@ -2389,6 +2397,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               proctoringData={candidate.proctoringData}
             />
 
+            {candidate.cvParsedData?.education && candidate.cvParsedData.education.length > 0 && (
+              <NimVerificationCard
+                sessionId={sessionId}
+                education={candidate.cvParsedData.education}
+                pddiktiVerification={candidate.pddiktiVerification}
+                onVerified={() => loadCandidateData()}
+              />
+            )}
+
             <ProctoringCard
               sessionId={sessionId}
               proctoringConsentAt={candidate.proctoringConsentAt}
@@ -3226,6 +3243,15 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
               gamblingAnalysis={candidate.gamblingAnalysis}
               proctoringData={candidate.proctoringData}
             />
+
+            {candidate.cvParsedData?.education && candidate.cvParsedData.education.length > 0 && (
+              <NimVerificationCard
+                sessionId={sessionId}
+                education={candidate.cvParsedData.education}
+                pddiktiVerification={candidate.pddiktiVerification}
+                onVerified={() => loadCandidateData()}
+              />
+            )}
 
             <ProctoringCard
               sessionId={sessionId}

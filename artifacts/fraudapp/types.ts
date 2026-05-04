@@ -99,6 +99,47 @@ export interface InterviewSession {
   proctoringConsentAt?: string;
   proctoringStartedAt?: string;
   proctoringFinishedAt?: string;
+  pddiktiVerification?: PddiktiVerification;
+}
+
+// ========== PDDikti NIM Verification ==========
+
+export interface PddiktiMatchedStudent {
+  id: string;
+  nama: string;
+  nim: string;
+  nama_pt: string;
+  prodi: string;
+  jenjang: string;
+  status_saat_ini: string;
+  tanggal_masuk?: string | null;
+}
+
+export interface PddiktiSearchMatch {
+  id: string;
+  nama: string;
+  nim: string;
+  nama_pt: string;
+  nama_prodi: string;
+}
+
+export interface PddiktiAIAnalysis {
+  confidence: number;
+  reasoning: string;
+  bestMatchIndex: number;
+}
+
+export interface PddiktiVerification {
+  status: 'verified' | 'not_found' | 'multiple_matches' | 'pending' | 'error';
+  verifiedAt?: string;
+  searchKeyword?: string;
+  institution?: string;
+  degree?: string;
+  graduationYear?: string;
+  matchedStudent?: PddiktiMatchedStudent | null;
+  allMatches?: PddiktiSearchMatch[];
+  aiAnalysis?: PddiktiAIAnalysis | null;
+  error?: string | null;
 }
 
 // ========== KYC / Background Check Types ==========
