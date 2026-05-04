@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Briefcase, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Job, CompanyProfile, AssessmentInvite } from '../types';
-import { getJobBySlug, createApplication, uploadCV, sendEmailViaCloudFunction, COLLECTIONS, getCompanyBySlug, supabase, toSnakeCaseRow } from '../services/supabase';
+import { uploadCV } from '../services/supabase';
+import { API_BASE } from '../services/apiBase';
 import { useToast } from './Toast';
 
 interface PublicJobPageProps {
@@ -33,25 +34,28 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
     try {
       setIsLoading(true);
 
-      const companyData = await getCompanyBySlug(companySlug);
-
-      if (!companyData) {
+      // Fetch company via API server (uses service key, bypasses RLS)
+      const compResp = await fetch(`${API_BASE}/api/public-jobs/company/${encodeURIComponent(companySlug)}`);
+      const compJson = await compResp.json();
+      if (!compResp.ok || !compJson?.success || !compJson?.company) {
         console.error('[PUBLIC-JOB] Company not found for slug:', companySlug);
         return;
       }
-
+      const companyData = compJson.company as CompanyProfile;
       setCompany(companyData);
 
       if (jobSlug) {
-        const jobData = await getJobBySlug(companyData.id, jobSlug);
-        if (!jobData) {
+        const jobResp = await fetch(`${API_BASE}/api/public-jobs/company/${encodeURIComponent(companyData.id)}/job/${encodeURIComponent(jobSlug)}`);
+        const jobJson = await jobResp.json();
+        if (!jobResp.ok || !jobJson?.success || !jobJson?.job) {
           console.error('[PUBLIC-JOB] Job not found');
           return;
         }
-        setJob(jobData);
+        setJob(jobJson.job as Job);
       } else {
-        const { data: jobsData } = await supabase.from(COLLECTIONS.JOBS).select('*').eq('companyId', companyData.id).eq('status', 'Active');
-        setJobs((jobsData || []) as Job[]);
+        const jobsResp = await fetch(`${API_BASE}/api/public-jobs/company/${encodeURIComponent(companyData.id)}/jobs`);
+        const jobsJson = await jobsResp.json();
+        setJobs((jobsJson?.jobs || []) as Job[]);
       }
     } catch (error) {
       console.error('[PUBLIC-JOB] Error loading job:', error);
@@ -149,55 +153,29 @@ const PublicJobPage: React.FC<PublicJobPageProps> = ({ companySlug, jobSlug }) =
         applicationData.accessCode = accessCode;
       }
 
-      console.log('[PUBLIC-JOB] ===== STEP 2: CREATING APPLICATION =====');
-      console.log('[PUBLIC-JOB] Application data:', applicationData);
-      const applicationId = await createApplication(applicationData);
-      console.log('[PUBLIC-JOB] ✅ Application created with ID:', applicationId);
-
-      if (job.enableInstantAssessment && accessCode) {
-        console.log('[PUBLIC-JOB] ===== STEP 3: CREATE INVITE & SEND EMAIL =====');
-        try {
-          // Save to invites collection (same as manual invite)
-          const inviteData: any = {
-            access_code: accessCode,
-            name: formData.fullName,
-            email: formData.email,
-            role: job.title,
-            companyId: company.id,
-            status: 'PENDING',
-            createdAt: new Date().toISOString(),
-            jobId: job.id,
-            applicationId: applicationId
-          };
-
-          await supabase.from('_assessment_invites').insert(toSnakeCaseRow(inviteData as Record<string, unknown>));
-          console.log('[PUBLIC-JOB] ✅ Invite saved to database');
-
-          // Send email (same format as manual invite)
-          const assessmentLink = `${window.location.origin}?mode=assess`;
-
-          const emailSent = await sendEmailViaCloudFunction(
-            "candidate_invitation",
-            formData.email,
-            {
-              candidateName: formData.fullName,
-              candidateEmail: formData.email,
-              companyName: company.name,
-              accessCode: accessCode,
-              assessmentLink: assessmentLink,
-              role: job.title
-            }
-          );
-
-          if (emailSent) {
-            console.log('[PUBLIC-JOB] ✅ Assessment invitation email sent successfully');
-          } else {
-            console.warn('[PUBLIC-JOB] ⚠️ Assessment invitation email failed to send');
-          }
-        } catch (emailError) {
-          console.error('[PUBLIC-JOB] ❌ Error in invite/email process:', emailError);
-        }
+      // Step 2+3: Create application, interview session, and invite via API server
+      // (uses service key to bypass RLS — anon users can't write to Supabase directly)
+      console.log('[PUBLIC-JOB] ===== STEP 2: CREATING APPLICATION VIA API =====');
+      const applyResp = await fetch(`${API_BASE}/api/public-jobs/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          companyId: company.id,
+          fullName: formData.fullName,
+          email: formData.email,
+          whatsapp: formData.whatsapp,
+          cvUrl,
+          accessCode,
+          enableInstantAssessment: job.enableInstantAssessment,
+          origin: window.location.origin,
+        }),
+      });
+      const applyJson = await applyResp.json();
+      if (!applyResp.ok || !applyJson?.success) {
+        throw new Error(applyJson?.error || `Gagal membuat aplikasi: HTTP ${applyResp.status}`);
       }
+      console.log('[PUBLIC-JOB] ✅ Application created with ID:', applyJson.applicationId);
 
       console.log('[PUBLIC-JOB] ===== STEP 4: SHOWING SUCCESS MESSAGE =====');
       setShowSuccess(true);

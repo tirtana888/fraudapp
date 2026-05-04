@@ -7,6 +7,7 @@ import uploadRouter from "./upload";
 import diditRouter from "./didit";
 import referenceRouter from "./reference";
 import pddiktiRouter from "./pddikti";
+import publicJobsRouter from "./public-jobs";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/upload", uploadRouter);
 router.use("/didit", diditRouter);
 router.use("/reference", referenceRouter);
 router.use("/pddikti", pddiktiRouter);
+router.use("/public-jobs", publicJobsRouter);
 
 export default router;
