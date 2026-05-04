@@ -29,7 +29,7 @@ const CandidateActivityTimeline: React.FC<CandidateActivityTimelineProps> = ({
   candidateName
 }) => {
   const getEventIcon = (stage: string) => {
-    const iconMap: { [key: string]: JSX.Element } = {
+    const iconMap: { [key: string]: React.ReactNode } = {
       'applied': <Mail size={16} className="text-brand-blue" />,
       'cv_uploaded': <Upload size={16} className="text-brand-blue" />,
       'screening': <FileText size={16} className="text-brand-orange" />,

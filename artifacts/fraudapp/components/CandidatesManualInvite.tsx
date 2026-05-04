@@ -51,6 +51,7 @@ const CandidatesManualInvite: React.FC<CandidatesManualInviteProps> = ({ current
       });
       return () => unsubscribe();
     }
+    return undefined;
   }, [currentCompany?.id]);
 
   const loadCompletedCandidates = async (invitesData: AssessmentInvite[]) => {

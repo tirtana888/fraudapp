@@ -32,6 +32,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ speaker, text, isNew = false,
     } else {
       setDisplayedText(text);
       setShowCursor(false);
+      return undefined;
     }
   }, [text, isNew, isAI]);
 

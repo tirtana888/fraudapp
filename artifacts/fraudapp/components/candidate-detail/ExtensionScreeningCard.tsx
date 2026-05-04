@@ -148,7 +148,7 @@ export default function ExtensionScreeningCard({
               <div className="bg-gray-50 dark:bg-slate-900 rounded p-3 text-center border border-gray-100 dark:border-slate-800">
                 <p className="text-xs text-gray-500 mb-1">Situs Terdeteksi</p>
                 <p className="font-bold text-gray-800 dark:text-gray-200">{gamblingAnalysis.flaggedSitesCount || 0}</p>
-                {(gamblingAnalysis.gamblingSitesCount > 0 || gamblingAnalysis.adultSitesCount > 0) && (
+                {((gamblingAnalysis.gamblingSitesCount ?? 0) > 0 || (gamblingAnalysis.adultSitesCount ?? 0) > 0) && (
                   <p className="text-[10px] text-gray-500 mt-1">
                     🎰 {gamblingAnalysis.gamblingSitesCount || 0} · 🔞 {gamblingAnalysis.adultSitesCount || 0}
                   </p>

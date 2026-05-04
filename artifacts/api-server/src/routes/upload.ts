@@ -100,11 +100,15 @@ router.post("/cv-public", async (req: Request, res: Response) => {
       .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
 
     if (signErr || !signedData?.signedUrl) {
-      // Fallback: return the storage path so downstream code can still
-      // download the file via the service key.
-      logger.warn({ err: signErr, storagePath }, "Failed to create signed URL, returning path");
-      const fallbackUrl = `${SUPABASE_URL}/storage/v1/object/candidate-documents/${storagePath}`;
-      res.json({ success: true, url: fallbackUrl, path: storagePath });
+      // The candidate-documents bucket is private. A `/object/candidate-documents/`
+      // public URL would return 403, so do NOT return one as a fallback — that
+      // breaks every downstream consumer (CV preview, parse-cv) silently. Surface
+      // the failure instead.
+      logger.error({ err: signErr, storagePath }, "Failed to create signed URL for CV");
+      res.status(500).json({
+        success: false,
+        error: "Gagal membuat URL akses untuk dokumen CV. Silakan coba lagi.",
+      });
       return;
     }
 

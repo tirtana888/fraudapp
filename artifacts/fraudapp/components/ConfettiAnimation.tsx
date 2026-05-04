@@ -28,6 +28,7 @@ const ConfettiAnimation: React.FC<ConfettiAnimationProps> = ({ show, onComplete 
 
       return () => clearTimeout(timeout);
     }
+    return undefined;
   }, [show, onComplete]);
 
   if (!show || confetti.length === 0) return null;

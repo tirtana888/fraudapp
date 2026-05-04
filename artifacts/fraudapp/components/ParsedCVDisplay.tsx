@@ -44,7 +44,7 @@ const ParsedCVDisplay: React.FC<ParsedCVDisplayProps> = ({ parsedData, isLocked 
             )}
 
             {/* Inline Stats */}
-            {(totalExperience > 0 || parsedData.education?.length > 0) && (
+            {(totalExperience > 0 || (parsedData.education?.length ?? 0) > 0) && (
               <div className="flex gap-4 mt-2 text-sm">
                 {totalExperience > 0 && (
                   <div className="flex items-center gap-1">
