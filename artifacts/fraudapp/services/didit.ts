@@ -1,4 +1,5 @@
 import { supabase, toSnakeCaseRow } from './supabase';
+import { API_BASE } from './apiBase';
 
 export interface DiditVerificationSession {
   verificationSessionId: string;
@@ -22,7 +23,7 @@ export const createBackgroundCheckSession = async (
   candidateEmail: string
 ): Promise<DiditVerificationSession> => {
   const callbackUrl = `${window.location.origin}/?bgcb=1`;
-  const resp = await fetch('/api/didit/create-session', {
+  const resp = await fetch(`${API_BASE}/api/didit/create-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId, candidateName, candidateEmail, callbackUrl }),
@@ -42,7 +43,7 @@ export const createBackgroundCheckSession = async (
 export const getVerificationSession = async (
   verificationSessionId: string
 ): Promise<DiditSessionResponse> => {
-  const resp = await fetch(`/api/didit/session/${encodeURIComponent(verificationSessionId)}`, {
+  const resp = await fetch(`${API_BASE}/api/didit/session/${encodeURIComponent(verificationSessionId)}`, {
     method: 'GET',
   });
   const data = await resp.json();

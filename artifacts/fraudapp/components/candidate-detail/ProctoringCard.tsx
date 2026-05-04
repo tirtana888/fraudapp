@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Camera, Eye, AlertTriangle, CheckCircle2, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../services/supabase';
+import { API_BASE } from '../../services/apiBase';
 
 interface ProctoringEvent {
   event_type: string;
@@ -51,7 +52,7 @@ export default function ProctoringCard({
       const { data: sess } = await supabase.auth.getSession();
       const tok = sess?.session?.access_token;
       if (!tok) throw new Error('Sesi tidak aktif');
-      const r = await fetch(`/api/extension/proctoring/data?sessionId=${encodeURIComponent(sessionId)}`, {
+      const r = await fetch(`${API_BASE}/api/extension/proctoring/data?sessionId=${encodeURIComponent(sessionId)}`, {
         headers: { Authorization: `Bearer ${tok}` },
       });
       const j = await r.json();

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 export interface ReferenceCheckResponse {
   id: string;
@@ -57,7 +58,7 @@ export async function createReferenceRequest(args: {
   forceNew?: boolean;
 }): Promise<{ requestId: string; requestToken: string; formLink: string; emailSent: boolean; waSent: boolean }> {
   const headers = await getAuthHeader();
-  const r = await fetch('/api/reference/create-request', {
+  const r = await fetch(`${API_BASE}/api/reference/create-request`, {
     method: 'POST',
     headers,
     body: JSON.stringify(args),
@@ -81,7 +82,7 @@ export async function requestAdditionalReferences(args: {
 
 export async function listReferenceRequests(sessionId: string): Promise<ReferenceCheckRequest[]> {
   const headers = await getAuthHeader();
-  const r = await fetch(`/api/reference/by-session/${encodeURIComponent(sessionId)}`, { headers });
+  const r = await fetch(`${API_BASE}/api/reference/by-session/${encodeURIComponent(sessionId)}`, { headers });
   const json = await r.json();
   if (!json.success) throw new Error(json.error || 'Gagal mengambil data referensi');
   return json.requests as ReferenceCheckRequest[];
@@ -89,7 +90,7 @@ export async function listReferenceRequests(sessionId: string): Promise<Referenc
 
 export async function resendReferenceMessage(requestId: string, responseId: string): Promise<void> {
   const headers = await getAuthHeader();
-  const r = await fetch(`/api/reference/${requestId}/resend/${responseId}`, {
+  const r = await fetch(`${API_BASE}/api/reference/${requestId}/resend/${responseId}`, {
     method: 'POST',
     headers,
   });
@@ -105,7 +106,7 @@ export async function fetchReferenceForm(token: string): Promise<{
   companyName: string;
   status: string;
 }> {
-  const r = await fetch(`/api/reference/${encodeURIComponent(token)}`);
+  const r = await fetch(`${API_BASE}/api/reference/${encodeURIComponent(token)}`);
   const json = await r.json();
   if (!json.success) throw new Error(json.error || 'Token tidak valid');
   return json;
@@ -121,7 +122,7 @@ export async function submitReferenceForm(
     prevHrPhone: string;
   }>,
 ): Promise<{ requestId: string }> {
-  const r = await fetch(`/api/reference/${encodeURIComponent(token)}/submit`, {
+  const r = await fetch(`${API_BASE}/api/reference/${encodeURIComponent(token)}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ references }),
@@ -147,7 +148,7 @@ export async function sendDirectWhatsapp(args: {
   references: DirectReferenceInput[];
 }): Promise<{ requestId: string; results: Array<{ id: string; name: string; ok: boolean; error?: string }> }> {
   const headers = await getAuthHeader();
-  const r = await fetch('/api/reference/direct-whatsapp', {
+  const r = await fetch(`${API_BASE}/api/reference/direct-whatsapp`, {
     method: 'POST',
     headers,
     body: JSON.stringify(args),
@@ -161,7 +162,7 @@ export async function sendDirectWhatsapp(args: {
 
 export async function sendReferenceEmail(requestId: string, responseId: string): Promise<{ emailId: string }> {
   const headers = await getAuthHeader();
-  const r = await fetch('/api/reference/send-email', {
+  const r = await fetch(`${API_BASE}/api/reference/send-email`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ requestId, responseId }),
@@ -175,7 +176,7 @@ export async function sendReferenceEmail(requestId: string, responseId: string):
 
 export async function initiateAiCall(requestId: string, responseId: string): Promise<{ callSid: string }> {
   const headers = await getAuthHeader();
-  const r = await fetch('/api/reference/ai-call', {
+  const r = await fetch(`${API_BASE}/api/reference/ai-call`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ requestId, responseId }),

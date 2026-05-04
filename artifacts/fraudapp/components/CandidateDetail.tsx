@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Shield, Bot, DollarSign, Radar, Activity, MessageSquare, User, Scan, Globe, Wifi, Smartphone, Info, Download, Eye, Sparkles, ExternalLink, Lock, CreditCard } from 'lucide-react';
 import { InterviewSession, ParsedCVData, CompanyProfile, IPData, Workflow, WorkflowStep, PddiktiVerification } from '../types';
 import { supabase, COLLECTIONS, parseCVWithMistral, sendEmailViaCloudFunction, toSnakeCaseRow } from '../services/supabase';
+import { API_BASE } from '../services/apiBase';
 
 type TimelineItem = NonNullable<InterviewSession['timeline']>[number];
 import { useToast } from './Toast';
@@ -118,7 +119,7 @@ const CandidateDetail: React.FC<CandidateDetailProps> = ({ sessionId, company, o
         const token = sessionData?.session?.access_token;
         if (!token) return;
 
-        const resp = await fetch('/api/extension/send-token-email', {
+        const resp = await fetch(`${API_BASE}/api/extension/send-token-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
