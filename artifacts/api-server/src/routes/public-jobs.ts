@@ -261,22 +261,22 @@ router.post("/apply", async (req: Request, res: Response) => {
 
     // --- 4. Create interview session -----------------------------------------------
     const sessionPayload: Record<string, unknown> = {
-      candidate: JSON.stringify({
+      candidate: {
         id: applicationId,
         name: fullName,
         email,
         role: "Applicant",
-      }),
+      },
       date: now,
       status: sessionStatus,
       recruitment_stage: "applied",
-      transcript: JSON.stringify([
+      transcript: [
         {
           speaker: "ai",
           text: `Aplikasi diterima dari ${fullName} via Job Portal. CV: ${cvUrl || "tidak ada"}`,
         },
-      ]),
-      timeline: JSON.stringify(timeline),
+      ],
+      timeline,
       company_id: companyId,
       source: "job_application",
       job_id: jobId,
