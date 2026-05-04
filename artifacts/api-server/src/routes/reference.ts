@@ -24,6 +24,16 @@ const TWILIO_WEBHOOK_STRICT =
 
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || "";
 
+// TTS voice for AI reference calls. Twilio's Programmable Voice <Say> verb
+// supports Google Cloud TTS voices via the `voice="Google.<voice-name>"`
+// attribute at no extra cost beyond the base call rate. We default to a
+// Wavenet (neural) voice, which sounds substantially more natural in
+// Bahasa Indonesia than the legacy Standard voices we used previously.
+// Override per-deployment via the TWILIO_TTS_VOICE env var — e.g. switch
+// to `Google.id-ID-Wavenet-A` (female) or `Google.id-ID-Wavenet-B` /
+// `Google.id-ID-Wavenet-C` (male) without a code change.
+const TWILIO_TTS_VOICE = process.env.TWILIO_TTS_VOICE || "Google.id-ID-Wavenet-D";
+
 const REFCHECK_CREDIT_COST = 10; // credits per outgoing reference check
 const REQUEST_TTL_HOURS = 7 * 24;
 const RESEND_MIN_HOURS = 48;
@@ -1576,7 +1586,7 @@ router.post("/ai-call", async (req: Request, res: Response) => {
     const params = new URLSearchParams();
     params.set("From", TWILIO_PHONE_NUMBER);
     params.set("To", resp.prev_hr_phone);
-    params.set("Twiml", `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${greeting}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${webhookUrl}?responseId=${resp.id}&amp;step=1&amp;candidateName=${encodeURIComponent(candidateName)}&amp;company=${encodeURIComponent(resp.prev_company_name)}&amp;role=${encodeURIComponent(resp.prev_role || "")}&amp;period=${encodeURIComponent(resp.prev_period || "")}"><Say language="id-ID">Silakan jawab sekarang.</Say></Gather><Say language="id-ID">Maaf, kami tidak menerima jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`);
+    params.set("Twiml", `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${greeting}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${webhookUrl}?responseId=${resp.id}&amp;step=1&amp;candidateName=${encodeURIComponent(candidateName)}&amp;company=${encodeURIComponent(resp.prev_company_name)}&amp;role=${encodeURIComponent(resp.prev_role || "")}&amp;period=${encodeURIComponent(resp.prev_period || "")}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab sekarang.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Maaf, kami tidak menerima jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`);
     params.set("StatusCallback", `${webhookUrl}?responseId=${resp.id}&statusCallback=true`);
     params.set("Record", "true");
     params.set("RecordingStatusCallback", `${webhookUrl}?responseId=${resp.id}&recordingCallback=true`);
@@ -1679,7 +1689,7 @@ router.post(
 
       if (!speechResult) {
         res.status(200).type("text/xml").send(
-          `<Response><Say language="id-ID">Maaf, kami tidak mendengar jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
+          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Maaf, kami tidak mendengar jawaban. Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
         );
         return;
       }
@@ -1725,7 +1735,7 @@ router.post(
         const nextUrl = `${baseUrl}/api/reference/ai-call-webhook?responseId=${responseId}&step=${step + 1}&candidateName=${encodeURIComponent(candidateName)}&company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&period=${encodeURIComponent(period)}`;
 
         res.status(200).type("text/xml").send(
-          `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${analysis.followUp}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${nextUrl}"><Say language="id-ID">Silakan jawab.</Say></Gather><Say language="id-ID">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
+          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${analysis.followUp}</Say><Gather input="speech" language="id-ID" speechTimeout="auto" action="${nextUrl}"><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Silakan jawab.</Say></Gather><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Terima kasih atas waktunya. Selamat siang.</Say></Response>`,
         );
       } else {
         // Conversation done
@@ -1755,12 +1765,12 @@ router.post(
         }).eq("id", responseId);
 
         res.status(200).type("text/xml").send(
-          `<Response><Say language="id-ID" voice="Google.id-ID-Standard-A">${closing}</Say></Response>`,
+          `<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">${closing}</Say></Response>`,
         );
       }
     } catch (err) {
       logger.error({ err }, "ai-call-webhook error");
-      res.status(200).type("text/xml").send("<Response><Say language=\"id-ID\">Maaf terjadi kesalahan. Selamat siang.</Say></Response>");
+      res.status(200).type("text/xml").send(`<Response><Say language="id-ID" voice="${TWILIO_TTS_VOICE}">Maaf terjadi kesalahan. Selamat siang.</Say></Response>`);
     }
   },
 );
