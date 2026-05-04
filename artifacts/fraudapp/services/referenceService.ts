@@ -223,3 +223,9 @@ export function refStatusColor(s: ReferenceCheckResponse['status']): string {
     default: return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400';
   }
 }
+
+export function getRecordingProxyUrl(callRecordingUrl: string): string {
+  const match = callRecordingUrl.match(/Recordings\/(RE[0-9a-f]{32})/i);
+  if (!match) return '';
+  return `${API_BASE}/api/reference/recording/${match[1]}`;
+}
