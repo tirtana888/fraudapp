@@ -45,7 +45,7 @@ app.use(express.static(frontendDist, { index: false }));
 
 // SPA fallback — every non-API GET that didn't match a static file serves
 // index.html so that client-side routing (React Router) takes over.
-app.get("*", (_req: Request, res: Response) => {
+app.get("/{*splat}", (_req: Request, res: Response) => {
   res.sendFile(path.join(frontendDist, "index.html"), (err) => {
     if (err) {
       // If the frontend hasn't been built yet, return a helpful message
