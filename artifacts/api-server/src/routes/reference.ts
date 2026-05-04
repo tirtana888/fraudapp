@@ -1601,11 +1601,14 @@ router.post("/ai-call", async (req: Request, res: Response) => {
       return;
     }
 
-    // Update response record
+    // Update response record. NOTE: call_transcript is a JSONB column — pass
+    // the array directly. Wrapping with JSON.stringify(...) double-encodes the
+    // value (Postgres stores it as a JSON string, not an array), which then
+    // crashes the frontend with `callTranscript.map is not a function`.
     await supabase.from("_reference_check_responses").update({
       call_status: "in_progress",
       call_sid: callData.sid,
-      call_transcript: JSON.stringify([{ speaker: "AI", text: greeting, timestamp: new Date().toISOString() }]),
+      call_transcript: [{ speaker: "AI", text: greeting, timestamp: new Date().toISOString() }],
     }).eq("id", resp.id);
 
     logger.info({ responseId: resp.id, callSid: callData.sid }, "AI call initiated");
@@ -1688,10 +1691,19 @@ router.post(
         .eq("id", responseId)
         .maybeSingle();
 
+      // Tolerant read: column is JSONB, so supabase-js returns a parsed value.
+      // Older rows that were double-stringified (pre-fix) come back as a JSON
+      // string — fall back to JSON.parse for those.
       let transcript: Array<{ speaker: string; text: string; timestamp: string }> = [];
-      try {
-        transcript = JSON.parse((existing as { call_transcript: string } | null)?.call_transcript || "[]");
-      } catch { /* empty */ }
+      const rawTranscript = (existing as { call_transcript: unknown } | null)?.call_transcript;
+      if (Array.isArray(rawTranscript)) {
+        transcript = rawTranscript as Array<{ speaker: string; text: string; timestamp: string }>;
+      } else if (typeof rawTranscript === "string" && rawTranscript.length > 0) {
+        try {
+          const parsed = JSON.parse(rawTranscript);
+          if (Array.isArray(parsed)) transcript = parsed;
+        } catch { /* empty */ }
+      }
 
       transcript.push({ speaker: "Referensi", text: speechResult, timestamp: new Date().toISOString() });
 
@@ -1706,7 +1718,7 @@ router.post(
         transcript.push({ speaker: "AI", text: analysis.followUp, timestamp: new Date().toISOString() });
 
         await supabase.from("_reference_check_responses").update({
-          call_transcript: JSON.stringify(transcript),
+          call_transcript: transcript,
         }).eq("id", responseId);
 
         const baseUrl = getPublicBaseUrl(req);
@@ -1730,12 +1742,12 @@ router.post(
           : "pending";
 
         await supabase.from("_reference_check_responses").update({
-          call_transcript: JSON.stringify(transcript),
-          call_analysis: JSON.stringify({
+          call_transcript: transcript,
+          call_analysis: {
             confirmed: analysis.status === "confirmed",
             status: analysis.status,
             reasoning: analysis.reasoning,
-          }),
+          },
           call_status: "completed",
           status: refStatus,
           response_text: `[AI CALL] ${analysis.reasoning}`,
