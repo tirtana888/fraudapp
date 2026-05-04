@@ -319,7 +319,7 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
                   {safeWorkflows.map(wf => (
                     <div
                       key={wf.id}
-                      onClick={() => setFormData({ ...formData, workflowId: wf.id })}
+                      onClick={() => setFormData({ ...formData, workflowId: wf.id ?? '' })}
                       className={cn(
                         "p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between group",
                         formData.workflowId === wf.id
@@ -429,6 +429,8 @@ const JobManager: React.FC<JobManagerProps> = ({ currentCompany }) => {
             </div>
           </div>
         );
+      default:
+        return null;
     }
   };
 

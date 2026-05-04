@@ -39,6 +39,7 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
         });
         return () => unsubscribe();
     }
+    return undefined;
   }, [currentCompany?.id]);
 
   const handleAddRow = () => {
@@ -348,7 +349,7 @@ const CandidateBlast: React.FC<CandidateBlastProps> = ({ currentCompany }) => {
                                   <button
                                       onClick={(e) => {
                                           e.stopPropagation();
-                                          setActiveMenuId(activeMenuId === inv.id ? null : inv.id);
+                                          setActiveMenuId(activeMenuId === inv.id ? null : (inv.id ?? null));
                                       }}
                                       className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                                       disabled={actionLoading}

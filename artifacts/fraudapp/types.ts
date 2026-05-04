@@ -210,6 +210,7 @@ export interface GamblingFlaggedSite {
   lastVisit: string;
   riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
   matchType: 'domain' | 'keyword';
+  category?: 'gambling' | 'adult';
 }
 
 export interface GamblingAnalysis {
@@ -217,6 +218,8 @@ export interface GamblingAnalysis {
   riskScore: number;
   totalHistoryAnalyzed: number;
   flaggedSitesCount: number;
+  gamblingSitesCount?: number;
+  adultSitesCount?: number;
   flaggedSites: GamblingFlaggedSite[];
   timePatterns: {
     lateNightAccess: number;

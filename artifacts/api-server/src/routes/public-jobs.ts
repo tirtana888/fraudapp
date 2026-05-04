@@ -15,7 +15,7 @@ function getSupabase() {
 // GET /api/public-jobs/company/:slug
 router.get("/company/:slug", async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
+    const slug = String(req.params.slug ?? "");
     const supabase = getSupabase();
 
     // 1. Try by companySlug field
@@ -69,7 +69,7 @@ router.get(
   "/company/:companyId/jobs",
   async (req: Request, res: Response) => {
     try {
-      const { companyId } = req.params;
+      const companyId = String(req.params.companyId ?? "");
       const supabase = getSupabase();
 
       const { data: jobs, error } = await supabase
@@ -97,7 +97,8 @@ router.get(
   "/company/:companyId/job/:jobSlug",
   async (req: Request, res: Response) => {
     try {
-      const { companyId, jobSlug } = req.params;
+      const companyId = String(req.params.companyId ?? "");
+      const jobSlug = String(req.params.jobSlug ?? "");
       const supabase = getSupabase();
 
       // Try by slug field
@@ -320,7 +321,28 @@ router.post("/apply", async (req: Request, res: Response) => {
       }
     }
 
-    // --- 6. Send welcome email (best-effort) via internal route -------------------
+    // --- 6. Auto-trigger CV parsing (best-effort) ---------------------------------
+    // The PublicJobPage flow uploads the CV via /api/upload/cv-public and then
+    // calls this /apply endpoint to create the application + interview session.
+    // Without an explicit auto-parse trigger here, candidate CVs would never be
+    // OCR'd until a recruiter manually re-runs parsing from the dashboard. Fire
+    // the internal /api/ai/parse-cv route now so the recruiter sees structured
+    // CV data the moment they open the candidate.
+    if (sessionRow?.id && cvUrl) {
+      const internalPort = process.env.PORT || 3001;
+      fetch(`http://localhost:${internalPort}/api/ai/parse-cv`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionRow.id, cvUrl }),
+      }).catch((err) => {
+        logger.warn(
+          { err, sessionId: sessionRow.id },
+          "public-jobs/apply: auto parse-cv trigger failed (non-fatal)",
+        );
+      });
+    }
+
+    // --- 7. Send welcome email (best-effort) via internal route -------------------
     if (clientOrigin) {
       const { data: companyDoc } = await supabase
         .from("companies")

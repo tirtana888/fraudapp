@@ -130,7 +130,7 @@ router.get("/session/:id", async (req: Request, res: Response) => {
     if (!DIDIT_API_KEY) {
       return res.status(500).json({ success: false, error: "Didit not configured" });
     }
-    const id = req.params.id;
+    const id = String(req.params.id ?? "");
     const diditRes = await fetch(
       `${DIDIT_API_BASE}/v2/session/${encodeURIComponent(id)}/decision/`,
       {
