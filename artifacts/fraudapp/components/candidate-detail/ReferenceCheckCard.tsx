@@ -380,28 +380,53 @@ const ReferenceRow: React.FC<{
       )}
 
       {/* AI Call Transcript */}
-      {response.callTranscript && response.callTranscript.length > 0 && (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-            <Mic size={11} /> Transkrip Percakapan ({response.callTranscript.length} pesan)
-          </summary>
-          <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded space-y-2 max-h-48 overflow-y-auto">
-            {response.callTranscript.map((msg, i) => (
-              <div key={i} className={`text-xs ${msg.speaker === 'AI' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                <span className="font-semibold">{msg.speaker}:</span> {msg.text}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {(() => {
+        // Defensive: server may have stored older rows as a JSON-encoded
+        // string (double-stringify bug). Parse if needed before rendering.
+        let transcript = response.callTranscript;
+        if (typeof transcript === 'string') {
+          try {
+            const parsed = JSON.parse(transcript as unknown as string);
+            transcript = Array.isArray(parsed) ? parsed : null;
+          } catch {
+            transcript = null;
+          }
+        }
+        if (!Array.isArray(transcript) || transcript.length === 0) return null;
+        return (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <Mic size={11} /> Transkrip Percakapan ({transcript.length} pesan)
+            </summary>
+            <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded space-y-2 max-h-48 overflow-y-auto">
+              {transcript.map((msg, i) => (
+                <div key={i} className={`text-xs ${msg.speaker === 'AI' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                  <span className="font-semibold">{msg.speaker}:</span> {msg.text}
+                </div>
+              ))}
+            </div>
+          </details>
+        );
+      })()}
 
       {/* AI Call Analysis */}
-      {response.callAnalysis && (
-        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs">
-          <span className="font-semibold text-blue-700 dark:text-blue-300">AI Analisis:</span>{' '}
-          <span className="text-gray-700 dark:text-gray-300">{response.callAnalysis.reasoning}</span>
-        </div>
-      )}
+      {(() => {
+        let analysis = response.callAnalysis;
+        if (typeof analysis === 'string') {
+          try {
+            analysis = JSON.parse(analysis as unknown as string);
+          } catch {
+            analysis = null;
+          }
+        }
+        if (!analysis || typeof analysis !== 'object' || !analysis.reasoning) return null;
+        return (
+          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs">
+            <span className="font-semibold text-blue-700 dark:text-blue-300">AI Analisis:</span>{' '}
+            <span className="text-gray-700 dark:text-gray-300">{analysis.reasoning}</span>
+          </div>
+        );
+      })()}
 
       {/* Call Recording */}
       {response.callRecordingUrl && (
