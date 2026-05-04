@@ -167,17 +167,19 @@ router.post("/apply", async (req: Request, res: Response) => {
     const now = new Date().toISOString();
 
     // --- 1. Insert application ---------------------------------------------------
+    // Column names match toSnakeCaseApplicationRow in frontend:
+    //   fullName → candidate_name, email → candidate_email,
+    //   whatsapp → candidate_whatsapp, accessCode is NOT stored in _applications
     const appPayload: Record<string, unknown> = {
       job_id: jobId,
       company_id: companyId,
-      full_name: fullName,
-      email,
-      whatsapp: whatsapp || null,
+      candidate_name: fullName,
+      candidate_email: email,
+      candidate_whatsapp: whatsapp || null,
       cv_url: cvUrl || null,
       status: "Pending",
       applied_at: now,
     };
-    if (accessCode) appPayload.access_code = accessCode;
 
     const { data: appRow, error: appErr } = await supabase
       .from("_applications")
